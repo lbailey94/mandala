@@ -39,4 +39,13 @@ which **matches the receipted `17713cf5…`** in `CURRENT_REALITY_2026-09-13.md`
 ## 4. Effect on the bridge work
 
 - S1 rides the next push/release; nothing to re-do.
-- Our three pending decisions stand: (1) push + v9.1.6, (2) `lakshmi-sampler` restart (S3 activation), (3) VM rebuild timing for the in-guest Tetragon leg — the card/custody item (4) joins the release checklist.
+- **Decision 3 executed (2026-09-14 23:48Z):** `lakshmi-sampler` restarted after the unit-path fix; S3 is live in the production loop — first window records carry the `bridge` counts block, feeds reachable, counts zero. The soak gap was one emit cycle.
+- Open: (1) push + v9.1.6, (2) signing-key custody decision, (4) VM rebuild timing for the in-guest Tetragon leg.
+
+## 5. Key-custody facts for the decision
+
+- **Tag-signing key (A):** `~/.ssh/id_ed25519_signing` (git `user.signingkey` → `.pub`, `gpg.format=ssh`). **No backup recorded anywhere.**
+- **Manifest-signing key (B):** `~/.config/wm/prescience-signing.key` (91 B ASCII, 600). One encrypted backup verified on the attached card (`17713cf5…`); a second may exist on the absent `FEEC-FCE2` card (unconfirmed). B-loss is the operational cliff: shipped clients pin the manifest pubkey, so a lost B cannot sign updates they accept.
+- Mesh node key `~/.config/wm-mesh-node.key` exists separately (Sangha identity; same register).
+- `.gpg` backup perms are 755 on the card (ciphertext; tidy to 600).
+- No plaintext key material found on removable media.

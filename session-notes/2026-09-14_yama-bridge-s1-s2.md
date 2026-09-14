@@ -51,7 +51,8 @@
 
 **Next actions (awaiting go):**
 1. VM rebuild when the machine is quiet (recommended) → in-guest Tetragon observe + collector over SSH → real `/etc/shadow` capture.
-2. Push main + release v9.1.6 (S1 rides it); then restart `lakshmi-sampler` to activate S3 in the production loop (a restart is a ~30 s gap in the soak; deferred to avoid touching the 72 h gate unilaterally).
+2. **Done 2026-09-14 23:48Z: `lakshmi-sampler` restarted** — S3 is live in the production loop. First windows (`23:48:49Z`, `23:49:51Z`) carry `bridge: {sandbox_degraded: 0, sandbox_unconfined: 0, tetragon_shadow: 0}`; the edge soak gap was one emit cycle. The first real bridge event (sandbox drift or Tetragon record) will now produce decision records automatically.
+3. Push main + release v9.1.6 (S1 rides it; 10 commits).
 
 ## Next
 1. **S3** ✅ (above).
