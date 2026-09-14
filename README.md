@@ -1,0 +1,51 @@
+# MANDALA_OS — Project Home (consolidated)
+
+Copies of the MandalaOS corpus, gathered 2026-08-28 (two passes) from CODEX_VAULT, XPRIZE notebooks, the Antigravity brain dir, and WHITEMAGIC archives. **Originals remain in place** — dedupe/removal is a later, user-approved step. See `CONSOLIDATION_LOG.md`.
+
+## What lives here
+- `design/` — the v1 vision: the 1,659-line OS spec (Bindu kernel, Ganas, IndraNet, Dharma Engine, SutraCode, Gnosis Portals) + the May 2025 OpenAI "Concept Review" + the cross-conversation concept genealogy + the vaya-vida concept page.
+- `feasibility/` — the v2 planning era: phased roadmap (Qubes → eBPF/OPA → Tauri → seL4), hybrid-stack analysis, prototype sprint plan, Antigravity brain working history, and **`harmony-vector-spec.md`** (the OS-level 7-dim vector, v0.1).
+- `implementation/` — Phase C/D implementation export (Windsurf) + implementation plan + Windsurf/Claude sessions + **`lakshmi-yama-sprint-plan.md`** (2026 eBPF+OPA prototype) + **`wm-rust-effect-port-plan.md`** (restore Phase A effect types in Rust) + **`QUBES_PATH_ASSESSMENT_2026-09-10.md`** + **`MANDALAOS_V0_PLAN_2026-09-10.md`** + **`ADOPTION_IMPLICATIONS_2026-09-10.md`** (platform route decision, Qubes v0 execution plan, adoption/GTM implications).
+- `realization/` — WHITEMAGIC-side realization docs (vision spec, v0.1 shelter spec, OS mapping, strategy, Jan 2026 handoffs).
+- `narrative/` — Grok conversations (mind/autoimmune framing, Kabbalistic Golems, Mandala Civilization) and other narrative-layer references (XPRIZE "Gentle Singularity" context).
+
+## Relationship to other projects
+- **WM (WHITEMAGIC/)**: the shipped realization of the Dharma/Karma/bicameral/compartment layer (crates `wm-governance`, `wm-bicameral`, `wm-memory/src/mandala.rs`, `wm-substrate`). Principles fold in; the OS-level project does not.
+- **VIOLET/**: the security/autoimmune layer concept.
+- **DEVICE_SYNC/**: the IndraNet-inspired transport.
+- Full cross-project synthesis (2026-09-10): `WHITEMAGIC/planning/FAMILY_SYNTHESIS_VIOLET_MANDALA_DEVICE_2026-09-10.md`.
+- North star: WM runs *on* MandalaOS someday — keep that as one paragraph, not a dependency.
+
+### WM implementation status (re-verified 2026-09-12, WMv9 @ fd673cb v9.1.3)
+| MandalaOS layer | WM v9 (Rust) status |
+|---|---|
+| Effect system (Phase A) | **Shipped** — `wm-core/src/effects.rs` (Koka-inspired `EffectRow`), CI-gated by `wm-mcp/src/effect_audit.rs` |
+| Karma ledger typed debt accounting | **Shipped** — `KarmaEntry.debt_delta` + declared/actual writes (F-3 `a9f25ce`); deep chain verify default. The old gap plan is archived in place: `implementation/wm-rust-effect-port-plan.md` |
+| Dharma gate / Karma ledger chain | Shipped (`wm-governance`); `wm doctor` §9 grades chain depth |
+| Harmony Vector / Lakshmi | **Hardware vector shipped** (`wm-substrate`: cpu/mem/swap/thermal/battery/disk + Guna). The **7-dim OS vector is spec-only** — `feasibility/harmony-vector-spec.md` |
+| Ganas / Mandala compartments (Phase B) | Shipped (`wm-core/gana.rs`, `wm-memory/src/mandala.rs`) |
+| Bicameral engine | Shipped (`wm-bicameral`) |
+| Violet fold-in (scope tokens / model signing) | **Enforced on mesh locks 2026-09-12** (F-1 `fc11ca2`); dispatch-level `EffectRow.invokes` authorization still open |
+| Koka enforcement (Phase C) | Stubbed by design |
+| Dashboard (Phase D) | Site backups only |
+| OS-level (eBPF/Qubes/seL4, SutraCode) | Landlock v0 **shipped** (`wm-mcp/src/landlock_sandbox.rs`, `WM_LANDLOCK=1`); eBPF/Qubes/seL4/SutraCode research-gated |
+
+## Status
+Research/design project. No bootable MandalaOS exists yet. **Platform direction
+reconciled 2026-09-12** — see `PLATFORM_DIRECTION_2026-09-12.md`: three forms
+(Qubes high-assurance workstation / NixOS Sovereign Edition / NixOS microVM
+nodes), one WM governance layer; first buildable artifact is the Sovereign flake
+at `~/Desktop/projects/MANDALAOS_SOVEREIGN/` (start with its
+`GETTING_STARTED.md`; flake check green 2026-09-13). Next concrete
+step: behavioral prototyping on this machine (eBPF + OPA per
+`implementation/lakshmi-yama-sprint-plan.md`, gated by `feasibility/harmony-vector-spec.md`).
+
+**Latest handoff: `SESSION_HANDOFF_2026-09-13.md`** — VM dogfooding infra, WM
+B1/B3 (daemon Landlock + dharma counters), Lakshmi dims 6/7, the telemetry
+"edge galaxy" design, and all open workstreams with acceptance notes.
+
+### 2026-08-28 research pass (key external findings)
+- **seL4 path is viable:** MCS verified on RISC-V (2026), confidentiality proof on AArch64 completed Aug 2026; `rust-sel4` 5.0 + Microkit 2.3 are mature scaffolding.
+- **Direct competitors exist:** agentOS (seL4, bootable agent OS) and OctantOS (Rust kernel, capability manifests) are building the Bindu vision now — both early-stage.
+- **The Yama layer is being commoditized:** AWS AgentCore Policy (Cedar, GA Mar 2026) + Dogwood (temporal policies, Aug 2026); OPA/Falco/Tetragon/Tracee are the mature open-source substrate.
+- **SutraCode's bet remains unproven:** Koka still explicitly research-grade (v3.2.3); production effects = OCaml 5 eio + Rust's effect-generics initiative.
