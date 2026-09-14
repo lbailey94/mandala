@@ -50,7 +50,10 @@ over plans). Latest handoffs: `SESSION_HANDOFF_2026-09-13.md` (software) and
 
 Publication gates in flight: edge-galaxy 72 h soak (clock started 2026-09-13
 ~23:36Z, fires ~Sep 16 23:36Z), stranger install (≥4/5 unassisted), repo
-hygiene (sovereign pinned to the release tag).
+hygiene (sovereign pinned to the release tag). **Signing-key custody:** Option 1
+register live in `security/KEY_CUSTODY_REGISTER.md` (copy C1 verified; A/B
+duplication + card labelling are owner actions; hardware-token and Shamir
+hardening tracked for near-future releases).
 
 **Latest handoff: `SESSION_HANDOFF_2026-09-13.md`** — VM dogfooding infra, WM
 B1/B3 (daemon Landlock + dharma counters), Lakshmi dims 6/7, the telemetry

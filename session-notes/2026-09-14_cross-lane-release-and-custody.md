@@ -49,3 +49,23 @@ which **matches the receipted `17713cf5…`** in `CURRENT_REALITY_2026-09-13.md`
 - Mesh node key `~/.config/wm-mesh-node.key` exists separately (Sangha identity; same register).
 - `.gpg` backup perms are 755 on the card (ciphertext; tidy to 600).
 - No plaintext key material found on removable media.
+
+## 6. Custody decision — Option 1 adopted (2026-09-14)
+
+Owner decision: **Option 1 now**, Options 2 (hardware token) and 3 (Shamir
+shares) tracked for the next/near-future release. Deliverables live in
+`security/`:
+
+- `KEY_CUSTODY_REGISTER.md` — key inventory (A tag-signing, B manifest-signing,
+  C prescience-ledger, D mesh node), copy inventory, owner checklist,
+  verification procedure, hardening roadmap, change log.
+- `custody_manifest.tsv` — machine-readable copies (no secrets).
+- `verify_custody.sh` — read-only hash verifier; baseline run: **C1 OK**,
+  A1/B2 planned.
+- `evidence/` — the parallel lane's addendum 3 + card overlap analysis
+  (copies; originals remain in the work dir).
+
+Notable facts recorded: B is **unencrypted at rest with no passphrase**
+(encryption exists only in the backup); A has no backup; the release-manifest
+key's actual signing happens in CI (GitHub secret), so rotation touches
+CI + local file + copies.

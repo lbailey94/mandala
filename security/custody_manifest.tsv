@@ -1,0 +1,8 @@
+# WhiteMagic/MandalaOS custody manifest — machine-readable copy registry
+# Fields (tab-separated): copy_id  key_id  media_label  media_uuid  path  sha256  status
+# status: active = must verify; planned = not yet created (informational)
+# No secret material. Verified by verify_custody.sh (read-only).
+C1	B	SD_CARD1	FA99-F6E6	/media/lucas/SD_CARD1/wm-release-signing.key.2026-09-13.gpg	17713cf55fd5cd5e326c9dd3ff614c07cbe3a88a1ef6004d9020b4ec1fd9b757	active
+A1	A	SD_CARD1	-	/media/lucas/SD_CARD1/wm-tag-signing.key.<date>.gpg	-	planned
+B2	B	SD_CARD1	-	/media/lucas/SD_CARD1/wm-release-signing.key.<date>.gpg	-	planned
+# C2 candidate (receipted card, currently absent): SD_CARD1 / FEEC-FCE2 — re-verify when attached.
