@@ -856,3 +856,50 @@ remaining verification.
   resolved; SANDBOX_LAYERS §3-7/§4 updated; sovereign README updated.
 - Release-eng lane item 3 (first live `wm update` at 9.1.5) remains the only
   open release item; the 9.1.5 prep is parked per Lucas.
+
+## 18. Public-surface audit + trunk commits + in-guest landrun proof (2026-09-14 early UTC, opencode)
+
+### Public surface (no dev/private docs on the public repo)
+
+- Old public tags `v5.8.0`, `v5.8.0-rc1`, `v5.8.0-rc2`,
+  `v7.0.0-alpha.1`–`v7.0.0-alpha.4` still carried `STRATEGY_V5/V6.md` and
+  `docs/SANGHA_SECURITY.md` (the 2026-09-12 purge covered branches, not
+  tags). No GitHub Releases referenced them; **all 7 deleted from the
+  remote** (alpha.5–8 remain and are clean). Old objects may linger by raw
+  SHA until GitHub GC; a support purge request is the zero-trace follow-up.
+- `scripts/public_surface_check.sh` hardened: every private doc path from
+  `.gitignore` is now blocked. `docs/TRUST_TIER_PRICING_SKETCH_*.md` was
+  untracked-but-unignored (one `git add -A` from leaking) — now ignored and
+  guard-blocked. The guard is also a `security.yml` CI job (pre-push hook
+  already existed).
+- Verified: guard clean; gitleaks over the 209 public commits clean; remote
+  branches and reachable history free of forbidden paths. The 3 gitleaks
+  `scripts/` hits are test fixtures in an untracked file.
+
+### WMv9 trunk (local commits, not pushed)
+
+- `0cbf59a` guard hardening + CI job; `99b1ca0` hosted docs (CAX21 retarget
+  + x402 v2 refresh); `0195d5d` pricing-sketch private. Tree clean;
+  `release.sh 9.1.5 --dry-run` green again. Tag still parked pending the
+  remaining trunk changes + Lucas's go.
+
+### VM landrun — in-guest proof + boot-selftest fix
+
+- Interactive in-guest run (kernel 6.18.50): **13/13 PASS, matrix green**,
+  including `landrun runner nests under Landlock` and `bwrap runner blocked
+  under Landlock`. Receipt:
+  `session-notes/2026-09-14_landrun-inguest-matrix.txt`.
+- Boot-time selftest failure `landrun scratch writable` diagnosed: systemd
+  system services do not inherit `HOME`; the runner resolves scratch from
+  `HOME` and "fails loudly" without one. Fix applied in the sovereign
+  working tree: `mandala-sandbox-selftest` gets `HOME=/root`;
+  `whitemagic-daemon` gets `HOME=/home/mandala` +
+  `WM_SANDBOX_RW=$storeDir/sandbox_rw` (+ tmpfiles dir). `nix eval` verified
+  both. **Boot acceptance still pending** — a parallel session is mid-boot;
+  after it finishes, rebuild + boot and expect 13/13 on the console.
+
+### Docs versioning
+
+- `~/Desktop/MANDALA_OS/` is now a local git repo (`f4cdb08`, 64 files, no
+  remote), so CURRENT_REALITY and SESSION_HANDOFF finally have history.
+

@@ -1,0 +1,17 @@
+6.18.50
+MandalaOS sandbox matrix (bwrap 0.11.2)
+  PASS  write /usr denied
+  PASS  write /tmp allowed
+  PASS  /etc/shadow hidden
+  PASS  home store hidden
+  PASS  network isolated
+  PASS  workspace readable
+  PASS  workspace write denied
+  PASS  network shared with --net
+  info  egress probe (https://example.com): unreachable
+  PASS  landrun runner executes
+  PASS  landrun write /usr denied
+  PASS  landrun scratch writable
+  PASS  landrun runner nests under Landlock
+  PASS  bwrap runner blocked under Landlock
+matrix green
