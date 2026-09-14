@@ -33,7 +33,27 @@
 - **Evidence:** 49/49 tests green (38 lakshmi + 11 dashboard); live transport check against the fleet gateway: `bus_ok: true`, `tetragon_ok: true`, counts 0 (correct — S1 not yet deployed to the release binary; no Tetragon collector records in production yet). Full behavioral test happens at S4 in-guest.
 - **Uncommitted** at the time of writing; committed with the session's follow-up.
 
+## S4 — in-guest live run (2026-09-14 late; partial)
+
+**Done:**
+- **Merged S1 to main** (`WMv9` merge commit `3384dfb`) — no conflicts; main rides v9.1.6 (unreleased section already open). Push/release pending Lucas.
+- **Unit paths fixed:** 5 `~/.config/systemd/user/lakshmi-*.service` files still pointed at `~/Desktop/projects/LAKSHMI` (stale after the folder move); sed'd to `~/Desktop/MANDALA_OS/LAKSHMI` + `daemon-reload`. Running services were left untouched (they keep their inode; next restart now works).
+- **Full pipeline proven live on a scratch store** (temp `wm serve`, no production writes):
+  1. `yama-collector.py` on the Tetragon fixture → `shadow.access.v1 | tetragon.shadow_access | observed | value=2`.
+  2. `fetch_bridge_inputs()` → `{tetragon_shadow: 1, bus_ok: true, tetragon_ok: true}`.
+  3. `policy_observations()` → transition `shadow.access.v1 | observing | value=1.0 | action=observe`, emitted as a typed decision record.
+  Both records verified via `memory.search` in the scratch store.
+
+**Blocked (needs a decision):**
+- **True in-guest Tetragon capture deferred:** the Nix store was GC'd (2.0 GB; no VM runner path `v5kjrw43…`, no `whitemagic` paths), so booting requires a full cold `nix build` of the VM (nixpkgs from cache + **WM Rust release build locally**). Host pressure is high right now: ~2 GB RAM free, zram 8 GB used, several active agent sessions (1.8 GB+ `solc`, multiple `opencode`).
+- No Tetragon binary exists on the host; the in-guest copy may survive on `~/vms/mandala.qcow2` (disk persists) — verifiable once the VM boots.
+- S1 live behavior on the fleet waits for the v9.1.6 release (host/guest binaries predate the merge), so the `sandbox_observation` bus leg was proven by unit tests + code only; the Tetragon leg was proven end-to-end above.
+
+**Next actions (awaiting go):**
+1. VM rebuild when the machine is quiet (recommended) → in-guest Tetragon observe + collector over SSH → real `/etc/shadow` capture.
+2. Push main + release v9.1.6 (S1 rides it); then restart `lakshmi-sampler` to activate S3 in the production loop (a restart is a ~30 s gap in the soak; deferred to avoid touching the 72 h gate unilaterally).
+
 ## Next
 1. **S3** ✅ (above).
-2. **S4** — VM rebuild at the v9.1.5 pin (or local override), Tetragon policy + collector wired in-guest, live observe window.
+2. **S4** ◐ — pipeline live-proven; in-guest eBPF capture pending VM rebuild.
 3. Stranger-install pass; then decide Y1 (Rust evaluation engine) vs keeping step-0 in Lakshmi.
