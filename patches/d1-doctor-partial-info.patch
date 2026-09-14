@@ -1,0 +1,46 @@
+diff --git a/crates/wm-mcp/src/bin/wm.rs b/crates/wm-mcp/src/bin/wm.rs
+index b8a43c5..5653f3a 100644
+--- a/crates/wm-mcp/src/bin/wm.rs
++++ b/crates/wm-mcp/src/bin/wm.rs
+@@ -3515,8 +3515,9 @@ fn run_doctor(
+     // 11d. Landlock v0 state (Phase 5 kernel-side slice) — did the last
+     //      serve start on this store apply the whole-process ruleset?
+     //      The server persists its report at startup; the doctor grades it
+-    //      read-only. Degradation is never silent: anything short of full
+-    //      enforcement counts as an issue when the flag was requested.
++    //      read-only. Degradation is never silent: `partial` is INFO (the
++    //      expected outcome on older ABIs — the ruleset still bites), and a
++    //      real application failure is a WARN that counts as an issue.
+     println!();
+     match wm_mcp::landlock_sandbox::load_report(&store_path) {
+         Some(report)
+@@ -3529,12 +3530,23 @@ fn run_doctor(
+             );
+         }
+         Some(report) if report.enabled => {
+-            println!(
+-                "[WARN] Landlock requested but not fully enforced ({}): {}",
+-                report.outcome.as_str(),
+-                report.detail
+-            );
+-            issues += 1;
++            // `partial` is the honest outcome on older Landlock ABIs (e.g. the
++            // VM kernel): the ruleset still bites, just on a subset of rights.
++            // It is INFO, not an issue — only a real failure is WARN.
++            let partial = report.outcome == wm_mcp::landlock_sandbox::LandlockOutcome::Partial;
++            if partial {
++                println!(
++                    "[INFO] Landlock: partial — write-class FS rights confined on the supported rights subset ({})",
++                    report.detail
++                );
++            } else {
++                println!(
++                    "[WARN] Landlock requested but not fully enforced ({}): {}",
++                    report.outcome.as_str(),
++                    report.detail
++                );
++                issues += 1;
++            }
+         }
+         Some(report) => {
+             println!(

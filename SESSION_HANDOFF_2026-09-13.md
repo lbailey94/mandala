@@ -800,10 +800,10 @@ more changes to land before the release clock starts.
 
 ## 17. Landrun runner close-out — pure-Landlock B2 for Landlock stores (2026-09-14 early UTC)
 
-**Status:** implemented, host-verified end-to-end, packaged + wired and
-Nix-evaluated. Commits: sovereign `d1a31b0` (local — push pending),
-whitemagic `c0a4c49` (local — push pending; doc-only). VM rebuild is the only
-remaining verification.
+**Status:** implemented, host-verified, **in-guest verified (matrix 13/13
+green, kernel 6.18)**, packaged + wired. Commits: sovereign `d1a31b0` +
+`a5b2b83` (both pushed/at origin), whitemagic `c0a4c49` (doc-only, pushed).
+The VM unit now points at `/nix/store/v5kjrw43…-nixos-vm`.
 
 ### Delivered
 
@@ -827,8 +827,11 @@ remaining verification.
    executes / write-denied / scratch-rw; **nested-under-Landlock works**;
    **bwrap blocked under the same domain**. Host run: **13/13 green**.
 
-### Evidence (host, kernel 7.0)
+### Evidence (host kernel 7.0 + guest kernel 6.18)
 
+- In-guest (rebuilt VM, headless serial capture): `matrix green` with 13
+  PASS — the five landrun checks included; `whitemagic-daemon` and
+  `wm-mcp-readonly` started clean.
 - Negative control: bwrap fails under an active Landlock domain
   (`overflowuid`/mount denial); landrun-sandbox succeeds under the same
   domain — rulesets stack, namespaces do not.
@@ -843,9 +846,12 @@ remaining verification.
 
 ### Honest deltas
 
-- **VM boot not yet rerun** — kernel 6.18 in-guest should behave the same
-  (Landlock stacks there too), but the matrix's new checks are host-verified
-  only until the next `nix build` + boot.
+- **VM verification done** — rebuilt VM (`v5kjrw43…`, kernel 6.18): matrix
+  **13/13 green**, including `landrun runner nests under Landlock` and
+  `bwrap runner blocked under Landlock`. Two in-guest findings fixed in
+  `a5b2b83`: the boot selftest service's minimal PATH hid the runner, and
+  the root-run service has no `HOME` (matrix now passes `WM_SANDBOX_RW`;
+  operators get the same knob).
 - The runner grants no `/proc`; tools needing procfs fail loudly by design.
 - `landrun`'s `--unrestricted-filesystem` skips the domain entirely (found
   while testing) — the matrix's domain is a real ruleset, not that flag.
@@ -856,6 +862,39 @@ remaining verification.
   resolved; SANDBOX_LAYERS §3-7/§4 updated; sovereign README updated.
 - Release-eng lane item 3 (first live `wm update` at 9.1.5) remains the only
   open release item; the 9.1.5 prep is parked per Lucas.
+
+---
+
+## 18. Honest-gaps + threat-model one-pager (publication gate) — drafted (2026-09-14 early UTC)
+
+**Status:** `mandalaos-sovereign/docs/THREAT_MODEL.md` (commit `aa80550`,
+local — push pending), linked from the README; the §7 gate item is checked.
+Publishing the page/repo still waits on the other gates (stranger install,
+repo hygiene, edge-galaxy 72 h).
+
+### Contents (one page, adversarial-reader standard)
+
+- **Threat class:** misbehaving/buggy tools, prompt-injected spawns,
+  supply-chain execution, store integrity — shared-kernel containment, the
+  same class as browser sandboxes and systemd services.
+- **Explicit non-claims:** kernel exploits, hostile root, Qubes-level /
+  hypervisor compartmentalization, hardware + side channels, availability.
+- **Disclosed gaps table:** guest Landlock `partial` vs host `enforced`;
+  pure-Landlock runner trade (no `/proc`, no private `/tmp`, no
+  namespaces); no MCP auth beyond loopback; fleet stores on the bwrap
+  runner (9.1.4 predates daemon-Landlock wiring); observe-only Yama v0.
+- **Claim discipline:** say containment; no kernel-exploit claims; name the
+  mechanism and its verification; loud-degrade over silent fallback; gaps
+  are product surface.
+- **Verification commands:** `wm selftest --json`, matrix 13/13,
+  `wm doctor`, release-health record.
+
+### Remaining publication gates
+
+- Stranger install (ADOPTION Gate-2: ≥4/5 unassisted installs).
+- Repo hygiene: whitemagic release tagged + sovereign pinned; README derived
+  from CURRENT_REALITY.
+- Edge galaxy 72 h — clock restarted 2026-09-13 ~23:36Z, fires ~Sep 16 23:36Z.
 
 ## 18. Public-surface audit + trunk commits + in-guest landrun proof (2026-09-14 early UTC, opencode)
 

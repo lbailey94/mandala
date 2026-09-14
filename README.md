@@ -5,12 +5,14 @@ Copies of the MandalaOS corpus, gathered 2026-08-28 (two passes) from CODEX_VAUL
 ## What lives here
 - `design/` — the v1 vision: the 1,659-line OS spec (Bindu kernel, Ganas, IndraNet, Dharma Engine, SutraCode, Gnosis Portals) + the May 2025 OpenAI "Concept Review" + the cross-conversation concept genealogy + the vaya-vida concept page.
 - `feasibility/` — the v2 planning era: phased roadmap (Qubes → eBPF/OPA → Tauri → seL4), hybrid-stack analysis, prototype sprint plan, Antigravity brain working history, and **`harmony-vector-spec.md`** (the OS-level 7-dim vector, v0.1).
-- `implementation/` — Phase C/D implementation export (Windsurf) + implementation plan + Windsurf/Claude sessions + **`lakshmi-yama-sprint-plan.md`** (2026 eBPF+OPA prototype) + **`wm-rust-effect-port-plan.md`** (restore Phase A effect types in Rust) + **`QUBES_PATH_ASSESSMENT_2026-09-10.md`** + **`MANDALAOS_V0_PLAN_2026-09-10.md`** + **`ADOPTION_IMPLICATIONS_2026-09-10.md`** (platform route decision, Qubes v0 execution plan, adoption/GTM implications).
+- `implementation/` — Phase C/D implementation export (Windsurf) + implementation plan + Windsurf/Claude sessions + **`lakshmi-yama-sprint-plan.md`** (2026 eBPF+OPA prototype) + **`wm-rust-effect-port-plan.md`** (restore Phase A effect types in Rust) + **`yama-v0-bridge-design.md`** (the observation→policy bridge; S1+S2 built 2026-09-14) + **`QUBES_PATH_ASSESSMENT_2026-09-10.md`** + **`MANDALAOS_V0_PLAN_2026-09-10.md`** + **`ADOPTION_IMPLICATIONS_2026-09-10.md`** (platform route decision, Qubes v0 execution plan, adoption/GTM implications).
 - `realization/` — WHITEMAGIC-side realization docs (vision spec, v0.1 shelter spec, OS mapping, strategy, Jan 2026 handoffs).
 - `narrative/` — Grok conversations (mind/autoimmune framing, Kabbalistic Golems, Mandala Civilization) and other narrative-layer references (XPRIZE "Gentle Singularity" context).
 
 ## Relationship to other projects
 - **WM (WHITEMAGIC/)**: the shipped realization of the Dharma/Karma/bicameral/compartment layer (crates `wm-governance`, `wm-bicameral`, `wm-memory/src/mandala.rs`, `wm-substrate`). Principles fold in; the OS-level project does not.
+- **LAKSHMI/** (in this folder): telemetry digestor + dashboard + step-0 observe policies.
+- **MANDALAOS_SOVEREIGN/** (in this folder): the NixOS flake/VM build-now artifact.
 - **VIOLET/**: the security/autoimmune layer concept.
 - **DEVICE_SYNC/**: the IndraNet-inspired transport.
 - Full cross-project synthesis (2026-09-10): `WHITEMAGIC/planning/FAMILY_SYNTHESIS_VIOLET_MANDALA_DEVICE_2026-09-10.md`.
@@ -31,14 +33,24 @@ Copies of the MandalaOS corpus, gathered 2026-08-28 (two passes) from CODEX_VAUL
 | OS-level (eBPF/Qubes/seL4, SutraCode) | Landlock v0 **shipped** (`wm-mcp/src/landlock_sandbox.rs`, `WM_LANDLOCK=1`); eBPF/Qubes/seL4/SutraCode research-gated |
 
 ## Status
-Research/design project. No bootable MandalaOS exists yet. **Platform direction
-reconciled 2026-09-12** — see `PLATFORM_DIRECTION_2026-09-12.md`: three forms
-(Qubes high-assurance workstation / NixOS Sovereign Edition / NixOS microVM
-nodes), one WM governance layer; first buildable artifact is the Sovereign flake
-at `~/Desktop/projects/MANDALAOS_SOVEREIGN/` (start with its
-`GETTING_STARTED.md`; flake check green 2026-09-13). Next concrete
-step: behavioral prototyping on this machine (eBPF + OPA per
-`implementation/lakshmi-yama-sprint-plan.md`, gated by `feasibility/harmony-vector-spec.md`).
+**Build-now era (updated 2026-09-14 evening).** The Sovereign VM boots and is
+dogfooded (NixOS 26.05, in-guest sandbox matrix green); WM is at v9.1.5 with
+typed telemetry live (1-min windows → telemetry galaxy), the Lakshmi dashboard
+shipped, and step-0 observe policies writing decision records. Yama v0 is
+**observe-only** with the enforcement seam (runner/bwrap/Landlock) proven.
+The Yama bridge is now half-built: S1 (sandbox drift → `sandbox_observation`
+bus events, in worktree `WHITEMAGIC/WMv9-yama-bridge`) and S2 (Tetragon
+collector, `MANDALAOS_SOVEREIGN/scripts/yama-collector.py`) landed 2026-09-14;
+S3 (Lakshmi policy inputs) and S4 (in-guest live) are next.
+
+Canonical status and supersession map: `CURRENT_REALITY_2026-09-13.md` (wins
+over plans). Latest handoffs: `SESSION_HANDOFF_2026-09-13.md` (software) and
+`SESSION_HANDOFF_2026-09-14.md` (website/release truth pass). Bridge design:
+`implementation/yama-v0-bridge-design.md`.
+
+Publication gates in flight: edge-galaxy 72 h soak (clock started 2026-09-13
+~23:36Z, fires ~Sep 16 23:36Z), stranger install (≥4/5 unassisted), repo
+hygiene (sovereign pinned to the release tag).
 
 **Latest handoff: `SESSION_HANDOFF_2026-09-13.md`** — VM dogfooding infra, WM
 B1/B3 (daemon Landlock + dharma counters), Lakshmi dims 6/7, the telemetry

@@ -12,7 +12,7 @@ wins — and the plan should carry a banner pointing here.
 |---|---|---|
 | Governance core (WMv9) | Landlock v0/v1, **B2 subprocess runner** (envelope `wm-sandbox-exec-v1`), B3 dharma counters, typed karma debt, engagement tokens on mesh locks, **telemetry galaxy** + `os_telemetry_threshold` | whitemagic `fix/ci-green` @ `c2d837c` (pushed); suites 170/172/511/714/824/267 green; SANDBOX_LAYERS, SESSION_HANDOFF §9-11 |
 | Sovereign OS | NixOS 26.05 flake; VM boots in QEMU; daemon + read-only MCP (host 28795) + host embedder bridge; hardened units | mandalaos-sovereign @ `3b8d67f` (pushed) |
-| Containment | in-guest matrix green (8/8 at last VM boot; host matrix now 13/13 including the new pure-Landlock runner — next VM boot validates); bwrap wrapper with `--exec` envelope; **`landrun-sandbox` pure-Landlock runner for Landlock stores** (daemon keeps `WM_LANDLOCK=1` *and* contained spawns); explicit `WM_SANDBOX_RUNNER` per unit; `/run/current-system` bind | `/etc/mandala/verify-sandbox.sh`; `wm doctor` §11d-2; SANDBOX_LAYERS §3-7/§4 |
+| Containment | in-guest matrix **13/13 green** (rebuilt VM 2026-09-14, kernel 6.18, incl. the pure-Landlock runner checks); bwrap wrapper with `--exec` envelope; **`landrun-sandbox` pure-Landlock runner for Landlock stores** (daemon keeps `WM_LANDLOCK=1` *and* contained spawns); explicit `WM_SANDBOX_RUNNER` per unit; `/run/current-system` bind | `/etc/mandala/verify-sandbox.sh`; `wm doctor` §11d-2; SANDBOX_LAYERS §3-7/§4 |
 | Telemetry | Lakshmi 7-dim digestor; 1-min windows → telemetry galaxy; bounded spool replay; change-based threshold events | lakshmi @ `ac9f7b4` (pushed); 25 tests; fail-soft drill |
 | Policy (Yama) | observe-only feasibility **PASS**: Tetragon v1.7.1 in-guest, BTF, TracingPolicy loaded, `/etc/shadow` access captured; 0.03 % CPU / 66 MB | §4, experiment 2026-09-13 |
 
@@ -189,8 +189,10 @@ ahead of these; each is checkable evidence, not a vibe.
 - [x] **In-guest recall (2026-09-13 night)** — reembed backfill: 11 batches,
       244 embedded, 0 errors; store at 242 vectors + 20 cache; hybrid recap
       verified through the read-only MCP (`recall_mode: hybrid`).
-- [ ] **Honest gaps + threat model one-pager** — containment ≠ hypervisor
-      isolation; no kernel-exploit claims; known deltas from §6 included.
+- [x] **Honest gaps + threat model one-pager** — drafted 2026-09-14 at
+      `mandalaos-sovereign/docs/THREAT_MODEL.md`: containment ≠ hypervisor
+      isolation; no kernel-exploit claims; known deltas from §6 included;
+      claim discipline + verification commands. Publish with the repo/page.
 - [ ] **Stranger install** — ADOPTION Gate-2: ≥4/5 unassisted installs with
       no data loss, silent corruption, or undisclosed network transfer.
 - [ ] **Repo hygiene** — whitemagic release tagged and sovereign pinned to
@@ -290,5 +292,6 @@ installed; live-verified against the 9.1.4 gateway (script degrades
 gracefully, prune ran) and scratch-store E2E (planner shape; wet prune
 dharma-vetoed under load as designed). `landrun-sandbox` pure-Landlock B2
 runner (sovereign `scripts/`, packaged + wired: daemon keeps
-`WM_LANDLOCK=1` and routes spawns through it); nested-domain E2E proves the
-full chain (`gh_available: true` through both domains where bwrap fails).
+`WM_LANDLOCK=1` and routes spawns through it); **in-guest matrix 13/13
+green** on the rebuilt VM (`v5kjrw43…`), including nested-under-Landlock
+works / bwrap-blocked-under-Landlock.
