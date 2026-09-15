@@ -168,7 +168,7 @@ runner drift / Tetragon / bus
 
 | # | Slice | Repo | Gate |
 |---|---|---|---|
-| **Y1.0** | Router skeleton + record v2 fields + `WM_ACTUATION` arm/disarm + notify only + tests | LAKSHMI | none — no enforcement |
+| **Y1.0** ✅ | Router skeleton + record v2 fields + `WM_ACTUATION` arm/disarm + notify only + tests — implemented 2026-09-15 (`Lakshmi/actuator.py`, 16 tests; the `actuation_notify` bus event needs WM ≥ 9.1.7 and degrades to the decision record on older fleets) | LAKSHMI | none — no enforcement |
 | **Y1.1** | Subject capture: collector maps `comm`/`binary` → `proc:`; eval maps `tool:`/`dim:`; dashboard shows subject | SOVEREIGN + LAKSHMI | none |
 | **Y1.2** | Nudge: advisory channel for `spawn.undeclared.v1` + dims | LAKSHMI (+ WM response disclosure) | S4 data + zero-FP review per policy |
 | **Y1.3** | Throttle: per-subject `ResourceRules` class + undo + expiry; first candidate `write.budget_exceeded.v1` | WMv9 | policy observation window clean |
