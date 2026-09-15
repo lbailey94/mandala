@@ -4,5 +4,6 @@
 # No secret material. Verified by verify_custody.sh (read-only).
 C1	B	SD_CARD1	FA99-F6E6	/media/lucas/SD_CARD1/wm-release-signing.key.2026-09-13.gpg	17713cf55fd5cd5e326c9dd3ff614c07cbe3a88a1ef6004d9020b4ec1fd9b757	active
 A1	A	SD_CARD1	FA99-F6E6	/media/lucas/SD_CARD1/wm-tag-signing.key.2026-09-14.gpg	ed040cfdeda2f36bcc604e1a2591c8d48c72a5443109db342953dc86dbf8e0b3	active
-B2	B	SD_CARD1	-	/media/lucas/SD_CARD1/wm-release-signing.key.<date>.gpg	-	planned
+B2	B	SD_CARD1	FEEC-FCE2	/media/lucas/SD_CARD1/wm-release-signing.key.2026-09-14.gpg	d455b81cddc5c0c7db3917dd3d8009fca2dac29b0ee40561deafe4b8f17e5470	active
+# FA99-F6E6 copies (C1, A1) exist but the media is not mounted during this run — re-verify on return.
 # C2 candidate (receipted card, currently absent): SD_CARD1 / FEEC-FCE2 — re-verify when attached.
