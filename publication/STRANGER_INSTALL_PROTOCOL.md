@@ -33,13 +33,16 @@ inside the VM closure.
 ## 3. Procedure (what the tester is given)
 
 The tester receives only: repo URL + "follow `GETTING_STARTED.md`". Expected
-path:
+path (after the §0 stranger checklist: Nix installed; your SSH key added in
+`vm.nix` or console autologin; VM disk path pointed at your own directory):
 
 ```bash
 git clone <repo> && cd mandalaos-sovereign
 # read GETTING_STARTED.md, then:
-nix build .#nixosConfigurations.mandala-vm.config.system.build.vm
+nix build .#nixosConfigurations.mandala-vm.config.system.build.vm   # or: nix run .#vm
 ./result/bin/run-mandala-node-vm         # boots the VM (QEMU/KVM)
+# with your key (or on the console):
+ssh -p 2222 -i ~/.ssh/<your-key> mandala@127.0.0.1
 # in-guest:
 /etc/mandala/verify-sandbox.sh           # containment matrix
 wm --version && wm doctor                # daemon + governance checks
@@ -104,20 +107,35 @@ failure**; stop, preserve `ss`/journal output, and do not continue.
 - Failures are doc bugs until proven otherwise: each one becomes a fix list
   item with the tester's verbatim report.
 
-## 8. Dry-run gaps already found (2026-09-15, must fix before inviting testers)
+## 8. Dry-run findings (author's run, 2026-09-15) and their fixes
 
-1. `MANDALAOS_SOVEREIGN/GETTING_STARTED.md` still references the pre-move paths
-   (`~/Desktop/projects/MANDALAOS_SOVEREIGN/`, `~/Desktop/projects/LAKSHMI/`);
-   the repositories live under `~/Desktop/MANDALA_OS/`.
-2. Its status header says "matrix 8/8" — actual is 13/13 (2026-09-14 rebuild,
-   kernel 6.18 guest / 7.0 host).
-3. The S4 runbook (now corrected) shows the level of install friction a
-   stranger would hit: NixOS has no `/usr/lib/systemd/system`, the Tetragon
-   bundle's `install.sh` aborts there, and `tetra` needs a pty. None of this
-   belongs in the stranger path — the VM must ship these ready or the test
-   measures the wrong thing.
-4. Pin the exact commits in `GETTING_STARTED` so "frozen artifact" is
-   checkable; today the doc is date-stamped but not SHA-stamped.
+The front-door dry run found six gaps; five are fixed in the docs, one is an
+explicit prototype trade-off:
+
+1. **Hardcoded SSH keys** — the guest's `authorizedKeys` list contains only the
+   author's keys, so a stranger could not SSH in. *Fixed:* `GETTING_STARTED` §0
+   now tells the tester to add their own key (or use the console autologin).
+   *Open trade-off:* accepting ssh keys via a tracked `vm-keys/` file or a
+   flake option would remove the edit; decide before wide distribution.
+2. **Hardcoded VM disk path** — `vm.nix` defaults to
+   `/home/lucas/vms/mandala.qcow2`; on a stranger's machine that path is
+   wrong/unwritable. *Fixed:* §0 instructs changing it to a directory they own.
+   *Open trade-off:* same decision as (1) — pure config vs. one documented edit.
+3. **Wrong build attribute** — §3A built `mandala-sovereign`, which has none of
+   the VM conveniences (forwarded ports, keys, autologin, disk). *Fixed:*
+   §3A now builds `mandala-vm` (or `nix run .#vm`) and says why.
+4. **Machine-specific tool path** — §2 used the author's nix-portable path
+   under `/tmp/opencode`. *Fixed:* §2 now assumes an installed Nix and uses
+   `nix flake check`.
+5. **Stale counts/roadmap** — matrix said 8 checks (actual 13); the roadmap
+   listed work that is done. *Fixed:* both sections now mirror
+   `CURRENT_REALITY` (bridge live, Y1 ladder, gates).
+6. **No SHA pinning** — the protocol needs a frozen artifact. *Open:* add
+   commit SHAs/doc hashes here when testers are invited.
+
+The remaining two edits are acceptable for a research-prototype gate, but they
+are **setup friction** and must be disclosed to testers, not hidden. Neither
+touches data safety or network disclosure.
 
 ## 9. Evidence location
 
