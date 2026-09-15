@@ -38,10 +38,15 @@ dogfooded (NixOS 26.05, in-guest sandbox matrix green); WM is at v9.1.5 with
 typed telemetry live (1-min windows → telemetry galaxy), the Lakshmi dashboard
 shipped, and step-0 observe policies writing decision records. Yama v0 is
 **observe-only** with the enforcement seam (runner/bwrap/Landlock) proven.
-The Yama bridge is now half-built: S1 (sandbox drift → `sandbox_observation`
-bus events, in worktree `WHITEMAGIC/WMv9-yama-bridge`) and S2 (Tetragon
-collector, `MANDALAOS_SOVEREIGN/scripts/yama-collector.py`) landed 2026-09-14;
-S3 (Lakshmi policy inputs) and S4 (in-guest live) are next.
+The Yama bridge is now built through evaluation: S1 (sandbox drift →
+`sandbox_observation` bus events) is **merged to main (`3384dfb`) and pushed**
+(worktree removed after merge); S2 (Tetragon collector,
+`MANDALAOS_SOVEREIGN/scripts/yama-collector.py`) and S3 (Lakshmi policy inputs)
+landed 2026-09-14, with S3 **live in production** (sampler restarted; window
+records carry the `bridge` counts block). S4 (in-guest eBPF capture) is
+pipeline-proven on a scratch store; the turnkey kit is committed
+(`scripts/tetragon/` policy + `docs/S4_TETRAGON_RUNBOOK.md`) and waiting on a
+quiet VM-rebuild window.
 
 Canonical status and supersession map: `CURRENT_REALITY_2026-09-13.md` (wins
 over plans). Latest handoffs: `SESSION_HANDOFF_2026-09-13.md` (software) and
@@ -51,9 +56,11 @@ over plans). Latest handoffs: `SESSION_HANDOFF_2026-09-13.md` (software) and
 Publication gates in flight: edge-galaxy 72 h soak (clock started 2026-09-13
 ~23:36Z, fires ~Sep 16 23:36Z), stranger install (≥4/5 unassisted), repo
 hygiene (sovereign pinned to the release tag). **Signing-key custody:** Option 1
-register live in `security/KEY_CUSTODY_REGISTER.md` (copy C1 verified; A/B
-duplication + card labelling are owner actions; hardware-token and Shamir
-hardening tracked for near-future releases).
+register live in `security/KEY_CUSTODY_REGISTER.md` (all four copies verified
+across the two cards: A1+B1 on FA99, B2+C1 on FEEC; B's identity and signature
+chain proven; rotation runbook drafted; pre-release gate
+`security/custody_gate.sh`; hardware-token and Shamir hardening tracked for
+near-future releases).
 
 **Latest handoff: `SESSION_HANDOFF_2026-09-13.md`** — VM dogfooding infra, WM
 B1/B3 (daemon Landlock + dharma counters), Lakshmi dims 6/7, the telemetry
