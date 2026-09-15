@@ -295,3 +295,52 @@ runner (sovereign `scripts/`, packaged + wired: daemon keeps
 `WM_LANDLOCK=1` and routes spawns through it); **in-guest matrix 13/13
 green** on the rebuilt VM (`v5kjrw43…`), including nested-under-Landlock
 works / bwrap-blocked-under-Landlock.
+
+---
+
+## 9. Annex — original-notes alignment (2026-09-15)
+
+Lineage check against the 2025 corpus (`design/---MandalaOS.txt` — parts I–IV
+plus the Qubes/eBPF/SutraCode staging; the 2025-05-26 Concept Review; the
+2026-04 NixOS vision spec; `realization/MandalaOS_v0.1_SPEC.md`). Statuses are
+the ones §1 verifies; this annex maps *intent* only.
+
+| Original pillar | Current realization | State |
+|---|---|---|
+| Bindu microkernel; in-kernel Tiferet/Lakshmi | Linux 6.18/NixOS + systemd substrate; Landlock LSM + bwrap/landrun runner as enforcement seam | Gated research; form deliberately changed (PLATFORM_DIRECTION §2) |
+| Ganas as user-space services (Vayu/Akasha/Prithvi/IndraNet/Maya) | OS-layer functions delegated to NixOS/systemd; WM's 28-gana layer covers governance; GanYingBus + mesh locks stand in for IndraNet | Re-mapped, not re-implemented |
+| Lakshmi / Harmony Vector | `feasibility/harmony-vector-spec.md` → live digestor, telemetry galaxy, dashboard `:3109`, Samma-Meter + Policies panel | Strongest alignment |
+| Tiferet self-balancing | Step-0 policies live with the full hysteresis contract (`design/ACTUATION_HYSTERESIS_2026-09-13.md`); ladder steps 1–4 design-only | Observe-only by design; no closed loop |
+| Yama / Dharma Engine (Gevurah–Chesed) | Observe-first bridge S1–S4 (bus events, Tetragon collector, Lakshmi policies); enforcement seam proven, unwired; explain-first in dashboard | Correctly sequenced; blocking deferred |
+| Karma ledger / mandatory effects | Typed debt accounting + Phase A `EffectRow` (Rust); declared-vs-actual writes; SutraCode unbuilt | Matches the notes' own research-grade verdict |
+| Gnosis Portals / Anti-Maya | `gnosis`/`capabilities`/explain-this; `design/GNOSIS_PORTAL_UI_2026-09-14.md` plans the per-layer mirror (living Mandala, ≤3 clicks to a record) | Active |
+| Maya UI / Reflection of State (Lila/Ziran); Stoic cards; Sankey | Living-Mandala P0 + canvas layer (mood aurora, flow motes, vibrancy); Stoic/Samma/explain lifted from the Concept Review | Active; Sankey P3 |
+| Attestation / supply chain | Signed releases, custody register (4 copies, chain proven), reproducible NixOS; no TPM measurement or SLSA claim | Partial, disclosed |
+| Compartmentalization form | Qubes → NixOS VM + namespaces/LSM; claim discipline "containment of tool/agent behavior, never Qubes-level" | Deliberate divergence (QUBES_PATH_ASSESSMENT) |
+| Ecosystem hooks (MandalaMesh/Sense/Craft/Ledger, layered AI strata, Welcome Dojo, MandalaLite) | Not built; DEVICE_SYNC is the nearest neighbor | Unstarted; Sci-Fi World integration deferred |
+
+**Deliberate divergences (documented, not drift):** Qubes-first staging
+replaced by the Sovereign VM; kernel-level interception replaced by LSM/eBPF
+observe + user-space runner; mandatory effect language replaced by Rust effect
+types + karma ledger; the operative spec is the 2026-04 NixOS vision, with the
+2025 nanokernel kept as lineage and metaphor (it survives in the UI: Bindu as
+the mandala's center).
+
+**Concept Review recommendations — closed:** Harmony Vector spec (live);
+"prototype the Lakshmi dashboard first" (shipped + living Mandala); minimum
+Dharma ruleset (observe policies incl. the bridge trio); explain-first /
+coercion-free UX (explain lines, Samma-Meter, Stoic cards); public repo and
+gates (WM public; sovereign/page still behind §7 — edge-galaxy soak fires
+~Sep 16 23:36Z).
+
+**Still open from the originals:** SutraCode + effect taxonomy; OS-level
+default-deny egress; `mandala-ctl`; TPM attestation;
+MandalaMesh/Sense/Craft/Ledger; layered-AI trust strata (L−1…4); Ubuntu
+"neighbour-view"; and the **Mandala Glossary** (one name per subsystem) the
+Concept Review asked for and that still does not exist.
+
+**Verdict:** the substance (Dharma, Karma, Lakshmi, Gnosis, explain-first,
+observe-before-enforce) survived the form change. The 2025 nanokernel/Qubes
+path is now explicit gated lineage, not the build route; the live route is
+the 2026-04 spec (declarative NixOS host for governed agent workloads) with
+the Yama bridge as its first native subsystem.
