@@ -169,7 +169,7 @@ runner drift / Tetragon / bus
 | # | Slice | Repo | Gate |
 |---|---|---|---|
 | **Y1.0** ✅ | Router skeleton + record v2 fields + `WM_ACTUATION` arm/disarm + notify only + tests — implemented 2026-09-15 (`Lakshmi/actuator.py`, 16 tests; the `actuation_notify` bus event needs WM ≥ 9.1.7 and degrades to the decision record on older fleets) | LAKSHMI | none — no enforcement |
-| **Y1.1** | Subject capture: collector maps `comm`/`binary` → `proc:`; eval maps `tool:`/`dim:`; dashboard shows subject | SOVEREIGN + LAKSHMI | none |
+| **Y1.1** ✅ | Subject capture: collector maps `comm`/`binary` → `proc:` (never pid-only), eval attaches `tool:`/`proc:` to bridge records and `dim:` to dim records, dashboard shows the subject — implemented 2026-09-15 (`yama-collector.py` + `lakshmi.py` + `dashboard.html`; tests: collector 8, LAKSHMI 94) | SOVEREIGN + LAKSHMI | none |
 | **Y1.2** | Nudge: advisory channel for `spawn.undeclared.v1` + dims | LAKSHMI (+ WM response disclosure) | S4 data + zero-FP review per policy |
 | **Y1.3** | Throttle: per-subject `ResourceRules` class + undo + expiry; first candidate `write.budget_exceeded.v1` | WMv9 | policy observation window clean |
 | **Y1.4** | Port evaluation + router into `wm-governance`; Python engine demoted to producer (Y1 proper) | WMv9 | Y1.3 stable one release |

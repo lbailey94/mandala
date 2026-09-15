@@ -323,6 +323,23 @@ contract written; packaging version derived from `Cargo.toml` (was hardcoded
 `9.1.3`); fleet sampler restarted onto the new read path (edge soak
 untouched). Original-notes alignment annex in §9.
 
+**Done 2026-09-15 (later):** routine capture tooling —
+`SOVEREIGN/scripts/capture_window.sh` (one-command instrumented window with
+a GC-rooted VM build) and `LAKSHMI/bridge_report.py` (per-policy decisions,
+inputs, false-positive candidates). First scripted run: 72 events → 4 records,
+0 spooled, `shadow.access.v1` cycled observing→clear, 0 false-positive
+candidates. Y1.0 actuator router (notify-only) shipped in LAKSHMI `84f2b49`;
+WMv9 `ActuationNotify` event type + `wm doctor` bridge line (`a025b34`,
+`979fe54`, rides 9.1.7); sovereign pin bumped to v9.1.6 (`2f3a07a`).
+
+**Done 2026-09-15 (moves 1–3):** routine captures live (script + report,
+first run green); stranger-install dry run found 6 gaps, 5 fixed in
+`GETTING_STARTED` (§0 checklist: your key, your disk path; correct
+`mandala-vm` build; installed-Nix commands; counts/roadmap synced) with 2
+documented prototype edits still disclosed in
+`publication/STRANGER_INSTALL_PROTOCOL.md` §8; Y1.1 subject capture shipped
+(`proc:`/`tool:`/`dim:` subjects flow collector → records → dashboard).
+
 ---
 
 ## 9. Annex — original-notes alignment (2026-09-15)
