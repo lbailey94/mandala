@@ -194,11 +194,16 @@ ahead of these; each is checkable evidence, not a vibe.
       read-only MCP active, 301 tools incl. the telemetry surface, B2 runner
       active. Embedder env added to the read-only service
       (`mandalaos-sovereign cb3cb91`; runtime drop-in verified hybrid).
-- [ ] **Edge galaxy ≥72 h** — *clock restarted on the real fleet store
-      2026-09-13 ~23:36Z* (dev stand-in 18798 retired; sampler, rollup,
-      dashboard and dharma all target the home gateway 18790). Earlier
-      ~15 min of accumulation on the stand-in is archived in
-      `~/.local/share/edge-galaxy`.
+- [ ] **Edge galaxy: ≥72 h of accumulated active soak time** *(gate redefined
+      2026-09-15, public: host suspend is excluded and disclosed; every other
+      interruption resets the run — definition in
+      `publication/GATE_EVIDENCE_PLAYBOOK.md`)* — **not met as of 2026-09-15**:
+      the soak run (18798) holds **13.9 h of 72 h active** since
+      2026-09-14T18:27Z (8.25 h suspend excluded, resume 23 s); the fleet run
+      (18790) is ≈9.7 h. Projection: ≈2026-09-18 if the host stays awake,
+      ≈2026-09-19/20 with normal night sleeps. Verification:
+      `publication/soak_check.py --suspend-journal`; bundles in
+      `publication/evidence_<date>/`.
 - [x] **In-guest recall (2026-09-13 night)** — reembed backfill: 11 batches,
       244 embedded, 0 errors; store at 242 vectors + 20 cache; hybrid recap
       verified through the read-only MCP (`recall_mode: hybrid`).
