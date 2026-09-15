@@ -278,6 +278,30 @@ Two known deltas: policy state in the fast lane can lag up to one emission
 window behind the value; and auras only exist for dims with policies (the
 other dims show value + floor, no band).
 
+### Canvas layer (added 2026-09-14, after review)
+
+Vibrancy is a display setting, never an encoding channel. The render splits:
+**Signal** (zones, needles, floors, state text — deterministic, §4) and
+**Canvas** (aurora, per-dim gradient sheen, bloom, flow motes — state-informed
+but decorative, disclosed as such). Three blends: **slate** (pure signal, no
+sheen), **calm** (multiply → watercolor pastels on paper), **lila**
+(screen → neon pastels with bloom). A `vib` slider 0–100 scales canvas
+intensity only; ambient caps it at 0.15 and freezes all motion.
+
+Mood aurora: the background field takes its palette from the worst state
+(calm = mint/lavender/sky, attention = gold/rose, breach/stale = red/peach).
+Flow motes: top processes orbit the mandala — speed and size = CPU share,
+hue = guna (sattvic mint / rajasic gold / tamasic grey), trails behind.
+Motion stops in ambient, reduced-motion, and hidden states.
+
+Lineage: `projects/music/visualizer` (Neon additive trails, Battery
+hue-cycling spectrum, Particle Storm, MilkDrop/Butterchurn) and the VJ
+pattern set (Resolume buses/layers/monitor routing, TouchDesigner panel
+widgets, okVJ mixer/scene/preset systems). Mixer-mode synthesis (channels =
+dims, faders = weights, crossfader = now↔history, preview bus = bicameral
+consent, scenes = layout presets, multi-monitor = program/preview) is the
+next design pass; instrument mode stays opt-in and never the OS default.
+
 **Queued for next discussion (owner, 2026-09-14):** multi-monitor support
 (sovereign VM on the TV over HDMI while the laptop drives its own display —
 per-display mandala, focus/context rules, hot-plug), layout presets
