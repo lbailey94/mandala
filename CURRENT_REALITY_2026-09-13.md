@@ -90,6 +90,19 @@ Nix packaging of Tetragon for production.
 Tetragon/runner/bus events → WM (galaxy or bus) → a policy evaluation
 point. That bridge is the substance of Yama v0 implementation.
 
+**Update 2026-09-15 — the bridge is complete through evaluation; the gap moved
+to actuation.** S4 executed for real: rebuilt VM, Tetragon v1.7.1
+`observe-etc-shadow` (monitor_only), collector streamed 67 events → 3 records
+into the live fleet store, and the step-0 engine transitioned
+`shadow.access.v1` to `observing` (value 5, feed-summed); evidence in
+`session-notes/2026-09-15_s4-tetragon-observe.md`. The Tetragon read path is
+mirror-first (bridge design D6: collector sent-log ring, so recency no longer
+depends on FTS ranking). The next gap is executor-shaped:
+`design/ACTUATOR_CONTRACT_2026-09-15.md` defines subject identity, the
+policy→actuator router, the actuator catalog with undo/expiry, and
+`WM_ACTUATION=0`; Y1.0 (notify-only router skeleton) is the first buildable
+slice and ships no enforcement.
+
 ## 5. Open decisions
 
 - **Dashboard (thread 3): RESOLVED 2026-09-13** — static page + stdlib
@@ -295,6 +308,15 @@ runner (sovereign `scripts/`, packaged + wired: daemon keeps
 `WM_LANDLOCK=1` and routes spawns through it); **in-guest matrix 13/13
 green** on the rebuilt VM (`v5kjrw43…`), including nested-under-Landlock
 works / bwrap-blocked-under-Landlock.
+
+**Done 2026-09-15 (this track):** S4 executed in the rebuilt VM (585-drv
+rebuild, kernel 6.18.50, `wm 9.1.5`; Tetragon bundle hand-installed with
+`--bpf-lib`; collector sent 3 records; `shadow.access.v1` → `observing`);
+bridge read path became mirror-first (LAKSHMI `6cc03f6` pushed: sent-log
+merge + value summing; SOVEREIGN `98f0e30` pushed: feed ring); Y1 actuator
+contract written; packaging version derived from `Cargo.toml` (was hardcoded
+`9.1.3`); fleet sampler restarted onto the new read path (edge soak
+untouched). Original-notes alignment annex in §9.
 
 ---
 

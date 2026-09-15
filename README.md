@@ -44,9 +44,11 @@ The Yama bridge is now built through evaluation: S1 (sandbox drift →
 `MANDALAOS_SOVEREIGN/scripts/yama-collector.py`) and S3 (Lakshmi policy inputs)
 landed 2026-09-14, with S3 **live in production** (sampler restarted; window
 records carry the `bridge` counts block). S4 (in-guest eBPF capture) is
-pipeline-proven on a scratch store; the turnkey kit is committed
-(`scripts/tetragon/` policy + `docs/S4_TETRAGON_RUNBOOK.md`) and waiting on a
-quiet VM-rebuild window.
+**executed and proven 2026-09-15**: rebuilt VM, Tetragon v1.7.1
+`observe-etc-shadow` (monitor_only), collector streamed 67 events → 3 records
+into the live store, and the fleet sampler transitioned `shadow.access.v1` to
+`observing` (value 5, mirror-first feed); evidence in
+`session-notes/2026-09-15_s4-tetragon-observe.md`.
 
 Canonical status and supersession map: `CURRENT_REALITY_2026-09-13.md` (wins
 over plans). Latest handoffs: `SESSION_HANDOFF_2026-09-13.md` (software) and
@@ -66,10 +68,10 @@ near-future releases).
 B1/B3 (daemon Landlock + dharma counters), Lakshmi dims 6/7, the telemetry
 "edge galaxy" design, and all open workstreams with acceptance notes.
 
-**Next-session handoff: `session-notes/2026-09-14_handoff_dashboard-bundle-and-open-items.md`**
-— dashboard bundle (recency fix, freshness, bridge strip, explain-this,
-Samma-Meter), the open board (9.1.6 ceremony, stranger-install, S4), and
-verified repo state.
+**Next-session handoff: `session-notes/2026-09-15_handoff_post-s4.md`** —
+bridge read-path fix, S4 executed, Y1 actuator contract, and the open board
+(publication gates, Y1.0, custody owner actions). S4 evidence:
+`session-notes/2026-09-15_s4-tetragon-observe.md`.
 
 ### 2026-08-28 research pass (key external findings)
 - **seL4 path is viable:** MCS verified on RISC-V (2026), confidentiality proof on AArch64 completed Aug 2026; `rust-sel4` 5.0 + Microkit 2.3 are mature scaffolding.
