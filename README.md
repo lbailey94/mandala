@@ -55,9 +55,11 @@ over plans). Latest handoffs: `SESSION_HANDOFF_2026-09-13.md` (software) and
 `SESSION_HANDOFF_2026-09-14.md` (website/release truth pass). Bridge design:
 `implementation/yama-v0-bridge-design.md`.
 
-Publication gates in flight: edge-galaxy 72 h soak (clock started 2026-09-13
-~23:36Z, fires ~Sep 16 23:36Z), stranger install (≥4/5 unassisted), repo
-hygiene (sovereign pinned to the release tag). **Signing-key custody:** Option 1
+Publication gates in flight: edge-galaxy **≥72 h of accumulated active soak
+time** (gate redefined 2026-09-15, public: host suspend excluded and disclosed,
+every other interruption resets the run; soak run at 13.9/72 h — see
+`publication/GATE_EVIDENCE_PLAYBOOK.md`), stranger install (≥4/5 unassisted),
+repo hygiene (sovereign pinned to v9.1.6). **Signing-key custody:** Option 1
 register live in `security/KEY_CUSTODY_REGISTER.md` (all four copies verified
 across the two cards: A1+B1 on FA99, B2+C1 on FEEC; B's identity and signature
 chain proven; rotation runbook drafted; pre-release gate
