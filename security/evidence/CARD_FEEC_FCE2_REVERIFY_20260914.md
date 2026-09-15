@@ -35,6 +35,13 @@ open as a method gap, not a data gap.
 - Mesh node key is a **separate** key (derived pubkey `8e259539…`), sharing the
   format convention only.
 
+## C1 backup (prescience-ledger key)
+
+- `wm-prescience-signing.key.2026-09-14.gpg` written at the card root
+  (AES256, s2k 65011712); ciphertext sha256
+  `e8674c02eaeeaa74e0c7a82bee21df03dab368c764550b89426d5ddaf7340f5f`;
+  round-trip byte-identical.
+
 ## Reproduce (public material only)
 
 ```bash

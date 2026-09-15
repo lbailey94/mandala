@@ -65,7 +65,7 @@ done < "$MANIFEST"
 
 echo '---'
 echo "ok=$ok drift=$drift missing=$missing wrong_media=$wrong absent=$absent planned=$planned"
-echo '(three cards share label SD_CARD1; mountpoint /media/lucas/SD_CARD1 is identical across them — UUID anchoring is what this script checks)'
+echo '(cards share the label SD_CARD1 and the mountpoint is identical across them — UUID anchoring is what this script checks)'
 
 if [ "$drift" -gt 0 ] || [ "$missing" -gt 0 ]; then
   exit 1

@@ -1,9 +1,10 @@
 # WhiteMagic/MandalaOS custody manifest — machine-readable copy registry
 # Fields (tab-separated): copy_id  key_id  media_label  media_uuid  path  sha256  status
-# status: active = must verify; planned = not yet created (informational)
-# No secret material. Verified by verify_custody.sh (read-only).
-C1	B	SD_CARD1	FA99-F6E6	/media/lucas/SD_CARD1/wm-release-signing.key.2026-09-13.gpg	17713cf55fd5cd5e326c9dd3ff614c07cbe3a88a1ef6004d9020b4ec1fd9b757	active
+# copy_id = <key letter><copy number>. status: active = must verify; planned = not yet created.
+# No secret material. Verified by verify_custody.sh (read-only, UUID-anchored).
 A1	A	SD_CARD1	FA99-F6E6	/media/lucas/SD_CARD1/wm-tag-signing.key.2026-09-14.gpg	ed040cfdeda2f36bcc604e1a2591c8d48c72a5443109db342953dc86dbf8e0b3	active
+B1	B	SD_CARD1	FA99-F6E6	/media/lucas/SD_CARD1/wm-release-signing.key.2026-09-13.gpg	17713cf55fd5cd5e326c9dd3ff614c07cbe3a88a1ef6004d9020b4ec1fd9b757	active
 B2	B	SD_CARD1	FEEC-FCE2	/media/lucas/SD_CARD1/wm-release-signing.key.2026-09-14.gpg	d455b81cddc5c0c7db3917dd3d8009fca2dac29b0ee40561deafe4b8f17e5470	active
-# FA99-F6E6 copies (C1, A1) exist but the media is not mounted during this run — re-verify on return.
-# C2 candidate (receipted card, currently absent): SD_CARD1 / FEEC-FCE2 — re-verify when attached.
+C1	C	SD_CARD1	FEEC-FCE2	/media/lucas/SD_CARD1/wm-prescience-signing.key.2026-09-14.gpg	e8674c02eaeeaa74e0c7a82bee21df03dab368c764550b89426d5ddaf7340f5f	active
+# Known cards: FA99-F6E6 (119.1 GB) and FEEC-FCE2 (59.5 GB); the owner holds no third card.
+# Copies on an unmounted/wrong card report WRONG-MEDIA (inconclusive) and are re-verified on return.

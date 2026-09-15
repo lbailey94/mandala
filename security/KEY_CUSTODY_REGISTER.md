@@ -9,8 +9,8 @@
 | ID | Key | Path (operational) | Format / at rest | Purpose | Backup status |
 |---|---|---|---|---|---|
 | **A** | Tag-signing key | `~/.ssh/id_ed25519_signing` (+ `.pub`) | OpenSSH Ed25519, 600 | Signs git release tags (`git user.signingkey`, `gpg.format=ssh`); public key is line 2 of `~/.config/git/allowed_signers`; GitHub verifies | **A1** ✅ on SD_CARD1 `FA99-F6E6` (round-trip verified) |
-| **B** | Release-manifest signing key | `~/.config/wm/release-signing.key` | **base64(PKCS#8 DER Ed25519, 48 B) + 2 comment lines**; 600; **no passphrase** | Signs `release-manifest.json`; CI uses `secrets.RELEASE_SIGNING_KEY` (PEM) + `openssl pkeyutl`; public key pinned as repo variable `WM_RELEASE_PUBKEY` | **C1 + B2** ✅ (both round-trip verified) |
-| **C** | Prescience-ledger signing key | `~/.config/wm/prescience-signing.key` | ASCII Ed25519 (91 B), 600 | Signs the site prescience ledger (`whitemagic-site/scripts/sign_prescience_ledger.py`) | ❌ none — **decision pending** |
+| **B** | Release-manifest signing key | `~/.config/wm/release-signing.key` | **base64(PKCS#8 DER Ed25519, 48 B) + 2 comment lines**; 600; **no passphrase** | Signs `release-manifest.json`; CI uses `secrets.RELEASE_SIGNING_KEY` (PEM) + `openssl pkeyutl`; public key pinned as repo variable `WM_RELEASE_PUBKEY` | **B1 + B2** ✅ (both round-trip verified) |
+| **C** | Prescience-ledger signing key | `~/.config/wm/prescience-signing.key` | ASCII Ed25519 (91 B), 600 | Signs the site prescience ledger (`whitemagic-site/scripts/sign_prescience_ledger.py`) | **C1** ✅ on SD_CARD1 `FEEC-FCE2` (round-trip verified) |
 | **D** | Mesh node identity | `~/.config/wm-mesh-node.key` | 64-char hex seed, 600 | Sangha mesh identity + record-attestation lineage (separate material from B; same *format convention*) | ❌ none — medium stakes |
 
 **Public identities (recorded for verification):**
@@ -30,24 +30,24 @@ Machine-readable in [`custody_manifest.tsv`](custody_manifest.tsv); verified by 
 
 | Copy | Key | Media | UUID | Path | Ciphertext sha256 | Status |
 |---|---|---|---|---|---|---|
-| C1 | B | `SD_CARD1` | `FA99-F6E6` | `.../wm-release-signing.key.2026-09-13.gpg` | `17713cf55fd5cd5e326c9dd3ff614c07cbe3a88a1ef6004d9020b4ec1fd9b757` | ✅ verified (off-machine now) |
+| B1 | B | `SD_CARD1` | `FA99-F6E6` | `.../wm-release-signing.key.2026-09-13.gpg` | `17713cf55fd5cd5e326c9dd3ff614c07cbe3a88a1ef6004d9020b4ec1fd9b757` | ✅ verified (off-machine now) |
 | A1 | A | `SD_CARD1` | `FA99-F6E6` | `.../wm-tag-signing.key.2026-09-14.gpg` | `ed040cfdeda2f36bcc604e1a2591c8d48c72a5443109db342953dc86dbf8e0b3` | ✅ round-trip verified (off-machine now) |
 | B2 | B | `SD_CARD1` | `FEEC-FCE2` | `.../wm-release-signing.key.2026-09-14.gpg` | `d455b81cddc5c0c7db3917dd3d8009fca2dac29b0ee40561deafe4b8f17e5470` | ✅ round-trip verified |
-| C2 candidate | B | `SD_CARD1` | `FEEC-FCE2` (archives card) | — | — | ⚠ not checked (receipted archives only) |
+| C1 | C | `SD_CARD1` | `FEEC-FCE2` | `.../wm-prescience-signing.key.2026-09-14.gpg` | `e8674c02eaeeaa74e0c7a82bee21df03dab368c764550b89426d5ddaf7340f5f` | ✅ round-trip verified |
 
-**Card identity rule:** three cards share the label `SD_CARD1`; **UUID is the only reliable identity**. Physically label every card `SD_CARD1-<UUID suffix>` (pending).
+**Card identity rule:** cards share the label `SD_CARD1`; **UUID is the only reliable identity**. Known cards: `FA99-F6E6`, `FEEC-FCE2` (owner holds no third card). Physically label both `SD_CARD1-<UUID suffix>` (pending).
 
 ## 3. Option 1 completion checklist
 
-- [ ] Physically label cards (`SD_CARD1-FA99`, `SD_CARD1-FEEC`, third card TBD)
+- [ ] Physically label the two known cards (`SD_CARD1-FA99`, `SD_CARD1-FEEC`)
 - [x] **A backup** — A1, 2026-09-14, AES256 / s2k-65011712, round-trip byte-identical
 - [x] **Second B copy** — B2, 2026-09-14, round-trip byte-identical; derived pubkey + signature chain verified
-- [ ] Decide C: back it up (cheap, uniform practice) or accept regeneration — recommendation: back up on the next card session
+- [x] **C backed up** — C1 on `FEEC-FCE2` (AES256/s2k-65011712, `e8674c02…`, round-trip byte-identical). Decision closed.
 - [x] **Permissions:** local keys 600; `~/.gnupg` 700. *exfat ignores chmod (fmask/dmask=0022) — card copies rely on encryption + physical custody, not Unix perms.*
 - [x] **B identity + round-trip** resolved (see §1 identity chain); C1 re-check when `FA99-F6E6` returns (expected: same key hash `78dcca87…`)
 - [x] **CI secret check:** `RELEASE_SIGNING_KEY` present; `WM_RELEASE_PUBKEY` matches B's derived pubkey. *(Note: `release_manifest.rs` doc comment says the pubkey is pinned in `install.sh`, but no literal pin was found there — reconcile wording during rotation runbook maintenance.)*
-- [ ] Passphrase paper stored apart from every copy; register records only its location (owner statement)
-- [x] `verify_custody.sh` baseline: C1 + A1 + B2 all verified across two cards
+- [ ] Passphrase paper stored apart from every copy; register records only its location (owner: paper/pen in hand 2026-09-14 — place apart from all cards, then note the location privately)
+- [x] `verify_custody.sh` baseline: B1 + A1 + B2 verified (B1/A1 on FA99 when mounted); after C1: C1 + B2 on FEEC
 
 ## 4. Verification procedure
 
@@ -65,7 +65,7 @@ Machine-readable in [`custody_manifest.tsv`](custody_manifest.tsv); verified by 
 | Hardware token for A (FIDO2 `sk-ssh-ed25519`) | next/near-future release | Removes file-at-rest key class; GitHub supports sk key registration |
 | B: retire the unencrypted local seed copy; move signing to token/HSM or CI-only with a documented recovery path | near-future | Requires rotation runbook + client compatibility note |
 | Shamir 2-of-3 paper shares for B across holders/locations | later | Strongest loss+theft story |
-| Custody check added to the release checklist | next release | Fail release if register/verification is stale |
+| Custody check in the release checklist | provided | `security/custody_gate.sh` (operator-side; CI cannot see removable media). Exit 1 blocks the release; exit 2 discloses inconclusive media |
 
 ## 6. Change log
 
@@ -73,4 +73,5 @@ Machine-readable in [`custody_manifest.tsv`](custody_manifest.tsv); verified by 
 |---|---|
 | 2026-09-14 | Register created (Option 1 adopted). C1 verified `17713cf5…`; card UUID mismatch from the parallel lane's addendum 3 explained (wrong card mounted); backup intact. |
 | 2026-09-14 | **A1 created** (AES256/s2k-65011712, `ed040cfd…`; round-trip byte-identical). `~/.gnupg` → 700; exfat chmod limitation recorded. |
+| 2026-09-14 | **C1 created on `FEEC-FCE2`** (prescience-ledger key; `e8674c02…`; round-trip byte-identical). Copy IDs normalized to `<key letter><n>` (old B copy `C1` → `B1`). Known cards limited to `FA99-F6E6` + `FEEC-FCE2` (no third card held). |
 | 2026-09-14 | **B2 created on `FEEC-FCE2`** (`d455b81c…`; round-trip byte-identical). **B identified:** base64 PKCS#8 seed; derived pubkey `aade884b…` = `WM_RELEASE_PUBKEY`; **signature chain verified** against v9.1.5 manifest. D confirmed as a separate key (`8e259539…`). Receipted archives re-verified on `FEEC-FCE2` (tar sidecar OK; mdb `c4ef73e8…`). |

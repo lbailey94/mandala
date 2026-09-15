@@ -48,6 +48,19 @@
 
 - Artifacts use **keyless Sigstore signing** — nothing to rotate; the transparency-log identity is the trust anchor.
 
+## Pre-release custody check
+
+Before tagging any release (local ceremony step — CI cannot see removable media):
+
+```bash
+bash security/custody_gate.sh
+```
+
+- **Exit 0** → record `custody: verified` in the release notes.
+- **Exit 2** (inconclusive: media absent/wrong card) → name the unverified
+  copies in the release notes, then proceed.
+- **Exit 1** (drift/missing on correct media) → **stop**; resolve before tagging.
+
 ## Post-rotation checklist (copy into the release notes)
 
 - [ ] New key registered at its consumer (GitHub / CI secret / variable / config)
