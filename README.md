@@ -66,6 +66,11 @@ near-future releases).
 B1/B3 (daemon Landlock + dharma counters), Lakshmi dims 6/7, the telemetry
 "edge galaxy" design, and all open workstreams with acceptance notes.
 
+**Next-session handoff: `session-notes/2026-09-14_handoff_dashboard-bundle-and-open-items.md`**
+— dashboard bundle (recency fix, freshness, bridge strip, explain-this,
+Samma-Meter), the open board (9.1.6 ceremony, stranger-install, S4), and
+verified repo state.
+
 ### 2026-08-28 research pass (key external findings)
 - **seL4 path is viable:** MCS verified on RISC-V (2026), confidentiality proof on AArch64 completed Aug 2026; `rust-sel4` 5.0 + Microkit 2.3 are mature scaffolding.
 - **Direct competitors exist:** agentOS (seL4, bootable agent OS) and OctantOS (Rust kernel, capability manifests) are building the Bindu vision now — both early-stage.
