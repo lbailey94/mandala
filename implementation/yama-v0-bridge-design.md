@@ -69,6 +69,17 @@ This reuses the exact validation contract of `telemetry.record` (policy_id, metr
 - **D3 — Observe-only for all new policies.** Enforcement remains the existing runner/bwrap/Landlock seam. Promotion follows the ladder (notify → nudge → throttle) only after zero-false-positive windows.
 - **D4 — Tetragon collector is a Sovereign-side script** (JSON event stream → observation records via the writable MCP), with fail-soft spool. Nix packaging of Tetragon and Falco/OPA/Cedar stay deferred per `CURRENT_REALITY` §4.
 - **D5 — Sandbox drift signals are `degraded` (declared tool, no runner) and `unconfined_spawn` (spawn-declared tool without the contract).** Child-level runner *denials* (stderr/exit conventions) are a later slice; the counters cover the policy's stated evidence.
+- **D6 — Bridge read path is mirror-first (added 2026-09-15).** `memory.search`
+  is FTS-ranked, so the evaluator cannot assume the newest Tetragon records
+  appear in its result window. The collector appends every record that reached
+  WM to a bounded local feed ring (`yama-collector.py --sent-log`, default
+  `~/.local/share/yama-collector/sent.jsonl`; read by Lakshmi via
+  `--bridge-feed`); `fetch_bridge_inputs` merges ring + store deduped by
+  `(ts, policy_id, metric)` and sums each record's `value`. Only sent records
+  are logged, so the ring cannot fabricate evidence while WM is down;
+  `tetragon_ok` still follows store reachability, and an unreachable store
+  holds policy state even when the ring reports counts. The durable fix (a
+  time-ordered WM listing tool) stays release-coupled.
 
 ## 4. Slices
 
