@@ -75,6 +75,16 @@ bridge read-path fix, S4 executed, Y1 actuator contract, and the open board
 (publication gates, Y1.0, custody owner actions). S4 evidence:
 `session-notes/2026-09-15_s4-tetragon-observe.md`.
 
+**Active lane — gate-lite / evidence (`gate-lite/HANDOFF_2026-09-18.md`):**
+receipt spec **published** (`continuity-receipt/0.1` + `0.2`, public repo),
+**registry scaling fixed** (SQLite; bench-2026-09-18-sqlite evidence), anchor
+policy decided (OpenTimestamps default, `ANCHORING.md`), sweep cadence
+unblocked — plus the **adoption/interop lane** (W3C AI Agent Memory
+Interoperability CG alignment; CG intro + mapping drafts await Lucas review;
+strategy: `WHITEMAGIC/planning/ADOPTION_DEFAULT_THESIS_2026-09-18.md`).
+Focused sessions on receipts/evidence should read the gate-lite handoff
+first.
+
 ### 2026-08-28 research pass (key external findings)
 - **seL4 path is viable:** MCS verified on RISC-V (2026), confidentiality proof on AArch64 completed Aug 2026; `rust-sel4` 5.0 + Microkit 2.3 are mature scaffolding.
 - **Direct competitors exist:** agentOS (seL4, bootable agent OS) and OctantOS (Rust kernel, capability manifests) are building the Bindu vision now — both early-stage.

@@ -90,12 +90,13 @@ Gate-2). Per-tester records go in the bundle as `stranger_<tester>.md`.
 
 All items are textual and checkable:
 
-- [ ] **WM release tagged and certified** — v9.1.6 (`391e03f`); the
+- [x] **WM release tagged and certified** — v9.1.8 (`e1ea07f`); the
       release-health record is attached to the GitHub Release as the source of
-      truth.
-- [ ] **Sovereign pinned to that tag** — `flake.nix` input
-      `github:lbailey94/whitemagic/v9.1.6`, lock rev `391e03f` (bumped
-      2026-09-15; rebuild names the closure `whitemagic-9.1.6.drv`).
+      truth (run `35233273768`, 2026-09-17).
+- [x] **Sovereign pinned to that tag** — `flake.nix` input
+      `github:lbailey94/whitemagic/v9.1.8`, lock rev `e1ea07f` (bumped
+      2026-09-17; `nix eval .#packages.x86_64-linux.whitemagic.drvPath` names
+      the closure `whitemagic-9.1.8.drv`; commit `4cd05a6` pushed).
 - [ ] **No unpushed commits** in `WHITEMAGIC/WMv9`, `LAKSHMI`,
       `MANDALAOS_SOVEREIGN` (0 at close 2026-09-15).
 - [ ] **Public-surface guard clean on WMv9** (pre-push/CI check; run the repo's
