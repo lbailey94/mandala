@@ -657,6 +657,7 @@ class Orchestrator:
         slot_id = "slot-" + uuid.uuid4().hex[:12]
         pass_id = "pass-" + uuid.uuid4().hex[:12]
         jti = str(records.uuid7())
+        mandate_ref = sha256_prefixed(f"mandate:{pass_id}".encode())
 
         claims = {
             "iss": f"gate:{self.gate_id}",
@@ -667,7 +668,15 @@ class Orchestrator:
             "policy_version": self.policy_version,
             "exp": expires_at,
             "jti": jti,
+            # S2b binding claims (2026-09-22): pass/slot identity and the
+            # mandate reference, so a relying party can bind its own receipts
+            # to this pass without asking the gate (offline join key).
+            "pass_id": pass_id,
+            "slot_id": slot_id,
+            "mandate_ref": mandate_ref,
         }
+        if principal_id:
+            claims["principal_id"] = principal_id
         token = issue_pass(self.gate_did, self.gate_key, claims)
 
         body = {
@@ -676,8 +685,11 @@ class Orchestrator:
             "quotas": quotas,
             "expires_at": rfc3339(expires_at),
             "policy_version": self.policy_version,
-            "mandate_ref": sha256_prefixed(f"mandate:{pass_id}".encode()),
+            "mandate_ref": mandate_ref,
             "agent_id": agent_did,
+            # S2b: token commitment — the join key a relying party records in
+            # its own receipts (spec §4.1 `pass_token_id`).
+            "pass_token_id": sha256_prefixed(token.encode("ascii")),
         }
         if spend_cap:
             body["spend_cap"] = spend_cap

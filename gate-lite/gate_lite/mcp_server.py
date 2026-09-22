@@ -54,6 +54,21 @@ TOOLS = [
         },
     },
     {
+        "name": "mandala.pass.verify",
+        "description": (
+            "Verify a pass token offline (Ed25519 did:key + claims) and return "
+            "its claims plus local registry state: pass record, gate policy "
+            "version, and whether the jti was already used on this gate."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "token": {"type": "string", "description": "compact JWS pass token"},
+            },
+            "required": ["token"],
+        },
+    },
+    {
         "name": "mandala.exec",
         "description": (
             "Execute a payload inside a pass slot. Emits decision + execution "
@@ -194,6 +209,8 @@ class McpServer:
     def __init__(self, orchestrator: Orchestrator, tenant_id: str):
         self.orch = orchestrator
         self.tenant_id = tenant_id
+        # S2b: single-use pass tokens — jti recorded after all exec checks pass.
+        self.jti_cache: set[str] = set()
 
     def handle(self, message: dict) -> dict | None:
         method = message.get("method")
@@ -248,6 +265,22 @@ class McpServer:
                         idempotency_key=args.get("idempotency_key"),
                     )
                 )
+            if name == "mandala.pass.verify":
+                token = args["token"]
+                claims = verify_pass(token, self.orch.gate_did)
+                pass_id = claims.get("pass_id")
+                record = self.orch.registry.get_pass(pass_id) if pass_id else None
+                jti = claims.get("jti")
+                return _result(
+                    {
+                        "valid": True,
+                        "claims": claims,
+                        "pass": record,
+                        "jti_seen": bool(jti and jti in self.jti_cache),
+                        "gate_id": self.orch.gate_id,
+                        "policy_version": self.orch.policy_version,
+                    }
+                )
             if name == "mandala.exec":
                 token = args.get("token")
                 if token:
@@ -256,6 +289,18 @@ class McpServer:
                         return _tool_error("token_subject_mismatch", "token is bound to another agent")
                     if int(claims.get("exp", 0)) < time.time():
                         return _tool_error("pass_expired", "pass token expired")
+                    bound_slot = claims.get("slot_id")
+                    if bound_slot and bound_slot != args.get("slot"):
+                        return _tool_error(
+                            "token_slot_mismatch", "pass token is bound to another slot"
+                        )
+                    jti = claims.get("jti")
+                    if jti and jti in self.jti_cache:
+                        return _tool_error("pass_replayed", "pass token was already used")
+                    # Record only after every check passed, so a rejected
+                    # attempt cannot burn a valid token.
+                    if jti:
+                        self.jti_cache.add(jti)
                 return _result(
                     self.orch.exec_(
                         self.tenant_id,

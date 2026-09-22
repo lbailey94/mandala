@@ -91,10 +91,12 @@ class TestHttpTransport(unittest.TestCase):
         )
         self.assertEqual(status, 200)
         tools = json.loads(body)["result"]["tools"]
-        self.assertEqual(len(tools), 13)
+        # Surface count follows TOOLS; mandala.pass.verify joined in S2b.
+        self.assertEqual(len(tools), 14)
         names = {tool["name"] for tool in tools}
         self.assertIn("mandala.kill", names)
         self.assertIn("mandala.restore", names)
+        self.assertIn("mandala.pass.verify", names)
 
     def test_sse_response_mode(self):
         status, headers, body = self.initialize(accept="text/event-stream")

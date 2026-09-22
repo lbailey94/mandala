@@ -115,5 +115,28 @@ class TestGateLite(unittest.TestCase):
             json.loads(path.read_text())
 
 
+    def test_pass_claims_and_receipt_binding(self):
+        """S2b: the pass token carries pass/slot/mandate identity and the
+        receipt's session.pass.created commits the token (pass_token_id)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            issued = orch.pass_("dogfood", agent_did)
+            from gate_lite.tokens import verify_pass
+            from continuity_receipt.canon import sha256_prefixed
+
+            claims = verify_pass(issued["token"], orch.gate_did)
+            self.assertEqual(claims["pass_id"], issued["pass_id"])
+            self.assertEqual(claims["slot_id"], issued["slot_id"])
+            expected_mandate = sha256_prefixed(f"mandate:{issued['pass_id']}".encode())
+            self.assertEqual(claims["mandate_ref"], expected_mandate)
+
+            bundle = orch.receipt(orch.task_id_for(issued["slot_id"]))
+            body = bundle["receipts"][0]["body"]
+            self.assertEqual(body["mandate_ref"], expected_mandate)
+            self.assertEqual(
+                body["pass_token_id"], sha256_prefixed(issued["token"].encode("ascii"))
+            )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
