@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the Continuity Receipt v0 test vectors (spec §9)."""
+"""Generate the gate-lite Continuity Receipt test vectors (spec 0.3)."""
 import json
 import sys
 from pathlib import Path
@@ -73,7 +73,7 @@ def delivery_body(extra: dict | None = None) -> dict:
         "request_hash": digest("request:1"),
         "response_hash": digest("response:1"),
         "counterparty": {"id": COUNTERPARTY_DID},
-        "spec_ref": "continuity-receipt/0.1",
+        "spec_ref": "continuity-receipt/0.3",
     }
     if extra:
         body.update(extra)

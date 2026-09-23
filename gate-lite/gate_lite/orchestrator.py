@@ -550,7 +550,9 @@ class Orchestrator:
             path = self.receipts_dir / f"{task_id}.json"
             if path.exists():
                 bundle = json.loads(path.read_text(encoding="utf-8"))
-                chain = TaskChain(task_id=task_id)
+                # Preserve the stored bundle's spec so resumed chains stay
+                # homogeneous (0.1-era bundles keep appending 0.1 receipts).
+                chain = TaskChain(task_id=task_id, spec=bundle.get("spec"))
                 chain.receipts = bundle.get("receipts", [])
                 self._chains[slot["slot_id"]] = chain
                 return chain
@@ -933,7 +935,7 @@ class Orchestrator:
                     if last
                     else sha256_prefixed(b"none"),
                     "counterparty": {"id": self.gate_did},
-                    "spec_ref": "continuity-receipt/0.1",
+                    "spec_ref": records.SPEC_ID,
                 },
             )
         return self._emit(
@@ -1095,7 +1097,7 @@ class Orchestrator:
                 "request_hash": sha256_prefixed(f"snapshot:{slot_id}:{snapshot_id}".encode()),
                 "response_hash": digest,
                 "counterparty": {"id": self.gate_did},
-                "spec_ref": "continuity-receipt/0.1",
+                "spec_ref": records.SPEC_ID,
                 "artifact": {
                     "snapshot_id": snapshot_id,
                     "kind": "filesystem-tar.gz",
@@ -1164,7 +1166,7 @@ class Orchestrator:
                 "request_hash": record["sha256"],
                 "response_hash": restored,
                 "counterparty": {"id": self.gate_did},
-                "spec_ref": "continuity-receipt/0.1",
+                "spec_ref": records.SPEC_ID,
                 "artifact": {
                     "snapshot_id": snapshot_id,
                     "kind": "filesystem-restore",

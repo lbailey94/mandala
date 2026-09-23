@@ -2,8 +2,9 @@
 
 First buildable slice of the Mandala Gate program: a cooperative-tenant
 orchestrator that issues governed passes and emits **Continuity Receipts**
-(`continuity-receipt/0.1`). Separate module/versioning from the Gen-2/WMv9
-release train (decision 2026-09-17).
+(`continuity-receipt/0.3`, via the published `continuity-receipt` reference
+implementation — no vendored copy). Separate module/versioning from the
+Gen-2/WMv9 release train (decision 2026-09-17).
 
 **Honesty frame:** gate-lite isolation is the Sovereign form — shared-kernel
 containment (bwrap/Landlock). It is never sold as untrusted multi-tenant; that
@@ -12,16 +13,16 @@ is gate-hard (microVM floor, v0.2).
 ## Layout
 
 ```
-continuity_receipt/   receipt library + reference verifier (spec §7)
 gate_lite/            orchestrator: pass → exec → settle → terminate
   ctl.py              mandala-ctl CLI
   mcp_server.py       MCP control surface (stdio + loopback HTTP/SSE)
-tools/make_vectors.py generates the spec test vectors (0.1 + 0.2)
+tools/make_vectors.py generates the spec test vectors (0.3)
 tools/dogfood_run.py  full CLI dogfood on the real runner, evidence capture
 tools/install_sweep_timer.sh  systemd user timer for the expiry sweep
-tests/                unittest suites (56 tests)
+tests/                unittest suites (64 tests)
 vectors/              generated bundles + INDEX.md
 evidence/             dogfood runs (run.json, SUMMARY.md, bundles, transcript)
+Dependency:           continuity-receipt>=0.3.1 (PyPI; published reference impl)
 ```
 
 ## Quick start
