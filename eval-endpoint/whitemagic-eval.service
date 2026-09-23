@@ -1,0 +1,29 @@
+[Unit]
+Description=WhiteMagic eval endpoint (Add/Search for evaluation harnesses; eval-only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=whitemagic
+Group=whitemagic
+# Token lives in an operator-held env file (mode 600), never in a repo
+EnvironmentFile=/etc/whitemagic-eval.env
+# Same execution posture as the hosted lane: WM does its own Landlock sandboxing,
+# systemd adds a second ring; write-class rights stay inside the eval state root.
+Environment=WM_LANDLOCK=1
+Environment=WM_DISPATCH_TOOL_RPM=600
+Environment=WM_DISPATCH_GLOBAL_RPM=1200
+Environment=RUST_LOG=info
+ExecStart=/usr/bin/python3 /opt/whitemagic-eval/eval_endpoint.py --listen 127.0.0.1:18796 --state /srv/whitemagic/eval-state --backend wm --wm-binary /usr/local/bin/wm --max-users 4
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/whitemagic/eval-state
+PrivateTmp=yes
+MemoryMax=2G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target
