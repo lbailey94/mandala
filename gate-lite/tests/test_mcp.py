@@ -132,6 +132,35 @@ class TestMcpInProcess(unittest.TestCase):
             self.assertEqual(receipt["verdict"]["verdict"], "TRUSTED", receipt["verdict"]["errors"])
             self.assertEqual(receipt["verdict"]["summary"]["receipts"], 6)
 
+    def test_status_reports_effective_runner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            server, agent_did = make_server(Path(tmp))
+            passed = payload(
+                server.handle(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "tools/call",
+                        "params": {"name": "mandala.pass", "arguments": {"agent": agent_did}},
+                    }
+                )
+            )
+            status = payload(
+                server.handle(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {
+                            "name": "mandala.status",
+                            "arguments": {"slot": passed["slot_id"]},
+                        },
+                    }
+                )
+            )
+            self.assertEqual(status["runner"]["class"], "stub")
+            self.assertTrue(status["runner"]["simulated"])
+
     def test_pass_verify_tool_returns_claims_and_registry(self):
         with tempfile.TemporaryDirectory() as tmp:
             server, agent_did = make_server(Path(tmp))
@@ -299,7 +328,7 @@ class TestMcpSubprocess(unittest.TestCase):
             state = Path(tmp)
             server, agent_did = make_server(state)  # registers tenant in state.json
             proc = subprocess.Popen(
-                [sys.executable, "-m", "gate_lite.mcp_server", "--state", str(state), "--tenant", "dogfood"],
+                [sys.executable, "-m", "gate_lite.mcp_server", "--state", str(state), "--tenant", "dogfood", "--demo"],
                 cwd=str(ROOT),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
@@ -351,6 +380,49 @@ class TestMcpSubprocess(unittest.TestCase):
             self.assertIn(receipt["verdict"]["verdict"], ("TRUSTED", "PROVISIONAL"))
             proc.stdin.close()
             proc.wait(timeout=10)
+
+    def test_stdio_refuses_without_runner_or_demo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "gate_lite.mcp_server",
+                    "--state",
+                    tmp,
+                    "--tenant",
+                    "dogfood",
+                ],
+                cwd=str(ROOT),
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("refusing to start", proc.stderr)
+
+    def test_slice_without_runner_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "gate_lite.mcp_server",
+                    "--state",
+                    tmp,
+                    "--tenant",
+                    "dogfood",
+                    "--slice",
+                ],
+                cwd=str(ROOT),
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("requires a runner path", proc.stderr)
 
 
 if __name__ == "__main__":

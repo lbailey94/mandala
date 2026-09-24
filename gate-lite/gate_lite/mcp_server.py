@@ -501,6 +501,11 @@ def main(argv=None) -> int:
     parser.add_argument("--gate-id", default="gate-lite-1")
     parser.add_argument("--runner", default=None)
     parser.add_argument("--slice", action="store_true", help="systemd slice quotas (G2)")
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="allow startup without a sandbox runner (simulated execution via stub)",
+    )
     parser.add_argument("--transport", choices=("stdio", "http"), default="stdio")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
@@ -509,7 +514,17 @@ def main(argv=None) -> int:
 
     runner_path = args.runner or os.environ.get("WM_GATELITE_RUNNER")
     slice_mode = args.slice or os.environ.get("WM_GATELITE_SLICE") == "1"
+    if slice_mode and not runner_path:
+        parser.error(
+            "--slice/WM_GATELITE_SLICE requires a runner path: pass --runner <path> "
+            "or set WM_GATELITE_RUNNER"
+        )
     runner = build_runner(runner_path, slice_mode)
+    if runner is None and not args.demo:
+        parser.error(
+            "refusing to start: no sandbox runner configured (pass --runner <path> "
+            "[--slice], or set WM_GATELITE_RUNNER), or pass --demo to expose simulated execution"
+        )
     orchestrator = Orchestrator(args.state, gate_id=args.gate_id, runner=runner)
     server = McpServer(orchestrator, args.tenant)
 

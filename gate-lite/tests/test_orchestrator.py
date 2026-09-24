@@ -138,5 +138,14 @@ class TestGateLite(unittest.TestCase):
             )
 
 
+    def test_status_reports_effective_runner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            issued = orch.pass_("dogfood", agent_did)
+            status = orch.status("dogfood", issued["slot_id"])
+            self.assertEqual(status["runner"]["class"], "stub")
+            self.assertTrue(status["runner"]["simulated"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

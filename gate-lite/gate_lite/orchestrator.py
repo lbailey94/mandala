@@ -1232,9 +1232,20 @@ class Orchestrator:
                 )
         return {"expired": sealed, "count": len(sealed)}
 
+    def runner_info(self) -> dict:
+        runner = self.runner
+        info = {
+            "class": getattr(runner, "sandbox_class", "unknown"),
+            "simulated": isinstance(runner, StubRunner),
+        }
+        path = getattr(runner, "runner_path", None)
+        if path:
+            info["path"] = path
+        return info
+
     def status(self, tenant_id: str, slot_id: str) -> dict:
         slot = self._authorized_slot(tenant_id, slot_id)
-        return {"slot": slot}
+        return {"slot": slot, "runner": self.runner_info()}
 
     def list_(self, tenant_id: str) -> list[dict]:
         return self.registry.slots_for(tenant_id)

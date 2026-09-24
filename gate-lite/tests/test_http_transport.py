@@ -189,6 +189,7 @@ class TestHttpSubprocess(unittest.TestCase):
                     str(state),
                     "--tenant",
                     "dogfood",
+                    "--demo",
                     "--transport",
                     "http",
                     "--port",
