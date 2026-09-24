@@ -2,7 +2,7 @@
 
 First buildable slice of the Mandala Gate program: a cooperative-tenant
 orchestrator that issues governed passes and emits **Continuity Receipts**
-(`continuity-receipt/0.3`, via the published `continuity-receipt` reference
+(`continuity-receipt/0.4`, via the published `continuity-receipt` reference
 implementation — no vendored copy). Separate module/versioning from the
 Gen-2/WMv9 release train (decision 2026-09-17).
 
@@ -16,14 +16,14 @@ is gate-hard (microVM floor, v0.2).
 gate_lite/            orchestrator: pass → exec → settle → terminate
   ctl.py              mandala-ctl CLI
   mcp_server.py       MCP control surface (stdio + loopback HTTP/SSE)
-tools/make_vectors.py generates the spec test vectors (0.3; rewrites the
+tools/make_vectors.py generates the spec test vectors (0.4; rewrites the
                       tracked files — expect git status changes)
 tools/dogfood_run.py  full CLI dogfood on the real runner, evidence capture
 tools/install_sweep_timer.sh  systemd user timer for the expiry sweep
 tests/                unittest suites (86 tests)
 vectors/              generated bundles + INDEX.md
 evidence/             dogfood runs (run.json, SUMMARY.md, bundles, transcript)
-Dependency:           continuity-receipt>=0.3.1 (PyPI; 0.3.3 exercised)
+Dependency:           continuity-receipt>=0.4.0 (PyPI; 0.4.0 exercised)
 ```
 
 ## Quick start
@@ -169,8 +169,8 @@ choice, not a scaling need. Earlier fixes from the same suite:
 
 ## Status (2026-09-24)
 
-- Receipts: emits **`continuity-receipt/0.3`** via the published PyPI
-  reference implementation (`>=0.3.1`; 0.3.3 exercised) — no vendored copy
+- Receipts: emits **`continuity-receipt/0.4`** via the published PyPI
+  reference implementation (`>=0.4.0`; 0.4.0 exercised) — no vendored copy
   (migration `77821a7`, 2026-09-23). 11 gate-lite vectors green; the spec repo
   `github.com/lbailey94/continuity-receipt` (Apache-2.0) carries the wider
   vector set and the anchoring policy (`ANCHORING.md`).
