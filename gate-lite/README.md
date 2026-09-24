@@ -16,7 +16,8 @@ is gate-hard (microVM floor, v0.2).
 gate_lite/            orchestrator: pass → exec → settle → terminate
   ctl.py              mandala-ctl CLI
   mcp_server.py       MCP control surface (stdio + loopback HTTP/SSE)
-tools/make_vectors.py generates the spec test vectors (0.3)
+tools/make_vectors.py generates the spec test vectors (0.3; rewrites the
+                      tracked files — expect git status changes)
 tools/dogfood_run.py  full CLI dogfood on the real runner, evidence capture
 tools/install_sweep_timer.sh  systemd user timer for the expiry sweep
 tests/                unittest suites (86 tests)
@@ -28,27 +29,37 @@ Dependency:           continuity-receipt>=0.3.1 (PyPI; 0.3.3 exercised)
 ## Quick start
 
 ```bash
-python3 tools/make_vectors.py
-python3 -m unittest discover -s tests -v
+# install (venv; hosts with PEP 668 need this) — pulls continuity-receipt from PyPI
+python3 -m venv .venv
+.venv/bin/pip install -e .
+PY=.venv/bin/python
+
+$PY tools/make_vectors.py        # rewrites the tracked vectors (fresh ids/timestamps)
+$PY -m unittest discover -s tests -v
 
 CTL=gate_lite/ctl.py
-python3 $CTL --state ./state tenant-add --tenant dogfood --agent did:key:zSmokeAgent1
+$PY $CTL --state ./state tenant-add --tenant dogfood --agent did:key:zSmokeAgent1
 # `pass` prints a single-use token; exec requires it (bound to agent + slot)
-python3 $CTL --state ./state pass --tenant dogfood --agent did:key:zSmokeAgent1 \
-    --minutes 30 --spend-minor 1000
+PASS=$($PY $CTL --state ./state pass --tenant dogfood --agent did:key:zSmokeAgent1 \
+    --minutes 30 --spend-minor 1000)
+TOKEN=$(echo "$PASS" | jq -r .token)   # jq, or parse the JSON with python
+SLOT=$(echo "$PASS" | jq -r .slot_id)
 # exec refuses without a real runner; --demo opts into simulated (stub) execution
-python3 $CTL --state ./state --demo exec --tenant dogfood --slot <slot_id> \
-    --payload-ref "echo hello" --token <token>
-python3 $CTL --state ./state settle --tenant dogfood --slot <slot_id> \
+$PY $CTL --state ./state --demo exec --tenant dogfood --slot "$SLOT" \
+    --payload-ref "echo hello" --token "$TOKEN"
+$PY $CTL --state ./state settle --tenant dogfood --slot "$SLOT" \
     --rail-ref inv-1 --minor 200
-python3 $CTL --state ./state terminate --tenant dogfood --slot <slot_id>
-python3 $CTL --state ./state receipt --task-id <task_id> --verdict
+$PY $CTL --state ./state terminate --tenant dogfood --slot "$SLOT"
+$PY $CTL --state ./state receipt --task-id <task_id> --verdict
 ```
 
-Standalone verification:
+Standalone verification (offline; exit 0 when TRUSTED):
 
 ```bash
-python3 -m continuity_receipt.verify vectors/02_happy_full.json
+# prefer the console command (clean output)
+.venv/bin/continuity-receipt-verify state/receipts/<task_id>.json
+# the module form is equivalent but emits a runpy warning
+$PY -m continuity_receipt.verify state/receipts/<task_id>.json
 ```
 
 ## MCP control surface
@@ -78,6 +89,13 @@ return structured `isError` results (`emitter_unavailable`, `not_found`,
 issues `Mcp-Session-Id` on initialize; optional bearer token via `--token`.
 
 ## Runner and containment
+
+The sandbox wrapper is **not part of this slice**: `mandala-sandbox` ships
+with the Sovereign Edition
+(`MANDALAOS_SOVEREIGN/modules/landlock-isolation.nix`, bwrap + Landlock,
+`--exec <json envelope>` contract) and is installed to
+`~/.local/bin/mandala-sandbox`. Real execution requires it explicitly;
+without a runner the gate refuses (stub only via `--demo`).
 
 ```bash
 WM_GATELITE_RUNNER=~/.local/bin/mandala-sandbox python3 $CTL ...   # bwrap
