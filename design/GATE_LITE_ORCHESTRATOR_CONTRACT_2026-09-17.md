@@ -176,8 +176,10 @@ arbitration, no cross-gate placement, no GPU.
 ## 14. Implementation notes and deviations (v0, 2026-09-17)
 
 **Location:** `MANDALA_OS/gate-lite/` — Python 3.11+, `cryptography` (Ed25519).
-Layout: `continuity_receipt/` (library + verifier), `gate_lite/`
-(orchestrator + `ctl.py` CLI), `tools/make_vectors.py`, `tests/`, `vectors/`.
+Layout: `gate_lite/` (orchestrator + `ctl.py` CLI + MCP server),
+`tools/make_vectors.py`, `tests/`, `vectors/`, `evidence/`. The receipt
+library + reference verifier is the published PyPI package
+`continuity-receipt` — not vendored (migration `77821a7`, 2026-09-23).
 
 **Realized:**
 - Lifecycle `pass_ → exec_ → settle → terminate` with per-transition receipts;
