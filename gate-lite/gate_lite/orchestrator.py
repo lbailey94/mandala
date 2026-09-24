@@ -18,7 +18,7 @@ from continuity_receipt.canon import sha256_prefixed
 
 from .models import SLOT_CLASSES, Slot, Tenant, now_epoch
 from .registry import Registry
-from .tokens import issue_pass
+from .tokens import issue_pass, verify_pass
 
 POLICY_VERSION = "2026-09-17.1"
 GATE_CLASS = "gate-lite"
@@ -40,6 +40,16 @@ IDLE_SEALABLE_STATES = ("placed", "active", "frozen")
 
 class EmitterError(RuntimeError):
     """Receipt emitter unavailable — the gate fails closed (no unrecorded work)."""
+
+
+class PassError(PermissionError):
+    """Pass/token authorization failure. `code` is the stable machine code
+    (token_required, token_invalid, pass_expired, token_subject_mismatch,
+    token_slot_mismatch, pass_replayed, agent_not_registered)."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
 
 
 def rfc3339(epoch: int) -> str:
@@ -649,6 +659,11 @@ class Orchestrator:
         tenant = self.registry.get_tenant(tenant_id)
         if tenant is None:
             raise KeyError(f"unknown tenant {tenant_id}")
+        if agent_did not in (tenant.get("agents") or []):
+            raise PassError(
+                "agent_not_registered",
+                f"agent {agent_did} is not registered to tenant {tenant_id}",
+            )
         if slot_class not in SLOT_CLASSES:
             raise ValueError(f"unknown slot class {slot_class}")
 
@@ -744,12 +759,50 @@ class Orchestrator:
             raise PermissionError("cross-tenant access denied")
         return slot
 
+    def _authorize_exec(self, slot: dict, token: str | None, agent_id: str | None) -> str:
+        """Enforce the exec authorization contract; returns the consumed jti.
+
+        Rules: a token is required; it must verify against this gate, be
+        unexpired, bind to this slot's pass, name the pass's agent (and the
+        caller-supplied agent, when given), and not have been consumed before.
+        Consumption is atomic and durable (`registry.consume_jti`), so replay
+        is rejected across restarts and concurrent requests.
+        """
+        if not token:
+            raise PassError(
+                "token_required",
+                "exec requires a pass token bound to this agent and slot",
+            )
+        try:
+            claims = verify_pass(token, self.gate_did)
+        except ValueError as exc:
+            raise PassError("token_invalid", str(exc)) from exc
+        if int(claims.get("exp", 0)) < now_epoch():
+            raise PassError("pass_expired", "pass token expired")
+        if agent_id and claims.get("sub") != agent_id:
+            raise PassError("token_subject_mismatch", "token is bound to another agent")
+        if claims.get("slot_id") != slot["slot_id"] or claims.get("pass_id") != slot.get("pass_id"):
+            raise PassError("token_slot_mismatch", "pass token is bound to another slot")
+        pass_record = self.registry.get_pass(slot.get("pass_id") or "")
+        if pass_record is None:
+            raise PassError("token_invalid", "pass record not found")
+        if pass_record.get("agent_id") != claims.get("sub"):
+            raise PassError("token_subject_mismatch", "token subject is not the pass agent")
+        jti = claims.get("jti")
+        if not jti:
+            raise PassError("token_invalid", "pass token has no jti")
+        if not self.registry.consume_jti(jti, slot["slot_id"]):
+            raise PassError("pass_replayed", "pass token was already used")
+        return jti
+
     def exec_(
         self,
         tenant_id: str,
         slot_id: str,
         payload_ref: str,
         idempotency_key: str | None = None,
+        token: str | None = None,
+        agent_id: str | None = None,
     ) -> dict:
         if idempotency_key:
             cached = self.registry.recall(f"exec:{idempotency_key}")
@@ -761,6 +814,7 @@ class Orchestrator:
         if slot["state"] in BLOCKED_STATES:
             raise ValueError(f"slot is {slot['state']}")
         previous_state = slot["state"]
+        jti = self._authorize_exec(slot, token, agent_id)
 
         # Atomic start (issue #1): reserve the slot with a run generation
         # before any receipt or side effect, so a concurrent kill/expiry can
@@ -779,6 +833,8 @@ class Orchestrator:
             require=lambda s: s.get("expires_at", 0) > now_epoch(),
         )
         if started is None:
+            # No work ran; the token is not burned.
+            self.registry.release_jti(jti)
             fresh = self.registry.get_slot(slot_id) or slot
             raise ValueError(
                 f"start rejected: slot is {fresh['state']} — no process started"
@@ -804,10 +860,11 @@ class Orchestrator:
             )
         except EmitterError:
             # No receipt, no start: release the reservation so the slot is not
-            # wedged in `starting` (fail-closed but recoverable).
+            # wedged in `starting`, and release the token (no work ran).
             self.registry.cas_slot(
                 slot_id, (STARTING_STATE,), {"state": previous_state}
             )
+            self.registry.release_jti(jti)
             raise
 
         def on_spawn(pid: int, pgid: int, unit: str | None):
@@ -819,11 +876,12 @@ class Orchestrator:
             result = self.runner.run(run_slot, payload_ref, on_spawn=on_spawn)
         except Exception:
             # The runner failed before any process of record exists; release
-            # the reservation so the slot can be retried.
+            # the reservation so the slot can be retried, and the token with it.
             if self.active_run(slot_id) is None:
                 self.registry.cas_slot(
                     slot_id, (STARTING_STATE,), {"state": previous_state}
                 )
+                self.registry.release_jti(jti)
             raise
         self._last_exec[slot_id] = result
         self._run_path(slot_id).unlink(missing_ok=True)

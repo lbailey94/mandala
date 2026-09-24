@@ -289,6 +289,38 @@ class TestMcpInProcess(unittest.TestCase):
             )
             self.assertTrue(verified["jti_seen"])
 
+    def test_exec_without_token_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            server, agent_did = make_server(Path(tmp))
+            passed = payload(
+                server.handle(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "tools/call",
+                        "params": {"name": "mandala.pass", "arguments": {"agent": agent_did}},
+                    }
+                )
+            )
+            missing = payload(
+                server.handle(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {
+                            "name": "mandala.exec",
+                            "arguments": {
+                                "agent": agent_did,
+                                "slot": passed["slot_id"],
+                                "payload_ref": "echo no-token",
+                            },
+                        },
+                    }
+                )
+            )
+            self.assertEqual(missing["error"], "token_required")
+
     def test_tool_errors_are_structured(self):
         with tempfile.TemporaryDirectory() as tmp:
             server, agent_did = make_server(Path(tmp))
@@ -313,7 +345,7 @@ class TestMcpInProcess(unittest.TestCase):
                     }
                 )
             )
-            self.assertIn("pass_id", unknown_agent)  # v0 gates by tenant, not per-agent allowlist
+            self.assertEqual(unknown_agent["error"], "agent_not_registered")
 
     def test_method_not_found(self):
         with tempfile.TemporaryDirectory() as tmp:

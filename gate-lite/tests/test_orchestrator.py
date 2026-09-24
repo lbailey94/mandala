@@ -2,6 +2,7 @@
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -9,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from continuity_receipt import keys, verify_bundle  # noqa: E402
-from gate_lite.orchestrator import Orchestrator  # noqa: E402
+from gate_lite.orchestrator import Orchestrator, PassError  # noqa: E402
 
 
 def make_orchestrator(state_dir: Path) -> tuple[Orchestrator, str]:
@@ -30,7 +31,7 @@ class TestGateLite(unittest.TestCase):
                 minutes=90,
                 spend_cap={"minor": 1000, "currency": "USD"},
             )
-            executed = orch.exec_("dogfood", issued["slot_id"], "echo hello")
+            executed = orch.exec_("dogfood", issued["slot_id"], "echo hello", token=issued["token"])
             self.assertEqual(executed["exit"], 0)
             orch.settle("dogfood", issued["slot_id"], "invoice", "inv-9", 200)
             terminated = orch.terminate("dogfood", issued["slot_id"])
@@ -50,8 +51,12 @@ class TestGateLite(unittest.TestCase):
             second = orch.pass_("dogfood", agent_did, idempotency_key="p1")
             self.assertEqual(first["pass_id"], second["pass_id"])
 
-            exec_first = orch.exec_("dogfood", first["slot_id"], "echo x", idempotency_key="e1")
-            exec_second = orch.exec_("dogfood", first["slot_id"], "echo x", idempotency_key="e1")
+            exec_first = orch.exec_(
+                "dogfood", first["slot_id"], "echo x", idempotency_key="e1", token=first["token"]
+            )
+            exec_second = orch.exec_(
+                "dogfood", first["slot_id"], "echo x", idempotency_key="e1", token=first["token"]
+            )
             self.assertEqual(exec_first["receipt_ids"], exec_second["receipt_ids"])
 
     def test_cross_tenant_denied(self):
@@ -89,7 +94,7 @@ class TestGateLite(unittest.TestCase):
 
             _did, gate_key = _keys.generate(_keys.deterministic_seed("gate-test"))
             fresh = _Orch(state, gate_id="gate-test", gate_key=gate_key, gate_did=orch.gate_did)
-            fresh.exec_("dogfood", issued["slot_id"], "echo across processes")
+            fresh.exec_("dogfood", issued["slot_id"], "echo across processes", token=issued["token"])
             fresh.terminate("dogfood", issued["slot_id"])
 
             bundle = fresh.receipt(fresh.task_id_for(issued["slot_id"]))
@@ -108,7 +113,7 @@ class TestGateLite(unittest.TestCase):
 
             claims = verify_pass(issued["token"], orch.gate_did)
             self.assertEqual(claims["sub"], agent_did)
-            orch.exec_("dogfood", issued["slot_id"], "echo y")
+            orch.exec_("dogfood", issued["slot_id"], "echo y", token=issued["token"])
             terminated = orch.terminate("dogfood", issued["slot_id"])
             path = Path(tmp) / "receipts" / f"{terminated['task_id']}.json"
             self.assertTrue(path.exists())
@@ -145,6 +150,91 @@ class TestGateLite(unittest.TestCase):
             status = orch.status("dogfood", issued["slot_id"])
             self.assertEqual(status["runner"]["class"], "stub")
             self.assertTrue(status["runner"]["simulated"])
+
+
+    def test_pass_rejects_unregistered_agent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, _agent_did = make_orchestrator(Path(tmp))
+            with self.assertRaises(PassError) as ctx:
+                orch.pass_("dogfood", "did:key:zNobody")
+            self.assertEqual(ctx.exception.code, "agent_not_registered")
+
+    def test_exec_requires_token(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            issued = orch.pass_("dogfood", agent_did)
+            with self.assertRaises(PassError) as ctx:
+                orch.exec_("dogfood", issued["slot_id"], "echo no-token")
+            self.assertEqual(ctx.exception.code, "token_required")
+
+    def test_exec_rejects_token_for_other_agent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            issued = orch.pass_("dogfood", agent_did)
+            with self.assertRaises(PassError) as ctx:
+                orch.exec_(
+                    "dogfood",
+                    issued["slot_id"],
+                    "echo other",
+                    token=issued["token"],
+                    agent_id="did:key:zOther",
+                )
+            self.assertEqual(ctx.exception.code, "token_subject_mismatch")
+            # A rejected attempt must not burn the token.
+            executed = orch.exec_("dogfood", issued["slot_id"], "echo ok", token=issued["token"])
+            self.assertEqual(executed["exit"], 0)
+
+    def test_replay_rejected_and_survives_restart(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            orch, agent_did = make_orchestrator(state)
+            issued = orch.pass_("dogfood", agent_did)
+            first = orch.exec_("dogfood", issued["slot_id"], "echo once", token=issued["token"])
+            self.assertEqual(first["exit"], 0)
+
+            _did, gate_key = keys.generate(keys.deterministic_seed("gate-test"))
+            restarted = Orchestrator(
+                state, gate_id="gate-test", gate_key=gate_key, gate_did=orch.gate_did
+            )
+            with self.assertRaises(PassError) as ctx:
+                restarted.exec_(
+                    "dogfood", issued["slot_id"], "echo again", token=issued["token"]
+                )
+            self.assertEqual(ctx.exception.code, "pass_replayed")
+
+    def test_replay_holds_under_concurrent_requests(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            issued = orch.pass_("dogfood", agent_did)
+            workers = 8
+            barrier = threading.Barrier(workers)
+            outcomes: list[tuple[str, object]] = []
+
+            def attempt():
+                barrier.wait()
+                try:
+                    outcomes.append(
+                        (
+                            "ok",
+                            orch.exec_(
+                                "dogfood", issued["slot_id"], "echo race", token=issued["token"]
+                            ),
+                        )
+                    )
+                except PassError as exc:
+                    outcomes.append(("err", exc.code))
+
+            threads = [threading.Thread(target=attempt) for _ in range(workers)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(15)
+
+            self.assertEqual(len(outcomes), workers, outcomes)
+            winners = [o for o in outcomes if o[0] == "ok"]
+            replays = [o for o in outcomes if o[1] == "pass_replayed"]
+            self.assertEqual(len(winners), 1, outcomes)
+            self.assertEqual(len(replays), workers - 1, outcomes)
 
 
 if __name__ == "__main__":

@@ -68,6 +68,11 @@ def main(argv=None) -> int:
     exec_cmd.add_argument("--tenant", required=True)
     exec_cmd.add_argument("--slot", required=True)
     exec_cmd.add_argument("--payload-ref", required=True)
+    exec_cmd.add_argument(
+        "--token",
+        required=True,
+        help="pass token from `pass` (required; binds agent + slot, single use)",
+    )
     exec_cmd.add_argument("--idempotency-key", default=None)
 
     settle = sub.add_parser("settle")
@@ -129,7 +134,11 @@ def main(argv=None) -> int:
             )
         elif args.cmd == "exec":
             output = orch.exec_(
-                args.tenant, args.slot, args.payload_ref, idempotency_key=args.idempotency_key
+                args.tenant,
+                args.slot,
+                args.payload_ref,
+                idempotency_key=args.idempotency_key,
+                token=args.token,
             )
         elif args.cmd == "settle":
             output = orch.settle(args.tenant, args.slot, args.rail, args.rail_ref, args.minor)

@@ -102,7 +102,9 @@ class TestLifecycleRace(unittest.TestCase):
 
             result: list = []
             thread = threading.Thread(
-                target=lambda: result.append(orch.exec_("race", slot_id, "echo gated"))
+                target=lambda: result.append(
+                    orch.exec_("race", slot_id, "echo gated", token=issued["token"])
+                )
             )
             thread.start()
             self.assertTrue(
@@ -142,7 +144,7 @@ class TestLifecycleRace(unittest.TestCase):
             slot_id = issued["slot_id"]
 
             thread = threading.Thread(
-                target=lambda: orch.exec_("race", slot_id, "echo gated")
+                target=lambda: orch.exec_("race", slot_id, "echo gated", token=issued["token"])
             )
             thread.start()
             self.assertTrue(
@@ -186,7 +188,7 @@ class TestLifecycleRace(unittest.TestCase):
             slot_id = issued["slot_id"]
 
             orch._write_kill_request(slot_id, "SIGTERM", 999)
-            executed = orch.exec_("race", slot_id, "echo stale")
+            executed = orch.exec_("race", slot_id, "echo stale", token=issued["token"])
             self.assertNotIn("kill_signal", executed)
             self.assertEqual(
                 receipt_types(orch, slot_id),
@@ -220,7 +222,7 @@ class TestLifecycleRace(unittest.TestCase):
             slot_id = issued["slot_id"]
 
             thread = threading.Thread(
-                target=lambda: orch.exec_("race", slot_id, "echo live")
+                target=lambda: orch.exec_("race", slot_id, "echo live", token=issued["token"])
             )
             thread.start()
             self.assertTrue(wait_until(runner.spawned.is_set))

@@ -129,7 +129,7 @@ class TestHttpTransport(unittest.TestCase):
             return payload(json.loads(body))
 
         passed = call(2, "mandala.pass", {"agent": self.agent_did, "minutes": 30, "spend_minor": 1000})
-        executed = call(3, "mandala.exec", {"agent": self.agent_did, "slot": passed["slot_id"], "payload_ref": "echo http"})
+        executed = call(3, "mandala.exec", {"agent": self.agent_did, "slot": passed["slot_id"], "payload_ref": "echo http", "token": passed["token"]})
         self.assertEqual(executed["exit"], 0)
         call(4, "mandala.settle", {"slot": passed["slot_id"], "rail_ref": "inv-http", "minor": 200})
         terminated = call(5, "mandala.terminate", {"slot": passed["slot_id"]})

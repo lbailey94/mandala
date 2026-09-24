@@ -24,7 +24,7 @@ class TestCtlRunnerGuard(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             proc = run_ctl(
                 "--state", tmp, "exec", "--tenant", "dogfood", "--slot", "slot-x",
-                "--payload-ref", "echo hi",
+                "--payload-ref", "echo hi", "--token", "dummy-token",
             )
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn("refusing to exec", proc.stderr)
@@ -33,7 +33,7 @@ class TestCtlRunnerGuard(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             proc = run_ctl(
                 "--state", tmp, "--slice", "exec", "--tenant", "dogfood", "--slot", "slot-x",
-                "--payload-ref", "echo hi",
+                "--payload-ref", "echo hi", "--token", "dummy-token",
             )
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn("requires a runner path", proc.stderr)
@@ -50,15 +50,25 @@ class TestCtlRunnerGuard(unittest.TestCase):
                 "--agent", "did:key:zDemoAgent",
             )
             self.assertEqual(passed.returncode, 0, passed.stderr)
-            slot = json.loads(passed.stdout)["slot_id"]
+            issued = json.loads(passed.stdout)
 
             proc = run_ctl(
                 "--state", tmp, "--demo", "exec", "--tenant", "dogfood",
-                "--slot", slot, "--payload-ref", "echo hi",
+                "--slot", issued["slot_id"], "--payload-ref", "echo hi",
+                "--token", issued["token"],
             )
             self.assertEqual(proc.returncode, 0, proc.stderr)
             self.assertEqual(json.loads(proc.stdout)["exit"], 0)
             self.assertIn("simulated execution", proc.stderr)
+
+    def test_exec_requires_token_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = run_ctl(
+                "--state", tmp, "--demo", "exec", "--tenant", "dogfood",
+                "--slot", "slot-x", "--payload-ref", "echo hi",
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("--token", proc.stderr)
 
 
 if __name__ == "__main__":

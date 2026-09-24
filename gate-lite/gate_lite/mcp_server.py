@@ -15,7 +15,6 @@ import json
 import os
 import sys
 import threading
-import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -26,7 +25,12 @@ if str(ROOT) not in sys.path:
 
 from continuity_receipt import verify_bundle  # noqa: E402
 from gate_lite.models import SLOT_CLASSES  # noqa: E402
-from gate_lite.orchestrator import EmitterError, Orchestrator, build_runner  # noqa: E402
+from gate_lite.orchestrator import (  # noqa: E402
+    EmitterError,
+    Orchestrator,
+    PassError,
+    build_runner,
+)
 from gate_lite.tokens import verify_pass  # noqa: E402
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -73,7 +77,9 @@ TOOLS = [
         "description": (
             "Execute a payload inside a pass slot. Emits decision + execution "
             "receipts; returns exit code, stdout hash, and receipt ids. Payload "
-            "is a command or a declared-execution envelope with default-deny egress."
+            "is a command or a declared-execution envelope with default-deny egress. "
+            "Requires the pass token from `mandala.pass` (single use, bound to "
+            "agent + slot)."
         ),
         "inputSchema": {
             "type": "object",
@@ -81,10 +87,13 @@ TOOLS = [
                 "agent": {"type": "string"},
                 "slot": {"type": "string"},
                 "payload_ref": {"type": "string"},
-                "token": {"type": "string", "description": "pass token (optional in v0 dogfood)"},
+                "token": {
+                    "type": "string",
+                    "description": "pass token from mandala.pass (required; single use)",
+                },
                 "idempotency_key": {"type": "string"},
             },
-            "required": ["agent", "slot", "payload_ref"],
+            "required": ["agent", "slot", "payload_ref", "token"],
         },
     },
     {
@@ -209,8 +218,6 @@ class McpServer:
     def __init__(self, orchestrator: Orchestrator, tenant_id: str):
         self.orch = orchestrator
         self.tenant_id = tenant_id
-        # S2b: single-use pass tokens — jti recorded after all exec checks pass.
-        self.jti_cache: set[str] = set()
 
     def handle(self, message: dict) -> dict | None:
         method = message.get("method")
@@ -276,37 +283,20 @@ class McpServer:
                         "valid": True,
                         "claims": claims,
                         "pass": record,
-                        "jti_seen": bool(jti and jti in self.jti_cache),
+                        "jti_seen": bool(jti and self.orch.registry.jti_consumed(jti)),
                         "gate_id": self.orch.gate_id,
                         "policy_version": self.orch.policy_version,
                     }
                 )
             if name == "mandala.exec":
-                token = args.get("token")
-                if token:
-                    claims = verify_pass(token, self.orch.gate_did)
-                    if claims.get("sub") != args.get("agent"):
-                        return _tool_error("token_subject_mismatch", "token is bound to another agent")
-                    if int(claims.get("exp", 0)) < time.time():
-                        return _tool_error("pass_expired", "pass token expired")
-                    bound_slot = claims.get("slot_id")
-                    if bound_slot and bound_slot != args.get("slot"):
-                        return _tool_error(
-                            "token_slot_mismatch", "pass token is bound to another slot"
-                        )
-                    jti = claims.get("jti")
-                    if jti and jti in self.jti_cache:
-                        return _tool_error("pass_replayed", "pass token was already used")
-                    # Record only after every check passed, so a rejected
-                    # attempt cannot burn a valid token.
-                    if jti:
-                        self.jti_cache.add(jti)
                 return _result(
                     self.orch.exec_(
                         self.tenant_id,
                         args["slot"],
                         args["payload_ref"],
                         idempotency_key=args.get("idempotency_key"),
+                        token=args.get("token"),
+                        agent_id=args.get("agent"),
                     )
                 )
             if name == "mandala.settle":
@@ -354,6 +344,8 @@ class McpServer:
             return _tool_error("unknown_tool", f"no such tool: {name}")
         except EmitterError as exc:
             return _tool_error("emitter_unavailable", str(exc))
+        except PassError as exc:
+            return _tool_error(exc.code, str(exc))
         except KeyError as exc:
             return _tool_error("not_found", str(exc))
         except PermissionError as exc:
