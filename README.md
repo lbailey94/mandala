@@ -75,8 +75,10 @@ every other interruption resets the run; soak run at 13.9/72 h — see
 unassisted; protocol at `publication/STRANGER_INSTALL_PROTOCOL.md`, last
 dry-run 2026-09-15 — re-verification pending with the WM v9.2.7 pin; note this
 protocol covers the Sovereign VM, not gate-lite), gate-lite outsider exercise
-(separate protocol pending; run against a pinned candidate + real runner after
-the authorization fixes), repo hygiene (sovereign pinned to v9.2.7 as of
+(protocol published at `publication/GATE_LITE_OUTSIDER_EXERCISE.md`; first run
+2026-09-24 PASS against pin `ac078e2` — evidence in
+`gate-lite/evidence/outsider-2026-09-24/`; awaiting review before snapshot
+curation), repo hygiene (sovereign pinned to v9.2.7 as of
 2026-09-24). **Signing-key custody:** Option 1
 register live in `security/KEY_CUSTODY_REGISTER.md` (all four copies verified
 across the two cards: A1+B1 on FA99, B2+C1 on FEEC; B's identity and signature
@@ -107,10 +109,12 @@ first.
 implementation (vendored copy dropped, `77821a7`); S2b pass binding
 (`c310b22`), the stub-safety guard, the **authorization contract** (tenant
 agent list at issuance; required single-use token at exec; durable replay),
-and the idempotency-scoping fix (board #203/#204) landed. Next: a gate-lite
-outsider exercise against a pinned candidate + real runner (new protocol;
-`STRANGER_INSTALL_PROTOCOL.md` is the Sovereign VM gate), then public-snapshot
-curation. CR spec 0.4 hardening is in flight (board #192).
+and the idempotency-scoping fix (board #203/#204) landed. The **gate-lite
+outsider exercise** (new protocol: `publication/GATE_LITE_OUTSIDER_EXERCISE.md`)
+ran against pin `ac078e2` with the real runner — PASS (86/86 tests, bundle
+TRUSTED offline, 8 friction notes; `gate-lite/evidence/outsider-2026-09-24/`).
+Next: review the evidence, then curate the public snapshot around the tested
+candidate. CR spec 0.4 hardening is in flight (board #192).
 
 ### 2026-08-28 research pass (key external findings)
 - **seL4 path is viable:** MCS verified on RISC-V (2026), confidentiality proof on AArch64 completed Aug 2026; `rust-sel4` 5.0 + Microkit 2.3 are mature scaffolding.

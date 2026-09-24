@@ -186,6 +186,10 @@ choice, not a scaling need. Earlier fixes from the same suite:
 - Benchmarked: `tools/bench.py` + `evidence/bench-2026-09-18-sqlite/` (14/14
   invariants; registry scaling fixed).
 - Expiry sweep cadence: **systemd user timer installer** (`tools/install_sweep_timer.sh`).
+- Outsider exercise (protocol: `MANDALA_OS/publication/GATE_LITE_OUTSIDER_EXERCISE.md`):
+  first run 2026-09-24 against pin `ac078e2` with the real runner — **PASS**,
+  86/86 tests on a clean export, exec `sandbox_class=bwrap-landlock`, bundle
+  TRUSTED offline; evidence + friction log in `evidence/outsider-2026-09-24/`.
 - Compatibility changes (2026-09-24, authorization contract): `mandala-ctl
   exec` now **requires `--token`** (from the `pass` output); `mandala.exec`
   over MCP now **requires `token`** (schema `required` updated); `mandala.pass`
