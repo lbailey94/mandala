@@ -1,3 +1,8 @@
 # Embedded sub-projects (each has its own git repo and remote)
 /LAKSHMI/
 /MANDALAOS_SOVEREIGN/
+
+# Python bytecode / packaging artifacts
+__pycache__/
+*.pyc
+*.egg-info/
