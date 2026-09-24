@@ -1,0 +1,276 @@
+{
+  "idempotency": {},
+  "passes": {
+    "pass-36287648e820": {
+      "agent_id": "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC",
+      "expires_at": 1789700688,
+      "jti": "01a0b270-216a-7af7-accc-e260daffa342",
+      "pass_id": "pass-36287648e820",
+      "principal_id": null,
+      "slot_id": "slot-0c9957b269a3",
+      "spend_cap": null
+    },
+    "pass-5780caefe391": {
+      "agent_id": "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC",
+      "expires_at": 1789700089,
+      "jti": "01a0b270-285b-7f90-b583-5f7653bccef8",
+      "pass_id": "pass-5780caefe391",
+      "principal_id": null,
+      "slot_id": "slot-714f66fb4e54",
+      "spend_cap": null
+    },
+    "pass-588138dcf9dd": {
+      "agent_id": "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC",
+      "expires_at": 1789700152,
+      "jti": "01a0b270-325c-7ff3-9b6a-a7246d8ed2b9",
+      "pass_id": "pass-588138dcf9dd",
+      "principal_id": null,
+      "slot_id": "slot-3be5e594a261",
+      "spend_cap": null
+    },
+    "pass-6ba583360dbf": {
+      "agent_id": "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC",
+      "expires_at": 1789701887,
+      "jti": "01a0b270-1f30-77c6-954f-38f3eff0787d",
+      "pass_id": "pass-6ba583360dbf",
+      "principal_id": null,
+      "slot_id": "slot-69656367fc85",
+      "spend_cap": {
+        "currency": "USD",
+        "minor": 1000
+      }
+    },
+    "pass-7d008794a795": {
+      "agent_id": "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC",
+      "expires_at": 1789700391,
+      "jti": "01a0b270-2e7d-77b5-896b-bd207830aace",
+      "pass_id": "pass-7d008794a795",
+      "principal_id": null,
+      "slot_id": "slot-0e77e2540f4f",
+      "spend_cap": null
+    },
+    "pass-a4187f99f102": {
+      "agent_id": "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC",
+      "expires_at": 1789700394,
+      "jti": "01a0b270-385d-74be-9d4c-7ae6b2526c99",
+      "pass_id": "pass-a4187f99f102",
+      "principal_id": null,
+      "slot_id": "slot-92fed7c998b9",
+      "spend_cap": null
+    },
+    "pass-abeacaeef906": {
+      "agent_id": "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC",
+      "expires_at": 1789700391,
+      "jti": "01a0b270-3006-765b-887d-b5c473c3c758",
+      "pass_id": "pass-abeacaeef906",
+      "principal_id": null,
+      "slot_id": "slot-f84deb1429d6",
+      "spend_cap": null
+    },
+    "pass-d5ed13de5c36": {
+      "agent_id": "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC",
+      "expires_at": 1789700389,
+      "jti": "01a0b270-2626-745e-90f7-eae3b98a2509",
+      "pass_id": "pass-d5ed13de5c36",
+      "principal_id": null,
+      "slot_id": "slot-44d4cde6bf26",
+      "spend_cap": null
+    },
+    "pass-ea987e3cde60": {
+      "agent_id": "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC",
+      "expires_at": 1789700388,
+      "jti": "01a0b270-242f-7ebc-aaf1-de06e430aaac",
+      "pass_id": "pass-ea987e3cde60",
+      "principal_id": null,
+      "slot_id": "slot-cd358adcdc29",
+      "spend_cap": null
+    }
+  },
+  "slots": {
+    "slot-0c9957b269a3": {
+      "created_at": 1789700088,
+      "expires_at": 1789700688,
+      "pass_id": "pass-36287648e820",
+      "quotas": {
+        "cpu_ms": 300000,
+        "disk_mb": 512,
+        "mem_mb": 1024,
+        "wall_ms": 600000
+      },
+      "slot_class": "small",
+      "slot_id": "slot-0c9957b269a3",
+      "state": "terminated",
+      "task_id": "urn:uuid:01a0b270-216a-7df7-81f3-7003282fdd00",
+      "template": "default",
+      "tenant_id": "dogfood"
+    },
+    "slot-0e77e2540f4f": {
+      "created_at": 1789700091,
+      "expires_at": 1789700391,
+      "pass_id": "pass-7d008794a795",
+      "quotas": {
+        "cpu_ms": 300000,
+        "disk_mb": 512,
+        "mem_mb": 1024,
+        "wall_ms": 300000
+      },
+      "slot_class": "small",
+      "slot_id": "slot-0e77e2540f4f",
+      "state": "terminated",
+      "task_id": "urn:uuid:01a0b270-2e7d-725f-989d-53c043579004",
+      "template": "default",
+      "tenant_id": "dogfood"
+    },
+    "slot-3be5e594a261": {
+      "created_at": 1789700092,
+      "expires_at": 1789700152,
+      "pass_id": "pass-588138dcf9dd",
+      "quotas": {
+        "cpu_ms": 300000,
+        "disk_mb": 512,
+        "mem_mb": 1024,
+        "wall_ms": 60000
+      },
+      "slot_class": "small",
+      "slot_id": "slot-3be5e594a261",
+      "state": "terminated",
+      "task_id": "urn:uuid:01a0b270-325c-761a-97b8-b2013111e5ac",
+      "template": "default",
+      "tenant_id": "dogfood"
+    },
+    "slot-44d4cde6bf26": {
+      "created_at": 1789700089,
+      "expires_at": 1789700389,
+      "pass_id": "pass-d5ed13de5c36",
+      "quotas": {
+        "cpu_ms": 300000,
+        "disk_mb": 512,
+        "mem_mb": 1024,
+        "wall_ms": 300000
+      },
+      "slot_class": "small",
+      "slot_id": "slot-44d4cde6bf26",
+      "state": "terminated",
+      "task_id": "urn:uuid:01a0b270-2627-7b52-9fff-a15bb9fd6387",
+      "template": "default",
+      "tenant_id": "dogfood"
+    },
+    "slot-69656367fc85": {
+      "created_at": 1789700087,
+      "expires_at": 1789701887,
+      "pass_id": "pass-6ba583360dbf",
+      "quotas": {
+        "cpu_ms": 300000,
+        "disk_mb": 512,
+        "mem_mb": 1024,
+        "wall_ms": 1800000
+      },
+      "slot_class": "small",
+      "slot_id": "slot-69656367fc85",
+      "state": "terminated",
+      "task_id": "urn:uuid:01a0b270-1f31-7f05-a5a8-f78881b8c6d0",
+      "template": "default",
+      "tenant_id": "dogfood"
+    },
+    "slot-714f66fb4e54": {
+      "created_at": 1789700089,
+      "expires_at": 1789700089,
+      "pass_id": "pass-5780caefe391",
+      "quotas": {
+        "cpu_ms": 300000,
+        "disk_mb": 512,
+        "mem_mb": 1024,
+        "wall_ms": 0
+      },
+      "slot_class": "small",
+      "slot_id": "slot-714f66fb4e54",
+      "state": "expired",
+      "task_id": "urn:uuid:01a0b270-285b-7ffe-a117-34d0c8407a86",
+      "template": "default",
+      "tenant_id": "dogfood"
+    },
+    "slot-92fed7c998b9": {
+      "created_at": 1789700094,
+      "expires_at": 1789700394,
+      "pass_id": "pass-a4187f99f102",
+      "quotas": {
+        "cpu_ms": 300000,
+        "disk_mb": 512,
+        "mem_mb": 1024,
+        "wall_ms": 300000
+      },
+      "slot_class": "small",
+      "slot_id": "slot-92fed7c998b9",
+      "state": "terminated",
+      "task_id": "urn:uuid:01a0b270-385d-7fb0-b765-cb7c63b83543",
+      "template": "default",
+      "tenant_id": "dogfood"
+    },
+    "slot-cd358adcdc29": {
+      "created_at": 1789700088,
+      "expires_at": 1789700388,
+      "pass_id": "pass-ea987e3cde60",
+      "quotas": {
+        "cpu_ms": 300000,
+        "disk_mb": 512,
+        "mem_mb": 1024,
+        "wall_ms": 300000
+      },
+      "slot_class": "small",
+      "slot_id": "slot-cd358adcdc29",
+      "state": "terminated",
+      "task_id": "urn:uuid:01a0b270-242f-7ed3-94e7-05224ba9b528",
+      "template": "default",
+      "tenant_id": "dogfood"
+    },
+    "slot-f84deb1429d6": {
+      "created_at": 1789700091,
+      "expires_at": 1789700391,
+      "pass_id": "pass-abeacaeef906",
+      "quotas": {
+        "cpu_ms": 300000,
+        "disk_mb": 512,
+        "mem_mb": 1024,
+        "wall_ms": 300000
+      },
+      "slot_class": "small",
+      "slot_id": "slot-f84deb1429d6",
+      "state": "terminated",
+      "task_id": "urn:uuid:01a0b270-3006-7f60-ae79-1c1220c3b67e",
+      "template": "default",
+      "tenant_id": "dogfood"
+    }
+  },
+  "snapshots": {
+    "snap-50c9a811d4bd": {
+      "artifact": "/home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/snapshots/slot-0c9957b269a3/snap-50c9a811d4bd.tar.gz",
+      "bytes": 67,
+      "created_at": 1789700088,
+      "sha256": "sha256:059f869cbac854a596e326445f711cc443f50c15200198194dfababc2a18204c",
+      "slot_id": "slot-0c9957b269a3",
+      "snapshot_id": "snap-50c9a811d4bd",
+      "tenant_id": "dogfood",
+      "tree_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "snap-d8b02f0bc684": {
+      "artifact": "/home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/snapshots/slot-cd358adcdc29/snap-d8b02f0bc684.tar.gz",
+      "bytes": 236,
+      "created_at": 1789700089,
+      "sha256": "sha256:3668c66c27ff3b736ca1ded827a094be2e4c29f4594d8bdae83e132fdfa053ce",
+      "slot_id": "slot-cd358adcdc29",
+      "snapshot_id": "snap-d8b02f0bc684",
+      "tenant_id": "dogfood",
+      "tree_hash": "sha256:eb5198cceb7957dd98fd5e3c76f842683704493ccfced681c602f48b81e2d888"
+    }
+  },
+  "tenants": {
+    "dogfood": {
+      "agents": [
+        "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC"
+      ],
+      "aup_version": "2026-09-17.1",
+      "settlement_ref": null,
+      "tenant_id": "dogfood"
+    }
+  }
+}

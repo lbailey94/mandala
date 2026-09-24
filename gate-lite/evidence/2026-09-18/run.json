@@ -1,0 +1,501 @@
+{
+  "started_at": "2026-09-18T02:54:54Z",
+  "duration_s": 7.24,
+  "host": {
+    "recorded_at": "2026-09-18T02:54:54Z",
+    "hostname": "T4800-S",
+    "platform": "Linux-7.0.0-31-generic-x86_64-with-glibc2.39",
+    "python": "3.12.3",
+    "bwrap": "bubblewrap 0.9.0",
+    "systemd": "systemd 255 (255.4-1ubuntu8.17)\n+PAM +AUDIT +SELINUX +APPARMOR +IMA +SMACK +SECCOMP +GCRYPT -GNUTLS +OPENSSL +ACL +BLKID +CURL +ELFUTILS +FIDO2 +IDN2 -IDN +IPTC +KMOD +LIBCRYPTSETUP +LIBFDISK +PCRE2 -PWQUALITY +P11KIT +QRENCODE +TPM2 +BZIP2 +LZ4 +XZ +ZLIB +ZSTD -BPF_FRAMEWORK -XKBCOMMON +UTMP +SYSVINIT default-hierarchy=unified",
+    "runner": "/home/lucas/.local/bin/mandala-sandbox",
+    "slice_mode": true,
+    "git_head": "3a2354baac7cdc901ea86725ba208910a665e798"
+  },
+  "checks": [
+    {
+      "drill": "G1",
+      "check": "exec exit 0",
+      "ok": true,
+      "detail": "stdout_hash=sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+    },
+    {
+      "drill": "G1",
+      "check": "exec inside slice quota",
+      "ok": true,
+      "detail": "no quota/operator kill"
+    },
+    {
+      "drill": "G1",
+      "check": "$0 settlement recorded",
+      "ok": true,
+      "detail": "dogfood-0001"
+    },
+    {
+      "drill": "G1",
+      "check": "bundle TRUSTED (6 receipts)",
+      "ok": true,
+      "detail": "TRUSTED"
+    },
+    {
+      "drill": "G7/snapshot",
+      "check": "frozen + artifact",
+      "ok": true,
+      "detail": "snap-50c9a811d4bd 67B"
+    },
+    {
+      "drill": "G7/snapshot",
+      "check": "exec refused while frozen",
+      "ok": true,
+      "detail": "{\"error\": \"slot is frozen\"}"
+    },
+    {
+      "drill": "G7/snapshot",
+      "check": "bundle TRUSTED",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "drill": "G7/restore",
+      "check": "runner wrote workspace artifact",
+      "ok": true,
+      "detail": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "drill": "G7/restore",
+      "check": "workspace restored byte-identical",
+      "ok": true,
+      "detail": "sha256:eb5198cceb7957dd98fd5e3c76f842683704493ccfced681c602f48b81e2d888"
+    },
+    {
+      "drill": "G7/restore",
+      "check": "artifact content present",
+      "ok": true,
+      "detail": "/home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/workspaces/slot-44d4cde6bf26/artifact.txt"
+    },
+    {
+      "drill": "G7/restore",
+      "check": "exec in restored slot",
+      "ok": true,
+      "detail": "sha256:09204dbfbdb8fc121fb2a47988fe1a42a1981ac4e16ea4afc915e2d87b40d324"
+    },
+    {
+      "drill": "G7/restore",
+      "check": "bundle TRUSTED",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "drill": "G7/expiry",
+      "check": "exec refused after expiry",
+      "ok": true,
+      "detail": "{\"error\": \"slot is expired\"}"
+    },
+    {
+      "drill": "G7/expiry",
+      "check": "slot sealed as expired",
+      "ok": true,
+      "detail": "expired"
+    },
+    {
+      "drill": "G7/expiry",
+      "check": "termination time_expired",
+      "ok": true,
+      "detail": "{\"reason\": \"time_expired\", \"limits_at_stop\": {\"cpu_ms\": 300000, \"wall_ms\": 0, \"spend_minor\": 0, \"currency\": \"USD\"}, \"remaining\": {\"cpu_ms\": 0, \"wall_ms\": 0, \"spend_minor\": 0, \"currency\": \"USD\"}}"
+    },
+    {
+      "drill": "G7/expiry",
+      "check": "bundle TRUSTED",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "drill": "G3",
+      "check": "undeclared egress denied (non-zero exit)",
+      "ok": true,
+      "detail": "exit=6"
+    },
+    {
+      "drill": "G3",
+      "check": "denial recorded in task.execution.egress",
+      "ok": true,
+      "detail": "{\"destination\": \"undeclared\", \"bytes\": 0, \"allowed\": false, \"enforcer\": \"bwrap --unshare-net\", \"denied_reason\": \"net requested without declared destinations\"}"
+    },
+    {
+      "drill": "G3",
+      "check": "bundle TRUSTED",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "drill": "G6",
+      "check": "run journaled",
+      "ok": true,
+      "detail": "/home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/runs/slot-f84deb1429d6.json"
+    },
+    {
+      "drill": "G6",
+      "check": "kill within 5s",
+      "ok": true,
+      "detail": "238ms"
+    },
+    {
+      "drill": "G6",
+      "check": "kill_signal=operator",
+      "ok": true,
+      "detail": "{\"slot_id\": \"slot-f84deb1429d6\", \"state\": \"terminated\", \"kill_signal\": \"operator\", \"receipt_id\": \"urn:uuid:01a0b270-3116-7cf2-be6d-176c44fd1b97\", \"exec_active\": true}"
+    },
+    {
+      "drill": "G6",
+      "check": "run stopped and journal cleared",
+      "ok": true,
+      "detail": "exit=0 signal=operator"
+    },
+    {
+      "drill": "G6",
+      "check": "termination receipt operator",
+      "ok": true,
+      "detail": "{\"kill_signal\": \"operator\", \"operator_kill_latency_ms\": 43}"
+    },
+    {
+      "drill": "G6",
+      "check": "bundle TRUSTED",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "drill": "G2",
+      "check": "memory overrun killed slot",
+      "ok": true,
+      "detail": "exit=137 reason=quota"
+    },
+    {
+      "drill": "G2",
+      "check": "termination quota/memory_max",
+      "ok": true,
+      "detail": "{\"reason\": \"quota\", \"limits_at_stop\": {\"cpu_ms\": 300000, \"wall_ms\": 60000, \"spend_minor\": 0, \"currency\": \"USD\"}, \"remaining\": {\"cpu_ms\": 0, \"wall_ms\": 59000, \"spend_minor\": 0, \"currency\": \"USD\"}, \"kill_signal\": \"quota\", \"killed_by\": \"memory_max\", \"observed\": {\"exit\": 137, \"stdout_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}}"
+    },
+    {
+      "drill": "G2",
+      "check": "bundle TRUSTED",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "drill": "P1/disclosure",
+      "check": "redact re-signs the tail",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "drill": "P1/disclosure",
+      "check": "salt withheld -> PROVISIONAL",
+      "ok": true,
+      "detail": "PROVISIONAL"
+    },
+    {
+      "drill": "P1/disclosure",
+      "check": "disclosed -> TRUSTED",
+      "ok": true,
+      "detail": "TRUSTED"
+    },
+    {
+      "drill": "G8",
+      "check": "exec refused (rc=3, emitter_unavailable)",
+      "ok": true,
+      "detail": "{\"error\": \"receipt emitter unavailable: [Errno 13] Permission denied: '/home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/receipts/urn:uuid:01a0b270-385d-7fb0-b765-cb7c63b83543.tmp'\", \"code\": \"emitter_unavailable\"}"
+    },
+    {
+      "drill": "G8",
+      "check": "emitter restored, exec proceeds",
+      "ok": true,
+      "detail": "sha256:e209f13d112294680541219a291f2607710e7a2f61768cca9496b23a17e2201e"
+    }
+  ],
+  "passed": 33,
+  "total": 33,
+  "tasks": {
+    "flow_standard": "urn:uuid:01a0b270-1f31-7f05-a5a8-f78881b8c6d0",
+    "flow_snapshot": "urn:uuid:01a0b270-216a-7df7-81f3-7003282fdd00",
+    "flow_restore": "urn:uuid:01a0b270-2627-7b52-9fff-a15bb9fd6387",
+    "flow_expiry": "urn:uuid:01a0b270-285b-7ffe-a117-34d0c8407a86",
+    "flow_egress_deny": "urn:uuid:01a0b270-2e7d-725f-989d-53c043579004",
+    "flow_kill": "urn:uuid:01a0b270-3006-7f60-ae79-1c1220c3b67e",
+    "flow_quota_kill": "urn:uuid:01a0b270-325c-761a-97b8-b2013111e5ac"
+  },
+  "steps": [
+    {
+      "cmd": "mandala-ctl tenant-add --tenant dogfood --agent did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC",
+      "rc": 0,
+      "stdout": "{\n  \"tenant_id\": \"dogfood\",\n  \"agents\": [\n    \"did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC\"\n  ],\n  \"aup_version\": \"2026-09-17.1\",\n  \"settlement_ref\": null\n}\n",
+      "stderr": "",
+      "ms": 121
+    },
+    {
+      "cmd": "mandala-ctl pass --tenant dogfood --agent did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC --minutes 30 --spend-minor 1000",
+      "rc": 0,
+      "stdout": "{\n  \"pass_id\": \"pass-6ba583360dbf\",\n  \"slot_id\": \"slot-69656367fc85\",\n  \"endpoint\": \"gate://gate-lite-1/slot-69656367fc85\",\n  \"token\": \"eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa2hGbkZTTnJabWtKb0NGeHV3VWhFUERrVzJweDJKQTVBWXNtZXB3aEVyV2prIiwidHlwIjoiSldUIn0.eyJhdWQiOiJnYXRlLWxpdGUiLCJidWRnZXQiOnsiY3VycmVuY3kiOiJVU0QiLCJtaW5vciI6MTAwMH0sImV4cCI6MTc4OTcwMTg4NywiaXNzIjoiZ2F0ZTpnYXRlLWxpdGUtMSIsImp0aSI6IjAxYTBiMjcwLTFmMzAtNzdjNi05NTRmLTM4ZjNlZmYwNzg3ZCIsIm1hbmRhbGEiOnsiY2xhc3MiOiJnYXRlLWxpdGUiLCJxdW90YXMiOnsiY3B1X21zIjozMDAwMDAsImRpc2tfbWIiOjUxMiwibWVtX21iIjoxMDI0LCJ3YWxsX21zIjoxODAwMDAwfSwic2xvdF9jbGFzcyI6InNtYWxsIn0sInBvbGljeV92ZXJzaW9uIjoiMjAyNi0wOS0xNy4xIiwic3ViIjoiZGlkOmtleTp6Nk1ra0ExYWpMVjhnVnlLWGprNG9hYmltc1Z1ejRSTTlld2hLVjE4anBSenJ3Y0MifQ.tNlTm1-M9ZzPBU8jNwBW6Tt7sqnyjbbIQPf_N4NEWGcBTJeWfkLvY84-prU0FMnvs6wsSCPH4sdIFMgPv66EBw\",\n  \"quotas\": {\n    \"cpu_ms\": 300000,\n    \"mem_mb\": 1024,\n    \"disk_mb\": 512,\n    \"wall_ms\": 1800000\n  },\n  \"expires_at\": \"2026-09-18T03:24:47Z\",\n  \"receipt_id\": \"urn:uuid:01a0b270-1f31-75f2-9427-6b1541527cc8\"\n}\n",
+      "stderr": "",
+      "ms": 135
+    },
+    {
+      "cmd": "mandala-ctl exec --tenant dogfood --slot slot-69656367fc85 --payload-ref echo hello",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-69656367fc85\",\n  \"exit\": 0,\n  \"stdout_hash\": \"sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03\",\n  \"receipt_ids\": [\n    \"urn:uuid:01a0b270-1f96-7627-8657-3b15f86d5eee\",\n    \"urn:uuid:01a0b270-1fd2-7d52-b92c-8ebc08e91918\"\n  ],\n  \"stderr_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n}\n",
+      "stderr": "",
+      "ms": 162
+    },
+    {
+      "cmd": "mandala-ctl settle --tenant dogfood --slot slot-69656367fc85 --rail invoice --rail-ref dogfood-0001 --minor 0",
+      "rc": 0,
+      "stdout": "{\n  \"spec\": \"continuity-receipt/0.1\",\n  \"receipt_id\": \"urn:uuid:01a0b270-203c-72ac-93ad-3d8a96d7cb3a\",\n  \"task_id\": \"urn:uuid:01a0b270-1f31-7f05-a5a8-f78881b8c6d0\",\n  \"issued_at\": \"2026-09-18T02:54:47Z\",\n  \"issuer\": {\n    \"kind\": \"gate\",\n    \"id\": \"did:key:z6MkhFnFSNrZmkJoCFxuwUhEPDkW2px2JA5AYsmepwhErWjk\"\n  },\n  \"type\": \"settlement\",\n  \"seq\": 4,\n  \"prev\": \"sha256:c5108988d3ea4d7f9e7327cc9623bc211cb7e08b8086a83c86f4b7f17d5a033d\",\n  \"body\": {\n    \"rail\": \"invoice\",\n    \"rail_ref\": \"dogfood-0001\",\n    \"amount\": {\n      \"minor\": 0,\n      \"currency\": \"USD\"\n    },\n    \"gated_on_delivery\": true,\n    \"settled_at\": \"2026-09-18T02:54:47Z\"\n  },\n  \"sig\": {\n    \"alg\": \"ed25519\",\n    \"key\": \"did:key:z6MkhFnFSNrZmkJoCFxuwUhEPDkW2px2JA5AYsmepwhErWjk\",\n    \"value\": \"ABBsHzTsgU0TuQ9qFjkW522qLkzqVCA2vlPuH_IVydlGi8LyFSv5clUwfSOSoVUKKy8PETO2IXrL-z4G4kzeDg\"\n  }\n}\n",
+      "stderr": "",
+      "ms": 104
+    },
+    {
+      "cmd": "mandala-ctl terminate --tenant dogfood --slot slot-69656367fc85",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-69656367fc85\",\n  \"task_id\": \"urn:uuid:01a0b270-1f31-7f05-a5a8-f78881b8c6d0\",\n  \"receipt_id\": \"urn:uuid:01a0b270-20a2-761f-9415-49e791bfe80c\"\n}\n",
+      "stderr": "",
+      "ms": 100
+    },
+    {
+      "cmd": "mandala-ctl receipt --task-id urn:uuid:01a0b270-1f31-7f05-a5a8-f78881b8c6d0 --verdict",
+      "rc": 0,
+      "stdout": "{\n  \"verdict\": \"TRUSTED\",\n  \"errors\": [],\n  \"provisional_reasons\": [],\n  \"insufficient_reasons\": [],\n  \"summary\": {\n    \"receipts\": 6,\n    \"types\": [\n      \"session.pass.created\",\n      \"task.decision\",\n      \"task.execution\",\n      \"delivery.attestation\",\n      \"settlement\",\n      \"task.termination\"\n    ],\n    \"issuers\": [\n      \"did:key:z6MkhFnFSNrZmkJoCFxuwUhEPDkW2px2JA5AYsmepwhErWjk\"\n    ],\n    \"terminated\": true,\n    \"settled\": true\n  }\n}\n",
+      "stderr": "",
+      "ms": 97
+    },
+    {
+      "cmd": "mandala-ctl pass --tenant dogfood --agent did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC --minutes 10",
+      "rc": 0,
+      "stdout": "{\n  \"pass_id\": \"pass-36287648e820\",\n  \"slot_id\": \"slot-0c9957b269a3\",\n  \"endpoint\": \"gate://gate-lite-1/slot-0c9957b269a3\",\n  \"token\": \"eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa2hGbkZTTnJabWtKb0NGeHV3VWhFUERrVzJweDJKQTVBWXNtZXB3aEVyV2prIiwidHlwIjoiSldUIn0.eyJhdWQiOiJnYXRlLWxpdGUiLCJidWRnZXQiOnsiY3VycmVuY3kiOiJVU0QiLCJtaW5vciI6MH0sImV4cCI6MTc4OTcwMDY4OCwiaXNzIjoiZ2F0ZTpnYXRlLWxpdGUtMSIsImp0aSI6IjAxYTBiMjcwLTIxNmEtN2FmNy1hY2NjLWUyNjBkYWZmYTM0MiIsIm1hbmRhbGEiOnsiY2xhc3MiOiJnYXRlLWxpdGUiLCJxdW90YXMiOnsiY3B1X21zIjozMDAwMDAsImRpc2tfbWIiOjUxMiwibWVtX21iIjoxMDI0LCJ3YWxsX21zIjo2MDAwMDB9LCJzbG90X2NsYXNzIjoic21hbGwifSwicG9saWN5X3ZlcnNpb24iOiIyMDI2LTA5LTE3LjEiLCJzdWIiOiJkaWQ6a2V5Ono2TWtrQTFhakxWOGdWeUtYams0b2FiaW1zVnV6NFJNOWV3aEtWMThqcFJ6cndjQyJ9.xxl7Av9iTIPmOybBD1v0-isYljhFkGBfCt6GdhUCr7HurD0eqr4wCOuNv9YBGd1Cn8vck95EDZQdsIcL3oFXBw\",\n  \"quotas\": {\n    \"cpu_ms\": 300000,\n    \"mem_mb\": 1024,\n    \"disk_mb\": 512,\n    \"wall_ms\": 600000\n  },\n  \"expires_at\": \"2026-09-18T03:04:48Z\",\n  \"receipt_id\": \"urn:uuid:01a0b270-216a-75f6-abfd-7b59317a22ff\"\n}\n",
+      "stderr": "",
+      "ms": 178
+    },
+    {
+      "cmd": "mandala-ctl exec --tenant dogfood --slot slot-0c9957b269a3 --payload-ref {\"program\": \"python3\", \"args\": [\"-c\", \"print(6*7)\"]}",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-0c9957b269a3\",\n  \"exit\": 0,\n  \"stdout_hash\": \"sha256:084c799cd551dd1d8d5c5f9a5d593b2e931f5e36122ee5c793c1d08a19839cc0\",\n  \"receipt_ids\": [\n    \"urn:uuid:01a0b270-2220-7a7c-b0aa-7533e3ebef70\",\n    \"urn:uuid:01a0b270-2273-7741-9a69-1dd27b53a8b6\"\n  ],\n  \"stderr_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n}\n",
+      "stderr": "",
+      "ms": 192
+    },
+    {
+      "cmd": "mandala-ctl snapshot --tenant dogfood --slot slot-0c9957b269a3",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-0c9957b269a3\",\n  \"snapshot_id\": \"snap-50c9a811d4bd\",\n  \"receipt_id\": \"urn:uuid:01a0b270-22e1-77da-8c2b-1053c043f61c\",\n  \"state\": \"frozen\",\n  \"tree_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\n  \"artifact\": {\n    \"path\": \"/home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/snapshots/slot-0c9957b269a3/snap-50c9a811d4bd.tar.gz\",\n    \"sha256\": \"sha256:059f869cbac854a596e326445f711cc443f50c15200198194dfababc2a18204c\",\n    \"bytes\": 67\n  }\n}\n",
+      "stderr": "",
+      "ms": 111
+    },
+    {
+      "cmd": "mandala-ctl exec --tenant dogfood --slot slot-0c9957b269a3 --payload-ref echo frozen",
+      "rc": 2,
+      "stdout": "",
+      "stderr": "{\"error\": \"slot is frozen\"}\n",
+      "ms": 107
+    },
+    {
+      "cmd": "mandala-ctl terminate --tenant dogfood --slot slot-0c9957b269a3",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-0c9957b269a3\",\n  \"task_id\": \"urn:uuid:01a0b270-216a-7df7-81f3-7003282fdd00\",\n  \"receipt_id\": \"urn:uuid:01a0b270-23c9-7a2a-93dd-981f6e89f349\"\n}\n",
+      "stderr": "",
+      "ms": 119
+    },
+    {
+      "cmd": "mandala-ctl pass --tenant dogfood --agent did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC --minutes 5",
+      "rc": 0,
+      "stdout": "{\n  \"pass_id\": \"pass-ea987e3cde60\",\n  \"slot_id\": \"slot-cd358adcdc29\",\n  \"endpoint\": \"gate://gate-lite-1/slot-cd358adcdc29\",\n  \"token\": \"eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa2hGbkZTTnJabWtKb0NGeHV3VWhFUERrVzJweDJKQTVBWXNtZXB3aEVyV2prIiwidHlwIjoiSldUIn0.eyJhdWQiOiJnYXRlLWxpdGUiLCJidWRnZXQiOnsiY3VycmVuY3kiOiJVU0QiLCJtaW5vciI6MH0sImV4cCI6MTc4OTcwMDM4OCwiaXNzIjoiZ2F0ZTpnYXRlLWxpdGUtMSIsImp0aSI6IjAxYTBiMjcwLTI0MmYtN2ViYy1hYWYxLWRlMDZlNDMwYWFhYyIsIm1hbmRhbGEiOnsiY2xhc3MiOiJnYXRlLWxpdGUiLCJxdW90YXMiOnsiY3B1X21zIjozMDAwMDAsImRpc2tfbWIiOjUxMiwibWVtX21iIjoxMDI0LCJ3YWxsX21zIjozMDAwMDB9LCJzbG90X2NsYXNzIjoic21hbGwifSwicG9saWN5X3ZlcnNpb24iOiIyMDI2LTA5LTE3LjEiLCJzdWIiOiJkaWQ6a2V5Ono2TWtrQTFhakxWOGdWeUtYams0b2FiaW1zVnV6NFJNOWV3aEtWMThqcFJ6cndjQyJ9.vLITTAu9QokCwM-H8f3FztgWBrH5MVUUNTr7LOYDG9c1eIWKWQam0Am-OP6mpkVWCaT6bBNdEE1otBsF1HFJAQ\",\n  \"quotas\": {\n    \"cpu_ms\": 300000,\n    \"mem_mb\": 1024,\n    \"disk_mb\": 512,\n    \"wall_ms\": 300000\n  },\n  \"expires_at\": \"2026-09-18T02:59:48Z\",\n  \"receipt_id\": \"urn:uuid:01a0b270-242f-7406-abd2-8f1adef787c7\"\n}\n",
+      "stderr": "",
+      "ms": 102
+    },
+    {
+      "cmd": "mandala-ctl exec --tenant dogfood --slot slot-cd358adcdc29 --payload-ref {\"program\": \"python3\", \"args\": [\"-c\", \"open('/workspace/artifact.txt','w').write('written inside the sandbox')\"]}",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-cd358adcdc29\",\n  \"exit\": 0,\n  \"stdout_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\n  \"receipt_ids\": [\n    \"urn:uuid:01a0b270-2499-76d7-886f-3705e17b95dd\",\n    \"urn:uuid:01a0b270-24e7-727b-b9a7-e2b2c3cef83b\"\n  ],\n  \"stderr_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n}\n",
+      "stderr": "",
+      "ms": 180
+    },
+    {
+      "cmd": "mandala-ctl snapshot --tenant dogfood --slot slot-cd358adcdc29",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-cd358adcdc29\",\n  \"snapshot_id\": \"snap-d8b02f0bc684\",\n  \"receipt_id\": \"urn:uuid:01a0b270-2552-7e05-a8b1-29e2355cc084\",\n  \"state\": \"frozen\",\n  \"tree_hash\": \"sha256:eb5198cceb7957dd98fd5e3c76f842683704493ccfced681c602f48b81e2d888\",\n  \"artifact\": {\n    \"path\": \"/home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/snapshots/slot-cd358adcdc29/snap-d8b02f0bc684.tar.gz\",\n    \"sha256\": \"sha256:3668c66c27ff3b736ca1ded827a094be2e4c29f4594d8bdae83e132fdfa053ce\",\n    \"bytes\": 236\n  }\n}\n",
+      "stderr": "",
+      "ms": 106
+    },
+    {
+      "cmd": "mandala-ctl terminate --tenant dogfood --slot slot-cd358adcdc29 --reason destroyed",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-cd358adcdc29\",\n  \"task_id\": \"urn:uuid:01a0b270-242f-7ed3-94e7-05224ba9b528\",\n  \"receipt_id\": \"urn:uuid:01a0b270-25b8-70bc-b37c-f9740dd57240\"\n}\n",
+      "stderr": "",
+      "ms": 102
+    },
+    {
+      "cmd": "mandala-ctl pass --tenant dogfood --agent did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC --minutes 5",
+      "rc": 0,
+      "stdout": "{\n  \"pass_id\": \"pass-d5ed13de5c36\",\n  \"slot_id\": \"slot-44d4cde6bf26\",\n  \"endpoint\": \"gate://gate-lite-1/slot-44d4cde6bf26\",\n  \"token\": \"eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa2hGbkZTTnJabWtKb0NGeHV3VWhFUERrVzJweDJKQTVBWXNtZXB3aEVyV2prIiwidHlwIjoiSldUIn0.eyJhdWQiOiJnYXRlLWxpdGUiLCJidWRnZXQiOnsiY3VycmVuY3kiOiJVU0QiLCJtaW5vciI6MH0sImV4cCI6MTc4OTcwMDM4OSwiaXNzIjoiZ2F0ZTpnYXRlLWxpdGUtMSIsImp0aSI6IjAxYTBiMjcwLTI2MjYtNzQ1ZS05MGY3LWVhZTNiOThhMjUwOSIsIm1hbmRhbGEiOnsiY2xhc3MiOiJnYXRlLWxpdGUiLCJxdW90YXMiOnsiY3B1X21zIjozMDAwMDAsImRpc2tfbWIiOjUxMiwibWVtX21iIjoxMDI0LCJ3YWxsX21zIjozMDAwMDB9LCJzbG90X2NsYXNzIjoic21hbGwifSwicG9saWN5X3ZlcnNpb24iOiIyMDI2LTA5LTE3LjEiLCJzdWIiOiJkaWQ6a2V5Ono2TWtrQTFhakxWOGdWeUtYams0b2FiaW1zVnV6NFJNOWV3aEtWMThqcFJ6cndjQyJ9.kIE-qrJhynZNWXAOB6PwkZ6z_esXlcsdEnJKi28LPGo8deAToWznjxYa8rxBgIy9TqmX4traMChwXaOsl1AhCA\",\n  \"quotas\": {\n    \"cpu_ms\": 300000,\n    \"mem_mb\": 1024,\n    \"disk_mb\": 512,\n    \"wall_ms\": 300000\n  },\n  \"expires_at\": \"2026-09-18T02:59:49Z\",\n  \"receipt_id\": \"urn:uuid:01a0b270-2627-7bec-b9dd-b4c72efbc387\"\n}\n",
+      "stderr": "",
+      "ms": 111
+    },
+    {
+      "cmd": "mandala-ctl restore --tenant dogfood --slot slot-44d4cde6bf26 --snapshot snap-d8b02f0bc684",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-44d4cde6bf26\",\n  \"snapshot_id\": \"snap-d8b02f0bc684\",\n  \"workspace\": \"/home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/workspaces/slot-44d4cde6bf26\",\n  \"restored_hash\": \"sha256:eb5198cceb7957dd98fd5e3c76f842683704493ccfced681c602f48b81e2d888\",\n  \"receipt_id\": \"urn:uuid:01a0b270-2691-7381-8069-00841f0990e4\"\n}\n",
+      "stderr": "",
+      "ms": 113
+    },
+    {
+      "cmd": "mandala-ctl exec --tenant dogfood --slot slot-44d4cde6bf26 --payload-ref echo restored",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-44d4cde6bf26\",\n  \"exit\": 0,\n  \"stdout_hash\": \"sha256:09204dbfbdb8fc121fb2a47988fe1a42a1981ac4e16ea4afc915e2d87b40d324\",\n  \"receipt_ids\": [\n    \"urn:uuid:01a0b270-2704-7766-b6ad-b8e912fb8523\",\n    \"urn:uuid:01a0b270-2757-7aaf-acc8-7e19d5a60b4c\"\n  ],\n  \"stderr_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n}\n",
+      "stderr": "",
+      "ms": 201
+    },
+    {
+      "cmd": "mandala-ctl terminate --tenant dogfood --slot slot-44d4cde6bf26",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-44d4cde6bf26\",\n  \"task_id\": \"urn:uuid:01a0b270-2627-7b52-9fff-a15bb9fd6387\",\n  \"receipt_id\": \"urn:uuid:01a0b270-27db-7da0-8adb-b3e1cac83ede\"\n}\n",
+      "stderr": "",
+      "ms": 125
+    },
+    {
+      "cmd": "mandala-ctl pass --tenant dogfood --agent did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC --minutes 0",
+      "rc": 0,
+      "stdout": "{\n  \"pass_id\": \"pass-5780caefe391\",\n  \"slot_id\": \"slot-714f66fb4e54\",\n  \"endpoint\": \"gate://gate-lite-1/slot-714f66fb4e54\",\n  \"token\": \"eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa2hGbkZTTnJabWtKb0NGeHV3VWhFUERrVzJweDJKQTVBWXNtZXB3aEVyV2prIiwidHlwIjoiSldUIn0.eyJhdWQiOiJnYXRlLWxpdGUiLCJidWRnZXQiOnsiY3VycmVuY3kiOiJVU0QiLCJtaW5vciI6MH0sImV4cCI6MTc4OTcwMDA4OSwiaXNzIjoiZ2F0ZTpnYXRlLWxpdGUtMSIsImp0aSI6IjAxYTBiMjcwLTI4NWItN2Y5MC1iNTgzLTVmNzY1M2JjY2VmOCIsIm1hbmRhbGEiOnsiY2xhc3MiOiJnYXRlLWxpdGUiLCJxdW90YXMiOnsiY3B1X21zIjozMDAwMDAsImRpc2tfbWIiOjUxMiwibWVtX21iIjoxMDI0LCJ3YWxsX21zIjowfSwic2xvdF9jbGFzcyI6InNtYWxsIn0sInBvbGljeV92ZXJzaW9uIjoiMjAyNi0wOS0xNy4xIiwic3ViIjoiZGlkOmtleTp6Nk1ra0ExYWpMVjhnVnlLWGprNG9hYmltc1Z1ejRSTTlld2hLVjE4anBSenJ3Y0MifQ.uLcVuEJ5oo2rCjLihfJJBPObP5f6nTjooDGM65UaB8D22nhbnzVnodGLUNlJu-yBmG0Zex7ZQR--JRvjZY_sCg\",\n  \"quotas\": {\n    \"cpu_ms\": 300000,\n    \"mem_mb\": 1024,\n    \"disk_mb\": 512,\n    \"wall_ms\": 0\n  },\n  \"expires_at\": \"2026-09-18T02:54:49Z\",\n  \"receipt_id\": \"urn:uuid:01a0b270-285b-7039-aa31-f3d27adb8a08\"\n}\n",
+      "stderr": "",
+      "ms": 185
+    },
+    {
+      "cmd": "mandala-ctl exec --tenant dogfood --slot slot-714f66fb4e54 --payload-ref echo late",
+      "rc": 2,
+      "stdout": "",
+      "stderr": "{\"error\": \"slot is expired\"}\n",
+      "ms": 97
+    },
+    {
+      "cmd": "mandala-ctl status --tenant dogfood --slot slot-714f66fb4e54",
+      "rc": 0,
+      "stdout": "{\n  \"slot\": {\n    \"created_at\": 1789700089,\n    \"expires_at\": 1789700089,\n    \"pass_id\": \"pass-5780caefe391\",\n    \"quotas\": {\n      \"cpu_ms\": 300000,\n      \"disk_mb\": 512,\n      \"mem_mb\": 1024,\n      \"wall_ms\": 0\n    },\n    \"slot_class\": \"small\",\n    \"slot_id\": \"slot-714f66fb4e54\",\n    \"state\": \"expired\",\n    \"task_id\": \"urn:uuid:01a0b270-285b-7ffe-a117-34d0c8407a86\",\n    \"template\": \"default\",\n    \"tenant_id\": \"dogfood\"\n  }\n}\n",
+      "stderr": "",
+      "ms": 101
+    },
+    {
+      "cmd": "mandala-ctl status --tenant dogfood --slot slot-714f66fb4e54",
+      "rc": 0,
+      "stdout": "{\n  \"slot\": {\n    \"created_at\": 1789700089,\n    \"expires_at\": 1789700089,\n    \"pass_id\": \"pass-5780caefe391\",\n    \"quotas\": {\n      \"cpu_ms\": 300000,\n      \"disk_mb\": 512,\n      \"mem_mb\": 1024,\n      \"wall_ms\": 0\n    },\n    \"slot_class\": \"small\",\n    \"slot_id\": \"slot-714f66fb4e54\",\n    \"state\": \"expired\",\n    \"task_id\": \"urn:uuid:01a0b270-285b-7ffe-a117-34d0c8407a86\",\n    \"template\": \"default\",\n    \"tenant_id\": \"dogfood\"\n  }\n}\n",
+      "stderr": "",
+      "ms": 100
+    },
+    {
+      "cmd": "mandala-ctl pass --tenant dogfood --agent did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC --minutes 5",
+      "rc": 0,
+      "stdout": "{\n  \"pass_id\": \"pass-7d008794a795\",\n  \"slot_id\": \"slot-0e77e2540f4f\",\n  \"endpoint\": \"gate://gate-lite-1/slot-0e77e2540f4f\",\n  \"token\": \"eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa2hGbkZTTnJabWtKb0NGeHV3VWhFUERrVzJweDJKQTVBWXNtZXB3aEVyV2prIiwidHlwIjoiSldUIn0.eyJhdWQiOiJnYXRlLWxpdGUiLCJidWRnZXQiOnsiY3VycmVuY3kiOiJVU0QiLCJtaW5vciI6MH0sImV4cCI6MTc4OTcwMDM5MSwiaXNzIjoiZ2F0ZTpnYXRlLWxpdGUtMSIsImp0aSI6IjAxYTBiMjcwLTJlN2QtNzdiNS04OTZiLWJkMjA3ODMwYWFjZSIsIm1hbmRhbGEiOnsiY2xhc3MiOiJnYXRlLWxpdGUiLCJxdW90YXMiOnsiY3B1X21zIjozMDAwMDAsImRpc2tfbWIiOjUxMiwibWVtX21iIjoxMDI0LCJ3YWxsX21zIjozMDAwMDB9LCJzbG90X2NsYXNzIjoic21hbGwifSwicG9saWN5X3ZlcnNpb24iOiIyMDI2LTA5LTE3LjEiLCJzdWIiOiJkaWQ6a2V5Ono2TWtrQTFhakxWOGdWeUtYams0b2FiaW1zVnV6NFJNOWV3aEtWMThqcFJ6cndjQyJ9.nyvSNC4lLr3FERiCCsUY5I4NWg-p01H2EpSqvt2O2Y-5YOkhblCGhuG6mOtGqGK8J994geMOpk4fioor6F0iAQ\",\n  \"quotas\": {\n    \"cpu_ms\": 300000,\n    \"mem_mb\": 1024,\n    \"disk_mb\": 512,\n    \"wall_ms\": 300000\n  },\n  \"expires_at\": \"2026-09-18T02:59:51Z\",\n  \"receipt_id\": \"urn:uuid:01a0b270-2e7d-76fd-9b25-480b6e6d1a20\"\n}\n",
+      "stderr": "",
+      "ms": 106
+    },
+    {
+      "cmd": "mandala-ctl exec --tenant dogfood --slot slot-0e77e2540f4f --payload-ref {\"program\": \"curl\", \"args\": [\"-sS\", \"-m\", \"5\", \"https://example.com\"], \"net\": true, \"egress\": []}",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-0e77e2540f4f\",\n  \"exit\": 6,\n  \"stdout_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\n  \"receipt_ids\": [\n    \"urn:uuid:01a0b270-2ee0-719a-b3e0-2144ff7325d8\",\n    \"urn:uuid:01a0b270-2f28-7f42-b5b3-aa727c280c78\"\n  ],\n  \"stderr_hash\": \"sha256:d24547ca5c87c346d5dbb7562bbd58c402ca0a04f511227ff648d5858adb162f\"\n}\n",
+      "stderr": "",
+      "ms": 174
+    },
+    {
+      "cmd": "mandala-ctl terminate --tenant dogfood --slot slot-0e77e2540f4f",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-0e77e2540f4f\",\n  \"task_id\": \"urn:uuid:01a0b270-2e7d-725f-989d-53c043579004\",\n  \"receipt_id\": \"urn:uuid:01a0b270-2f95-7b51-bb42-15e72e5d6eaf\"\n}\n",
+      "stderr": "",
+      "ms": 105
+    },
+    {
+      "cmd": "mandala-ctl pass --tenant dogfood --agent did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC --minutes 5",
+      "rc": 0,
+      "stdout": "{\n  \"pass_id\": \"pass-abeacaeef906\",\n  \"slot_id\": \"slot-f84deb1429d6\",\n  \"endpoint\": \"gate://gate-lite-1/slot-f84deb1429d6\",\n  \"token\": \"eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa2hGbkZTTnJabWtKb0NGeHV3VWhFUERrVzJweDJKQTVBWXNtZXB3aEVyV2prIiwidHlwIjoiSldUIn0.eyJhdWQiOiJnYXRlLWxpdGUiLCJidWRnZXQiOnsiY3VycmVuY3kiOiJVU0QiLCJtaW5vciI6MH0sImV4cCI6MTc4OTcwMDM5MSwiaXNzIjoiZ2F0ZTpnYXRlLWxpdGUtMSIsImp0aSI6IjAxYTBiMjcwLTMwMDYtNzY1Yi04ODdkLWI1YzQ3M2MzYzc1OCIsIm1hbmRhbGEiOnsiY2xhc3MiOiJnYXRlLWxpdGUiLCJxdW90YXMiOnsiY3B1X21zIjozMDAwMDAsImRpc2tfbWIiOjUxMiwibWVtX21iIjoxMDI0LCJ3YWxsX21zIjozMDAwMDB9LCJzbG90X2NsYXNzIjoic21hbGwifSwicG9saWN5X3ZlcnNpb24iOiIyMDI2LTA5LTE3LjEiLCJzdWIiOiJkaWQ6a2V5Ono2TWtrQTFhakxWOGdWeUtYams0b2FiaW1zVnV6NFJNOWV3aEtWMThqcFJ6cndjQyJ9.xicSEuSj5fndu6-sFjBB72IqsKg6cpP1M6zEl-47iTqNNrNS24lnGR_4VWMZbI0idSMYoQuvtfZ_gxGEx6yzCw\",\n  \"quotas\": {\n    \"cpu_ms\": 300000,\n    \"mem_mb\": 1024,\n    \"disk_mb\": 512,\n    \"wall_ms\": 300000\n  },\n  \"expires_at\": \"2026-09-18T02:59:51Z\",\n  \"receipt_id\": \"urn:uuid:01a0b270-3006-7238-9b05-ca52fd214979\"\n}\n",
+      "stderr": "",
+      "ms": 111
+    },
+    {
+      "cmd": "mandala-ctl kill --tenant dogfood --slot slot-f84deb1429d6 --wait 5",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-f84deb1429d6\",\n  \"state\": \"terminated\",\n  \"kill_signal\": \"operator\",\n  \"receipt_id\": \"urn:uuid:01a0b270-3116-7cf2-be6d-176c44fd1b97\",\n  \"exec_active\": true\n}\n",
+      "stderr": "",
+      "ms": 238
+    },
+    {
+      "cmd": "mandala-ctl status --tenant dogfood --slot slot-f84deb1429d6",
+      "rc": 0,
+      "stdout": "{\n  \"slot\": {\n    \"created_at\": 1789700091,\n    \"expires_at\": 1789700391,\n    \"pass_id\": \"pass-abeacaeef906\",\n    \"quotas\": {\n      \"cpu_ms\": 300000,\n      \"disk_mb\": 512,\n      \"mem_mb\": 1024,\n      \"wall_ms\": 300000\n    },\n    \"slot_class\": \"small\",\n    \"slot_id\": \"slot-f84deb1429d6\",\n    \"state\": \"terminated\",\n    \"task_id\": \"urn:uuid:01a0b270-3006-7f60-ae79-1c1220c3b67e\",\n    \"template\": \"default\",\n    \"tenant_id\": \"dogfood\"\n  }\n}\n",
+      "stderr": "",
+      "ms": 123
+    },
+    {
+      "cmd": "mandala-ctl pass --tenant dogfood --agent did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC --minutes 1",
+      "rc": 0,
+      "stdout": "{\n  \"pass_id\": \"pass-588138dcf9dd\",\n  \"slot_id\": \"slot-3be5e594a261\",\n  \"endpoint\": \"gate://gate-lite-1/slot-3be5e594a261\",\n  \"token\": \"eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa2hGbkZTTnJabWtKb0NGeHV3VWhFUERrVzJweDJKQTVBWXNtZXB3aEVyV2prIiwidHlwIjoiSldUIn0.eyJhdWQiOiJnYXRlLWxpdGUiLCJidWRnZXQiOnsiY3VycmVuY3kiOiJVU0QiLCJtaW5vciI6MH0sImV4cCI6MTc4OTcwMDE1MiwiaXNzIjoiZ2F0ZTpnYXRlLWxpdGUtMSIsImp0aSI6IjAxYTBiMjcwLTMyNWMtN2ZmMy05YjZhLWE3MjQ2ZDhlZDJiOSIsIm1hbmRhbGEiOnsiY2xhc3MiOiJnYXRlLWxpdGUiLCJxdW90YXMiOnsiY3B1X21zIjozMDAwMDAsImRpc2tfbWIiOjUxMiwibWVtX21iIjoxMDI0LCJ3YWxsX21zIjo2MDAwMH0sInNsb3RfY2xhc3MiOiJzbWFsbCJ9LCJwb2xpY3lfdmVyc2lvbiI6IjIwMjYtMDktMTcuMSIsInN1YiI6ImRpZDprZXk6ejZNa2tBMWFqTFY4Z1Z5S1hqazRvYWJpbXNWdXo0Uk05ZXdoS1YxOGpwUnpyd2NDIn0.j4rJxjCL-LBIMu1CLKtxHdUHqj0dW2WYaBce7-pR6UKcfOJNkp66NqKbDEV-wmBSStPSly5hx2Kz-sdUNVq9AQ\",\n  \"quotas\": {\n    \"cpu_ms\": 300000,\n    \"mem_mb\": 1024,\n    \"disk_mb\": 512,\n    \"wall_ms\": 60000\n  },\n  \"expires_at\": \"2026-09-18T02:55:52Z\",\n  \"receipt_id\": \"urn:uuid:01a0b270-325c-7ff2-81ca-3c21bd2adc48\"\n}\n",
+      "stderr": "",
+      "ms": 133
+    },
+    {
+      "cmd": "mandala-ctl exec --tenant dogfood --slot slot-3be5e594a261 --payload-ref {\"program\": \"python3\", \"args\": [\"-c\", \"x=bytearray(2*1024**3); print(len(x))\"]}",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-3be5e594a261\",\n  \"exit\": 137,\n  \"stdout_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\n  \"receipt_ids\": [\n    \"urn:uuid:01a0b270-32d8-72ba-a6a2-860a9eadf687\",\n    \"urn:uuid:01a0b270-35eb-7c6f-915e-854ca5530e3a\",\n    \"urn:uuid:01a0b270-35ec-7f8b-b267-4be4ed0fb2dd\"\n  ],\n  \"stderr_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\n  \"kill_signal\": \"quota\",\n  \"reason\": \"quota\"\n}\n",
+      "stderr": "",
+      "ms": 968
+    },
+    {
+      "cmd": "mandala-ctl status --tenant dogfood --slot slot-3be5e594a261",
+      "rc": 0,
+      "stdout": "{\n  \"slot\": {\n    \"created_at\": 1789700092,\n    \"expires_at\": 1789700152,\n    \"pass_id\": \"pass-588138dcf9dd\",\n    \"quotas\": {\n      \"cpu_ms\": 300000,\n      \"disk_mb\": 512,\n      \"mem_mb\": 1024,\n      \"wall_ms\": 60000\n    },\n    \"slot_class\": \"small\",\n    \"slot_id\": \"slot-3be5e594a261\",\n    \"state\": \"terminated\",\n    \"task_id\": \"urn:uuid:01a0b270-325c-761a-97b8-b2013111e5ac\",\n    \"template\": \"default\",\n    \"tenant_id\": \"dogfood\"\n  }\n}\n",
+      "stderr": "",
+      "ms": 110
+    },
+    {
+      "cmd": "-m continuity_receipt.disclose redact --bundle /home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/receipts/urn:uuid:01a0b270-1f31-7f05-a5a8-f78881b8c6d0.json --path receipts[3].body.spec_ref --out /home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/g1-redacted.json --map /home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/g1-disclosure.json --gate-key /home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/gate.key",
+      "rc": 0,
+      "stdout": "",
+      "stderr": "",
+      "ms": 105
+    },
+    {
+      "cmd": "-m continuity_receipt.disclose verify --bundle /home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/g1-redacted.json",
+      "rc": 1,
+      "stdout": "{\n  \"verdict\": \"PROVISIONAL\",\n  \"errors\": [],\n  \"provisional_reasons\": [\n    \"redacted_without_disclosure:receipts[3].body.spec_ref\"\n  ],\n  \"insufficient_reasons\": [],\n  \"summary\": {\n    \"receipts\": 6,\n    \"types\": [\n      \"session.pass.created\",\n      \"task.decision\",\n      \"task.execution\",\n      \"delivery.attestation\",\n      \"settlement\",\n      \"task.termination\"\n    ],\n    \"issuers\": [\n      \"did:key:z6MkhFnFSNrZmkJoCFxuwUhEPDkW2px2JA5AYsmepwhErWjk\"\n    ],\n    \"terminated\": true,\n    \"settled\": true\n  }\n}\n",
+      "stderr": "",
+      "ms": 104
+    },
+    {
+      "cmd": "-m continuity_receipt.disclose verify --bundle /home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/g1-redacted.json --map /home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/g1-disclosure.json",
+      "rc": 0,
+      "stdout": "{\n  \"verdict\": \"TRUSTED\",\n  \"errors\": [],\n  \"provisional_reasons\": [],\n  \"insufficient_reasons\": [],\n  \"summary\": {\n    \"receipts\": 6,\n    \"types\": [\n      \"session.pass.created\",\n      \"task.decision\",\n      \"task.execution\",\n      \"delivery.attestation\",\n      \"settlement\",\n      \"task.termination\"\n    ],\n    \"issuers\": [\n      \"did:key:z6MkhFnFSNrZmkJoCFxuwUhEPDkW2px2JA5AYsmepwhErWjk\"\n    ],\n    \"terminated\": true,\n    \"settled\": true\n  }\n}\n",
+      "stderr": "",
+      "ms": 115
+    },
+    {
+      "cmd": "mandala-ctl pass --tenant dogfood --agent did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC --minutes 5",
+      "rc": 0,
+      "stdout": "{\n  \"pass_id\": \"pass-a4187f99f102\",\n  \"slot_id\": \"slot-92fed7c998b9\",\n  \"endpoint\": \"gate://gate-lite-1/slot-92fed7c998b9\",\n  \"token\": \"eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa2hGbkZTTnJabWtKb0NGeHV3VWhFUERrVzJweDJKQTVBWXNtZXB3aEVyV2prIiwidHlwIjoiSldUIn0.eyJhdWQiOiJnYXRlLWxpdGUiLCJidWRnZXQiOnsiY3VycmVuY3kiOiJVU0QiLCJtaW5vciI6MH0sImV4cCI6MTc4OTcwMDM5NCwiaXNzIjoiZ2F0ZTpnYXRlLWxpdGUtMSIsImp0aSI6IjAxYTBiMjcwLTM4NWQtNzRiZS05ZDRjLTdhZTZiMjUyNmM5OSIsIm1hbmRhbGEiOnsiY2xhc3MiOiJnYXRlLWxpdGUiLCJxdW90YXMiOnsiY3B1X21zIjozMDAwMDAsImRpc2tfbWIiOjUxMiwibWVtX21iIjoxMDI0LCJ3YWxsX21zIjozMDAwMDB9LCJzbG90X2NsYXNzIjoic21hbGwifSwicG9saWN5X3ZlcnNpb24iOiIyMDI2LTA5LTE3LjEiLCJzdWIiOiJkaWQ6a2V5Ono2TWtrQTFhakxWOGdWeUtYams0b2FiaW1zVnV6NFJNOWV3aEtWMThqcFJ6cndjQyJ9.FUdlJ-FLFbUOqNz2MsoIQUgL5EhqJI8BHhZODID3LUNbArtTlAJNgHloEcPIZLjz-SfrgSQSw_4M_OxjiIKrCA\",\n  \"quotas\": {\n    \"cpu_ms\": 300000,\n    \"mem_mb\": 1024,\n    \"disk_mb\": 512,\n    \"wall_ms\": 300000\n  },\n  \"expires_at\": \"2026-09-18T02:59:54Z\",\n  \"receipt_id\": \"urn:uuid:01a0b270-385d-7178-affe-fc747b677b57\"\n}\n",
+      "stderr": "",
+      "ms": 132
+    },
+    {
+      "cmd": "mandala-ctl exec --tenant dogfood --slot slot-92fed7c998b9 --payload-ref echo unrecorded",
+      "rc": 3,
+      "stdout": "",
+      "stderr": "{\"error\": \"receipt emitter unavailable: [Errno 13] Permission denied: '/home/lucas/Desktop/MANDALA_OS/gate-lite/evidence/2026-09-18/state/receipts/urn:uuid:01a0b270-385d-7fb0-b765-cb7c63b83543.tmp'\", \"code\": \"emitter_unavailable\"}\n",
+      "ms": 146
+    },
+    {
+      "cmd": "mandala-ctl exec --tenant dogfood --slot slot-92fed7c998b9 --payload-ref echo recovered",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-92fed7c998b9\",\n  \"exit\": 0,\n  \"stdout_hash\": \"sha256:e209f13d112294680541219a291f2607710e7a2f61768cca9496b23a17e2201e\",\n  \"receipt_ids\": [\n    \"urn:uuid:01a0b270-3980-79fa-a500-eb01dd1ad70b\",\n    \"urn:uuid:01a0b270-39ee-7313-bb45-fbe23699f7f7\"\n  ],\n  \"stderr_hash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n}\n",
+      "stderr": "",
+      "ms": 250
+    },
+    {
+      "cmd": "mandala-ctl terminate --tenant dogfood --slot slot-92fed7c998b9",
+      "rc": 0,
+      "stdout": "{\n  \"slot_id\": \"slot-92fed7c998b9\",\n  \"task_id\": \"urn:uuid:01a0b270-385d-7fb0-b765-cb7c63b83543\",\n  \"receipt_id\": \"urn:uuid:01a0b270-3a70-7c3d-bce2-fb6d46983a82\"\n}\n",
+      "stderr": "",
+      "ms": 131
+    }
+  ]
+}
