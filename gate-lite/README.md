@@ -19,7 +19,7 @@ gate_lite/            orchestrator: pass → exec → settle → terminate
 tools/make_vectors.py generates the spec test vectors (0.3)
 tools/dogfood_run.py  full CLI dogfood on the real runner, evidence capture
 tools/install_sweep_timer.sh  systemd user timer for the expiry sweep
-tests/                unittest suites (79 tests)
+tests/                unittest suites (86 tests)
 vectors/              generated bundles + INDEX.md
 evidence/             dogfood runs (run.json, SUMMARY.md, bundles, transcript)
 Dependency:           continuity-receipt>=0.3.1 (PyPI; 0.3.3 exercised)
@@ -175,7 +175,7 @@ choice, not a scaling need. Earlier fixes from the same suite:
   tenant scoping, disk-backed chains across CLI processes, SQLite registry —
   **done**.
 - MCP control surface: **done** — stdio + loopback HTTP/SSE, 14 tools
-  (**79 tests total green**).
+  (**86 tests total green**).
 - Acceptance: **G1–G8 pass** (G7 now includes snapshot → destroy → recreate →
   restore roundtrip with runner-written artifacts). Snapshot is
   filesystem-only by decision.
@@ -192,6 +192,13 @@ choice, not a scaling need. Earlier fixes from the same suite:
   rejects agents not registered to the tenant; replay is durable, so a token
   executes once ever, not once per process. `idempotency_key` replay of a
   completed exec still returns the cached result without re-consuming.
+- Idempotency scoping (2026-09-24 follow-up, board #203/#204): cached results
+  are returned only after tenant + token authorization (auth precedes the
+  cache on every path); keys are tenant(+agent/slot) scoped
+  (`pass:<tenant>:<agent>:<key>`, `exec:<tenant>:<slot>:<key>`); reusing a key
+  with a different request is rejected (`idempotency key reused with a
+  different request`). State rejections (frozen/terminated/expired) now also
+  require a valid token. Legacy global-key cache entries are unreachable.
 - Not yet: gate-hard (microVM floor), external-anchor issuance (policy decided;
   OTS proof verification is a 0.3 item), WM-store + karma-ledger registry
   integration. See `HANDOFF_2026-09-18.md` and
