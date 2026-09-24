@@ -39,7 +39,7 @@ each claim; older narrative below is kept as a dated record.
 
 | Component | Repo / artifact | Version | Evidence date | State |
 |---|---|---|---|---|
-| gate-lite | `mandala-os` (private); public snapshot `mandalaos-gate-lite` | spec 0.3 via `continuity-receipt` 0.3.3 | 2026-09-24 (71 tests green) | built + locally tested; stub-safety guard added; public snapshot is the 2026-09-18 curation (refresh pending) |
+| gate-lite | `mandala-os` (private); public snapshot `mandalaos-gate-lite` | spec 0.3 via `continuity-receipt` 0.3.3 | 2026-09-24 (79 tests green) | built + locally tested; stub-safety guard + authorization contract added; public snapshot is the 2026-09-18 curation (refresh pending) |
 | Continuity Receipt | `continuity-receipt` (public) | 0.3.3 (PyPI + crates.io) | 2026-09-23 | spec published; 0.4 hardening in flight (board #192) |
 | Eval endpoint | live at `api.whitemagic.dev/eval` | — | 2026-09-24 (24 tests green; `/eval/health` ok) | hosted (evaluation infrastructure, not a product surface) |
 | Sovereign | `mandalaos-sovereign` (private) | WM pin v9.2.7 | VM dogfood 2026-09-15 | built + VM tested; pin bump needs a fresh VM re-verify |
@@ -102,10 +102,11 @@ first.
 
 **Update 2026-09-24:** gate-lite emits spec **0.3** via the published PyPI
 implementation (vendored copy dropped, `77821a7`); S2b pass binding
-(`c310b22`) and the stub-safety guard landed; next slices are the narrow
-authorization contract (tenant agent list at issuance, required durable token
-at exec), a stranger-install re-run, then public-snapshot curation. CR spec
-0.4 hardening is in flight (board #192).
+(`c310b22`), the stub-safety guard, and the **authorization contract** landed
+(tenant agent list enforced at issuance; required single-use token at exec;
+replay durable across restarts and concurrent requests). Next: stranger-install
+re-run, then public-snapshot curation. CR spec 0.4 hardening is in flight
+(board #192).
 
 ### 2026-08-28 research pass (key external findings)
 - **seL4 path is viable:** MCS verified on RISC-V (2026), confidentiality proof on AArch64 completed Aug 2026; `rust-sel4` 5.0 + Microkit 2.3 are mature scaffolding.

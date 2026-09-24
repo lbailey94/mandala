@@ -19,7 +19,7 @@ gate_lite/            orchestrator: pass → exec → settle → terminate
 tools/make_vectors.py generates the spec test vectors (0.3)
 tools/dogfood_run.py  full CLI dogfood on the real runner, evidence capture
 tools/install_sweep_timer.sh  systemd user timer for the expiry sweep
-tests/                unittest suites (71 tests)
+tests/                unittest suites (79 tests)
 vectors/              generated bundles + INDEX.md
 evidence/             dogfood runs (run.json, SUMMARY.md, bundles, transcript)
 Dependency:           continuity-receipt>=0.3.1 (PyPI; 0.3.3 exercised)
@@ -33,11 +33,12 @@ python3 -m unittest discover -s tests -v
 
 CTL=gate_lite/ctl.py
 python3 $CTL --state ./state tenant-add --tenant dogfood --agent did:key:zSmokeAgent1
+# `pass` prints a single-use token; exec requires it (bound to agent + slot)
 python3 $CTL --state ./state pass --tenant dogfood --agent did:key:zSmokeAgent1 \
     --minutes 30 --spend-minor 1000
 # exec refuses without a real runner; --demo opts into simulated (stub) execution
 python3 $CTL --state ./state --demo exec --tenant dogfood --slot <slot_id> \
-    --payload-ref "echo hello"
+    --payload-ref "echo hello" --token <token>
 python3 $CTL --state ./state settle --tenant dogfood --slot <slot_id> \
     --rail-ref inv-1 --minor 200
 python3 $CTL --state ./state terminate --tenant dogfood --slot <slot_id>
@@ -62,7 +63,9 @@ python3 -m gate_lite.mcp_server --state ./state --tenant dogfood --demo \
 
 The server refuses to start without a configured sandbox runner unless
 `--demo` is passed (`--runner`/`--slice` or `WM_GATELITE_RUNNER` otherwise);
-`mandala.status` reports the effective runner.
+`mandala.status` reports the effective runner. `mandala.exec` requires the
+single-use pass token from `mandala.pass` (bound to agent + slot; durable
+replay rejection).
 
 JSON-RPC 2.0 (`initialize`, `ping`, `tools/list`, `tools/call`) with no
 third-party MCP SDK dependency. Tools: `mandala.pass`, `mandala.pass.verify`,
@@ -161,11 +164,18 @@ choice, not a scaling need. Earlier fixes from the same suite:
   run without a configured sandbox runner unless `--demo` is explicit; exec
   receipts carry `sandbox_class`, `mandala.status` reports the effective
   runner.
+- Authorization contract (2026-09-24): pass issuance requires the agent to be
+  in the tenant's registered agent list; exec requires a pass token bound to
+  that agent + slot (CLI `--token` required; MCP `token` required); jti
+  replay is durable (`consumed_tokens` in the SQLite registry) and atomic
+  under concurrent requests; attempts rejected before any work starts (state
+  checks, CAS loss, emitter down, runner pre-start failure) release the
+  token. Cross-tenant slot access was already denied and is unchanged.
 - Orchestrator v0: pass/exec/settle/terminate/kill/snapshot, idempotency,
   tenant scoping, disk-backed chains across CLI processes, SQLite registry —
   **done**.
 - MCP control surface: **done** — stdio + loopback HTTP/SSE, 14 tools
-  (**71 tests total green**).
+  (**79 tests total green**).
 - Acceptance: **G1–G8 pass** (G7 now includes snapshot → destroy → recreate →
   restore roundtrip with runner-written artifacts). Snapshot is
   filesystem-only by decision.
@@ -176,9 +186,12 @@ choice, not a scaling need. Earlier fixes from the same suite:
 - Benchmarked: `tools/bench.py` + `evidence/bench-2026-09-18-sqlite/` (14/14
   invariants; registry scaling fixed).
 - Expiry sweep cadence: **systemd user timer installer** (`tools/install_sweep_timer.sh`).
-- Known gap (next slice): pass issuance does not yet enforce the tenant's
-  registered agent list, and MCP exec does not require a token; replay state is
-  process-local. Cross-tenant slot access is already denied.
+- Compatibility changes (2026-09-24, authorization contract): `mandala-ctl
+  exec` now **requires `--token`** (from the `pass` output); `mandala.exec`
+  over MCP now **requires `token`** (schema `required` updated); `mandala.pass`
+  rejects agents not registered to the tenant; replay is durable, so a token
+  executes once ever, not once per process. `idempotency_key` replay of a
+  completed exec still returns the cached result without re-consuming.
 - Not yet: gate-hard (microVM floor), external-anchor issuance (policy decided;
   OTS proof verification is a 0.3 item), WM-store + karma-ledger registry
   integration. See `HANDOFF_2026-09-18.md` and
