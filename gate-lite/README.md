@@ -35,7 +35,7 @@ python3 -m venv .venv
 PY=.venv/bin/python
 
 $PY tools/make_vectors.py        # rewrites the tracked vectors (fresh ids/timestamps)
-$PY -m unittest discover -s tests -v
+$PY -m unittest discover -s tests -v   # OOM-seal drill is opt-in: GATE_LITE_QUOTA_TESTS=1
 
 CTL=gate_lite/ctl.py
 $PY $CTL --state ./state tenant-add --tenant dogfood --agent did:key:zSmokeAgent1
