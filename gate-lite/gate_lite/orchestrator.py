@@ -652,10 +652,10 @@ class Orchestrator:
         principal_id: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict:
-        if idempotency_key:
-            cached = self.registry.recall(f"pass:{idempotency_key}")
-            if cached:
-                return cached
+        # Authorization precedes the idempotency cache: membership is checked
+        # before a cached pass (and its token) can be returned. Cache keys are
+        # tenant+agent scoped, and a key cannot be reused with different
+        # request parameters.
         tenant = self.registry.get_tenant(tenant_id)
         if tenant is None:
             raise KeyError(f"unknown tenant {tenant_id}")
@@ -666,6 +666,21 @@ class Orchestrator:
             )
         if slot_class not in SLOT_CLASSES:
             raise ValueError(f"unknown slot class {slot_class}")
+        request = {
+            "minutes": minutes,
+            "slot_class": slot_class,
+            "spend_cap": spend_cap,
+            "principal_id": principal_id,
+        }
+        cache_key = (
+            f"pass:{tenant_id}:{agent_did}:{idempotency_key}" if idempotency_key else None
+        )
+        if cache_key:
+            cached = self.registry.recall(cache_key)
+            if cached is not None:
+                if cached.get("request") != request:
+                    raise ValueError("idempotency key reused with a different request")
+                return cached["result"]
 
         quotas = dict(SLOT_CLASSES[slot_class])
         quotas["wall_ms"] = minutes * 60000
@@ -747,8 +762,8 @@ class Orchestrator:
             "expires_at": rfc3339(expires_at),
             "receipt_id": receipt["receipt_id"],
         }
-        if idempotency_key:
-            self.registry.remember(f"pass:{idempotency_key}", result)
+        if cache_key:
+            self.registry.remember(cache_key, {"request": request, "result": result})
         return result
 
     def _authorized_slot(self, tenant_id: str, slot_id: str) -> dict:
@@ -759,14 +774,12 @@ class Orchestrator:
             raise PermissionError("cross-tenant access denied")
         return slot
 
-    def _authorize_exec(self, slot: dict, token: str | None, agent_id: str | None) -> str:
-        """Enforce the exec authorization contract; returns the consumed jti.
+    def _verify_exec_token(self, slot: dict, token: str | None, agent_id: str | None) -> dict:
+        """Verify the exec token and its bindings; returns the claims.
 
-        Rules: a token is required; it must verify against this gate, be
-        unexpired, bind to this slot's pass, name the pass's agent (and the
-        caller-supplied agent, when given), and not have been consumed before.
-        Consumption is atomic and durable (`registry.consume_jti`), so replay
-        is rejected across restarts and concurrent requests.
+        No side effects: consumption is a separate, explicit step
+        (`_consume_exec_jti`), so idempotent-replay hits can verify without
+        re-consuming and rejected attempts never burn a token.
         """
         if not token:
             raise PassError(
@@ -788,10 +801,14 @@ class Orchestrator:
             raise PassError("token_invalid", "pass record not found")
         if pass_record.get("agent_id") != claims.get("sub"):
             raise PassError("token_subject_mismatch", "token subject is not the pass agent")
-        jti = claims.get("jti")
-        if not jti:
+        if not claims.get("jti"):
             raise PassError("token_invalid", "pass token has no jti")
-        if not self.registry.consume_jti(jti, slot["slot_id"]):
+        return claims
+
+    def _consume_exec_jti(self, claims: dict, slot_id: str) -> str:
+        """Atomically consume the jti; durable replay rejection. Returns the jti."""
+        jti = claims["jti"]
+        if not self.registry.consume_jti(jti, slot_id):
             raise PassError("pass_replayed", "pass token was already used")
         return jti
 
@@ -804,17 +821,27 @@ class Orchestrator:
         token: str | None = None,
         agent_id: str | None = None,
     ) -> dict:
-        if idempotency_key:
-            cached = self.registry.recall(f"exec:{idempotency_key}")
-            if cached:
-                return cached
+        # Authorization precedes the idempotency cache on every path: a cached
+        # result is only returned to a caller that passes the tenant check and
+        # presents a valid token bound to this slot/pass/agent, and only for
+        # the original payload. Cache keys are tenant+slot scoped.
         slot = self._authorized_slot(tenant_id, slot_id)
+        claims = self._verify_exec_token(slot, token, agent_id)
+        cache_key = (
+            f"exec:{tenant_id}:{slot_id}:{idempotency_key}" if idempotency_key else None
+        )
+        if cache_key:
+            cached = self.registry.recall(cache_key)
+            if cached is not None:
+                if cached.get("request", {}).get("payload_ref") != payload_ref:
+                    raise ValueError("idempotency key reused with a different request")
+                return cached["result"]
         if self._expire_if_needed(slot):
             raise ValueError("slot is expired")
         if slot["state"] in BLOCKED_STATES:
             raise ValueError(f"slot is {slot['state']}")
         previous_state = slot["state"]
-        jti = self._authorize_exec(slot, token, agent_id)
+        jti = self._consume_exec_jti(claims, slot_id)
 
         # Atomic start (issue #1): reserve the slot with a run generation
         # before any receipt or side effect, so a concurrent kill/expiry can
@@ -962,8 +989,10 @@ class Orchestrator:
         else:
             self.registry.cas_slot(slot_id, (STARTING_STATE,), {"state": "active"})
 
-        if idempotency_key:
-            self.registry.remember(f"exec:{idempotency_key}", response)
+        if cache_key:
+            self.registry.remember(
+                cache_key, {"request": {"payload_ref": payload_ref}, "result": response}
+            )
         return response
 
     def settle(

@@ -237,5 +237,104 @@ class TestGateLite(unittest.TestCase):
             self.assertEqual(len(replays), workers - 1, outcomes)
 
 
+    def test_exec_idempotent_replay_requires_token(self):
+        """#203: cached exec results must not be returned without authorization."""
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            issued = orch.pass_("dogfood", agent_did)
+            first = orch.exec_(
+                "dogfood",
+                issued["slot_id"],
+                "echo cached",
+                idempotency_key="k1",
+                token=issued["token"],
+            )
+            self.assertEqual(first["exit"], 0)
+            with self.assertRaises(PassError) as ctx:
+                orch.exec_("dogfood", issued["slot_id"], "echo cached", idempotency_key="k1")
+            self.assertEqual(ctx.exception.code, "token_required")
+
+    def test_exec_idempotent_replay_denies_cross_tenant(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            orch.add_tenant("other", [agent_did])
+            issued = orch.pass_("dogfood", agent_did)
+            orch.exec_(
+                "dogfood",
+                issued["slot_id"],
+                "echo cached",
+                idempotency_key="k1",
+                token=issued["token"],
+            )
+            with self.assertRaises(PermissionError):
+                orch.exec_(
+                    "other",
+                    issued["slot_id"],
+                    "echo cached",
+                    idempotency_key="k1",
+                    token=issued["token"],
+                )
+
+    def test_exec_idempotency_keys_are_tenant_scoped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            orch.add_tenant("other", [agent_did])
+            first = orch.pass_("dogfood", agent_did)
+            second = orch.pass_("other", agent_did)
+            a = orch.exec_(
+                "dogfood", first["slot_id"], "echo a", idempotency_key="shared", token=first["token"]
+            )
+            b = orch.exec_(
+                "other", second["slot_id"], "echo b", idempotency_key="shared", token=second["token"]
+            )
+            self.assertEqual(a["slot_id"], first["slot_id"])
+            self.assertEqual(b["slot_id"], second["slot_id"])
+
+    def test_exec_idempotency_key_rejects_changed_payload(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            issued = orch.pass_("dogfood", agent_did)
+            orch.exec_(
+                "dogfood", issued["slot_id"], "echo one", idempotency_key="k1", token=issued["token"]
+            )
+            with self.assertRaises(ValueError) as ctx:
+                orch.exec_(
+                    "dogfood", issued["slot_id"], "echo two", idempotency_key="k1", token=issued["token"]
+                )
+            self.assertIn("different request", str(ctx.exception))
+
+    def test_pass_idempotent_replay_requires_membership(self):
+        """#204: cached passes (with tokens) must not bypass membership."""
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            first = orch.pass_("dogfood", agent_did, idempotency_key="p1")
+            with self.assertRaises(PassError) as ctx:
+                orch.pass_("dogfood", "did:key:zNobody", idempotency_key="p1")
+            self.assertEqual(ctx.exception.code, "agent_not_registered")
+            with self.assertRaises(KeyError):
+                orch.pass_("nobody", agent_did, idempotency_key="p1")
+            again = orch.pass_("dogfood", agent_did, idempotency_key="p1")
+            self.assertEqual(again["pass_id"], first["pass_id"])
+            self.assertEqual(again["token"], first["token"])
+
+    def test_pass_idempotency_keys_are_tenant_agent_scoped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_a = make_orchestrator(Path(tmp))
+            agent_b, _ = keys.generate(keys.deterministic_seed("dogfood-agent-2"))
+            orch.add_tenant("dogfood", [agent_a, agent_b])
+            a = orch.pass_("dogfood", agent_a, idempotency_key="shared")
+            b = orch.pass_("dogfood", agent_b, idempotency_key="shared")
+            self.assertNotEqual(a["pass_id"], b["pass_id"])
+            self.assertNotEqual(a["token"], b["token"])
+
+    def test_pass_idempotency_key_rejects_changed_request(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, agent_did = make_orchestrator(Path(tmp))
+            orch.pass_("dogfood", agent_did, minutes=30, idempotency_key="p1")
+            with self.assertRaises(ValueError) as ctx:
+                orch.pass_("dogfood", agent_did, minutes=60, idempotency_key="p1")
+            self.assertIn("different request", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -206,7 +206,7 @@ class TestLifecycleRace(unittest.TestCase):
 
             orch.terminate("race", slot_id)
             with self.assertRaises(ValueError):
-                orch.exec_("race", slot_id, "echo nope")
+                orch.exec_("race", slot_id, "echo nope", token=issued["token"])
             self.assertEqual(runner.calls, 0, "no process may start after a seal")
             self.assertEqual(
                 receipt_types(orch, slot_id),

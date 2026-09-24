@@ -350,7 +350,7 @@ class TestSnapshot(unittest.TestCase):
                 self.assertIn("note.txt", tar.getnames())
 
             with self.assertRaises(ValueError):
-                orch.exec_("dogfood", issued["slot_id"], "echo frozen")
+                orch.exec_("dogfood", issued["slot_id"], "echo frozen", token=issued["token"])
 
             bundle = orch.receipt(orch.task_id_for(issued["slot_id"]))
             attestations = [r for r in bundle["receipts"] if r["type"] == "delivery.attestation"]

@@ -116,7 +116,7 @@ class TestExpirySweep(unittest.TestCase):
             issued = orch.pass_("dogfood", agent, minutes=1)
             self._force_expiry(orch, issued["slot_id"])
             with self.assertRaises(ValueError) as ctx:
-                orch.exec_("dogfood", issued["slot_id"], "echo late")
+                orch.exec_("dogfood", issued["slot_id"], "echo late", token=issued["token"])
             self.assertIn("expired", str(ctx.exception))
             bundle = orch.receipt(orch.task_id_for(issued["slot_id"]))
             self.assertEqual(bundle["receipts"][-1]["type"], "task.termination")
