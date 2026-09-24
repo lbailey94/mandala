@@ -75,6 +75,16 @@ $PY -m continuity_receipt.verify vectors/02_happy_full.json
   evidence has been reviewed; the snapshot pins the tested candidate and
   carries the relevant evidence.
 
+## 6. Claim boundary and labeling
+
+A run by a collaborator on the same host with a pre-existing runner is
+**reproducibility evidence**, not an unassisted stranger install. Snapshot
+and summary text must label it accordingly ("clean-export reproduction on
+<host> by a collaborator, pre-existing runner") and must identify the tested
+**code** pin separately from later **documentation** revisions. If an
+unassisted new-tester / other-host claim is needed, that is a separate
+exercise with its own evidence.
+
 First run: 2026-09-24, candidate `ac078e2` — report in
 `gate-lite/evidence/outsider-2026-09-24/REPORT.md` (PASS with 8 friction
-notes).
+notes; reviewed #209; friction docs fixed in `a4553b0`).

@@ -76,9 +76,10 @@ unassisted; protocol at `publication/STRANGER_INSTALL_PROTOCOL.md`, last
 dry-run 2026-09-15 — re-verification pending with the WM v9.2.7 pin; note this
 protocol covers the Sovereign VM, not gate-lite), gate-lite outsider exercise
 (protocol published at `publication/GATE_LITE_OUTSIDER_EXERCISE.md`; first run
-2026-09-24 PASS against pin `ac078e2` — evidence in
-`gate-lite/evidence/outsider-2026-09-24/`; awaiting review before snapshot
-curation), repo hygiene (sovereign pinned to v9.2.7 as of
+2026-09-24 PASS against code pin `ac078e2`, reviewed #209, docs fixes
+`a4553b0`; evidence committed under `gate-lite/evidence/outsider-2026-09-24/`;
+labeled a same-host clean-export reproduction, not an unassisted stranger
+install; snapshot curation next), repo hygiene (sovereign pinned to v9.2.7 as of
 2026-09-24). **Signing-key custody:** Option 1
 register live in `security/KEY_CUSTODY_REGISTER.md` (all four copies verified
 across the two cards: A1+B1 on FA99, B2+C1 on FEEC; B's identity and signature
@@ -112,9 +113,12 @@ agent list at issuance; required single-use token at exec; durable replay),
 and the idempotency-scoping fix (board #203/#204) landed. The **gate-lite
 outsider exercise** (new protocol: `publication/GATE_LITE_OUTSIDER_EXERCISE.md`)
 ran against pin `ac078e2` with the real runner — PASS (86/86 tests, bundle
-TRUSTED offline, 8 friction notes; `gate-lite/evidence/outsider-2026-09-24/`).
-Next: review the evidence, then curate the public snapshot around the tested
-candidate. CR spec 0.4 hardening is in flight (board #192).
+TRUSTED offline, 8 friction notes), reviewed in #209; friction docs fixed in
+`a4553b0`; evidence committed under `gate-lite/evidence/outsider-2026-09-24/`.
+Claim label: **same-host clean-export reproduction by a collaborator with a
+pre-existing runner — not an unassisted stranger install**. Next: curate the
+public snapshot around the tested code pin with that label. CR spec 0.4
+hardening is in flight (board #192).
 
 ### 2026-08-28 research pass (key external findings)
 - **seL4 path is viable:** MCS verified on RISC-V (2026), confidentiality proof on AArch64 completed Aug 2026; `rust-sel4` 5.0 + Microkit 2.3 are mature scaffolding.
