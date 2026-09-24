@@ -19,10 +19,10 @@ gate_lite/            orchestrator: pass → exec → settle → terminate
 tools/make_vectors.py generates the spec test vectors (0.3)
 tools/dogfood_run.py  full CLI dogfood on the real runner, evidence capture
 tools/install_sweep_timer.sh  systemd user timer for the expiry sweep
-tests/                unittest suites (64 tests)
+tests/                unittest suites (71 tests)
 vectors/              generated bundles + INDEX.md
 evidence/             dogfood runs (run.json, SUMMARY.md, bundles, transcript)
-Dependency:           continuity-receipt>=0.3.1 (PyPI; published reference impl)
+Dependency:           continuity-receipt>=0.3.1 (PyPI; 0.3.3 exercised)
 ```
 
 ## Quick start
@@ -35,7 +35,8 @@ CTL=gate_lite/ctl.py
 python3 $CTL --state ./state tenant-add --tenant dogfood --agent did:key:zSmokeAgent1
 python3 $CTL --state ./state pass --tenant dogfood --agent did:key:zSmokeAgent1 \
     --minutes 30 --spend-minor 1000
-python3 $CTL --state ./state exec --tenant dogfood --slot <slot_id> \
+# exec refuses without a real runner; --demo opts into simulated (stub) execution
+python3 $CTL --state ./state --demo exec --tenant dogfood --slot <slot_id> \
     --payload-ref "echo hello"
 python3 $CTL --state ./state settle --tenant dogfood --slot <slot_id> \
     --rail-ref inv-1 --minor 200
@@ -53,18 +54,22 @@ python3 -m continuity_receipt.verify vectors/02_happy_full.json
 
 ```bash
 # stdio (one process per client)
-python3 -m gate_lite.mcp_server --state ./state --tenant dogfood
+python3 -m gate_lite.mcp_server --state ./state --tenant dogfood --demo
 # loopback HTTP (Streamable HTTP subset: POST /mcp, SSE when Accept asks)
-python3 -m gate_lite.mcp_server --state ./state --tenant dogfood \
+python3 -m gate_lite.mcp_server --state ./state --tenant dogfood --demo \
     --transport http --host 127.0.0.1 --port 8765 [--token <bearer>]
 ```
 
+The server refuses to start without a configured sandbox runner unless
+`--demo` is passed (`--runner`/`--slice` or `WM_GATELITE_RUNNER` otherwise);
+`mandala.status` reports the effective runner.
+
 JSON-RPC 2.0 (`initialize`, `ping`, `tools/list`, `tools/call`) with no
-third-party MCP SDK dependency. Tools: `mandala.pass`, `mandala.exec`,
-`mandala.settle`, `mandala.terminate`, `mandala.kill`, `mandala.destroy`,
-`mandala.status`, `mandala.list`, `mandala.receipt`, `mandala.templates`,
-`mandala.snapshot`, `mandala.restore`, `mandala.sweep`. `mandala.receipt`
-supports `verify: true`; tool failures
+third-party MCP SDK dependency. Tools: `mandala.pass`, `mandala.pass.verify`,
+`mandala.exec`, `mandala.settle`, `mandala.terminate`, `mandala.kill`,
+`mandala.destroy`, `mandala.status`, `mandala.list`, `mandala.receipt`,
+`mandala.templates`, `mandala.snapshot`, `mandala.restore`, `mandala.sweep`.
+`mandala.receipt` supports `verify: true`; tool failures
 return structured `isError` results (`emitter_unavailable`, `not_found`,
 `permission_denied`, `invalid`). The HTTP transport binds loopback only and
 issues `Mcp-Session-Id` on initialize; optional bearer token via `--token`.
@@ -73,7 +78,7 @@ issues `Mcp-Session-Id` on initialize; optional bearer token via `--token`.
 
 ```bash
 WM_GATELITE_RUNNER=~/.local/bin/mandala-sandbox python3 $CTL ...   # bwrap
-WM_GATELITE_SLICE=1 WM_GATELITE_RUNNER=~/.local/bin/mandala-sandbox ...  # + systemd slice quotas
+WM_GATELITE_SLICE=1 WM_GATELITE_RUNNER=~/.local/bin/mandala-sandbox ...  # + slice quotas (runner required)
 ```
 
 - Egress is default-deny: payloads are commands, or envelopes
@@ -141,16 +146,26 @@ choice, not a scaling need. Earlier fixes from the same suite:
 `TCP_NODELAY` on the MCP HTTP handler (41 ms → 0.42 ms keep-alive ping) and a
 1 s SIGTERM grace before SIGKILL escalation (kill p95 5.1 s → 1.1 s).
 
-## Status (2026-09-18)
+## Status (2026-09-24)
 
-- Receipt library + verifier: **done** — 20 vectors green (0.1 + 0.2); the
-  spec is published at `github.com/lbailey94/continuity-receipt` (Apache-2.0),
-  anchoring policy in `ANCHORING.md`.
+- Receipts: emits **`continuity-receipt/0.3`** via the published PyPI
+  reference implementation (`>=0.3.1`; 0.3.3 exercised) — no vendored copy
+  (migration `77821a7`, 2026-09-23). 11 gate-lite vectors green; the spec repo
+  `github.com/lbailey94/continuity-receipt` (Apache-2.0) carries the wider
+  vector set and the anchoring policy (`ANCHORING.md`).
+- Pass binding (S2b, `c310b22`, 2026-09-22): tokens carry
+  `pass_id`/`slot_id`/`mandate_ref`; `session.pass.created` commits the token
+  (`pass_token_id`); `mandala.pass.verify` answers from the registry;
+  `mandala.exec` enforces token↔slot binding and single use.
+- Stub safety (2026-09-24): `mandala-ctl exec` and the MCP server refuse to
+  run without a configured sandbox runner unless `--demo` is explicit; exec
+  receipts carry `sandbox_class`, `mandala.status` reports the effective
+  runner.
 - Orchestrator v0: pass/exec/settle/terminate/kill/snapshot, idempotency,
   tenant scoping, disk-backed chains across CLI processes, SQLite registry —
   **done**.
-- MCP control surface: **done** — stdio + loopback HTTP/SSE, 13 tools
-  (**56 tests total green**).
+- MCP control surface: **done** — stdio + loopback HTTP/SSE, 14 tools
+  (**71 tests total green**).
 - Acceptance: **G1–G8 pass** (G7 now includes snapshot → destroy → recreate →
   restore roundtrip with runner-written artifacts). Snapshot is
   filesystem-only by decision.
@@ -161,6 +176,9 @@ choice, not a scaling need. Earlier fixes from the same suite:
 - Benchmarked: `tools/bench.py` + `evidence/bench-2026-09-18-sqlite/` (14/14
   invariants; registry scaling fixed).
 - Expiry sweep cadence: **systemd user timer installer** (`tools/install_sweep_timer.sh`).
+- Known gap (next slice): pass issuance does not yet enforce the tenant's
+  registered agent list, and MCP exec does not require a token; replay state is
+  process-local. Cross-tenant slot access is already denied.
 - Not yet: gate-hard (microVM floor), external-anchor issuance (policy decided;
   OTS proof verification is a 0.3 item), WM-store + karma-ledger registry
   integration. See `HANDOFF_2026-09-18.md` and

@@ -33,7 +33,20 @@ Copies of the MandalaOS corpus, gathered 2026-08-28 (two passes) from CODEX_VAUL
 | OS-level (eBPF/Qubes/seL4, SutraCode) | Landlock v0 **shipped** (`wm-mcp/src/landlock_sandbox.rs`, `WM_LANDLOCK=1`); eBPF/Qubes/seL4/SutraCode research-gated |
 
 ## Status
-**Build-now era (updated 2026-09-14 evening).** The Sovereign VM boots and is
+
+**Current status (2026-09-24).** Component table with the evidence date behind
+each claim; older narrative below is kept as a dated record.
+
+| Component | Repo / artifact | Version | Evidence date | State |
+|---|---|---|---|---|
+| gate-lite | `mandala-os` (private); public snapshot `mandalaos-gate-lite` | spec 0.3 via `continuity-receipt` 0.3.3 | 2026-09-24 (71 tests green) | built + locally tested; stub-safety guard added; public snapshot is the 2026-09-18 curation (refresh pending) |
+| Continuity Receipt | `continuity-receipt` (public) | 0.3.3 (PyPI + crates.io) | 2026-09-23 | spec published; 0.4 hardening in flight (board #192) |
+| Eval endpoint | live at `api.whitemagic.dev/eval` | — | 2026-09-24 (24 tests green; `/eval/health` ok) | hosted (evaluation infrastructure, not a product surface) |
+| Sovereign | `mandalaos-sovereign` (private) | WM pin v9.2.7 | VM dogfood 2026-09-15 | built + VM tested; pin bump needs a fresh VM re-verify |
+| Lakshmi | `lakshmi` (private) | — | 2026-09-24 (94 tests green) | built + locally tested; S3 live |
+| WM substrate | `whitemagic` (public) | v9.2.7 | 2026-09-23 | released (all channels) |
+
+**2026-09-14/15 record (history, kept as written).** The Sovereign VM boots and is
 dogfooded (NixOS 26.05, in-guest sandbox matrix green); WM is at v9.1.5 with
 typed telemetry live (1-min windows → telemetry galaxy), the Lakshmi dashboard
 shipped, and step-0 observe policies writing decision records. Yama v0 is
@@ -58,8 +71,10 @@ over plans). Latest handoffs: `SESSION_HANDOFF_2026-09-13.md` (software) and
 Publication gates in flight: edge-galaxy **≥72 h of accumulated active soak
 time** (gate redefined 2026-09-15, public: host suspend excluded and disclosed,
 every other interruption resets the run; soak run at 13.9/72 h — see
-`publication/GATE_EVIDENCE_PLAYBOOK.md`), stranger install (≥4/5 unassisted),
-repo hygiene (sovereign pinned to v9.1.6). **Signing-key custody:** Option 1
+`publication/GATE_EVIDENCE_PLAYBOOK.md`), stranger install (≥4/5 unassisted;
+protocol at `publication/STRANGER_INSTALL_PROTOCOL.md`, last dry-run
+2026-09-15 — re-run pending against the current candidate), repo hygiene
+(sovereign pinned to v9.2.7 as of 2026-09-24). **Signing-key custody:** Option 1
 register live in `security/KEY_CUSTODY_REGISTER.md` (all four copies verified
 across the two cards: A1+B1 on FA99, B2+C1 on FEEC; B's identity and signature
 chain proven; rotation runbook drafted; pre-release gate
@@ -84,6 +99,13 @@ Interoperability CG alignment; CG intro + mapping drafts await Lucas review;
 strategy: `WHITEMAGIC/planning/ADOPTION_DEFAULT_THESIS_2026-09-18.md`).
 Focused sessions on receipts/evidence should read the gate-lite handoff
 first.
+
+**Update 2026-09-24:** gate-lite emits spec **0.3** via the published PyPI
+implementation (vendored copy dropped, `77821a7`); S2b pass binding
+(`c310b22`) and the stub-safety guard landed; next slices are the narrow
+authorization contract (tenant agent list at issuance, required durable token
+at exec), a stranger-install re-run, then public-snapshot curation. CR spec
+0.4 hardening is in flight (board #192).
 
 ### 2026-08-28 research pass (key external findings)
 - **seL4 path is viable:** MCS verified on RISC-V (2026), confidentiality proof on AArch64 completed Aug 2026; `rust-sel4` 5.0 + Microkit 2.3 are mature scaffolding.
