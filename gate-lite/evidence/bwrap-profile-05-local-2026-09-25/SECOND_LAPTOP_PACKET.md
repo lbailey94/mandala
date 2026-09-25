@@ -10,8 +10,8 @@ virtual environment, probe result, generated bundle, or gate state.
 - Sovereign portable wrapper: `lbailey94/mandalaos-sovereign`, commit `9a0faf1`.
 - Continuity Receipt unpublished 0.5 candidate: `lbailey94/continuity-receipt`,
   commit `e4d2f8a3a564eb3af85c472eaed0cdc70eb65e88`.
-- Gate-lite candidate: use the commit identified by the gate-lite PR for
-  `codex/gate-lite-05-profile` once created.
+- Gate-lite candidate: `lbailey94/mandala-os`, commit
+  `d7afa551346a9fe66f303c015b8c9d52dd8d9327`.
 
 ## Required independent checks
 
