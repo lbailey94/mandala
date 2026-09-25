@@ -34,17 +34,25 @@ Copies of the MandalaOS corpus, gathered 2026-08-28 (two passes) from CODEX_VAUL
 
 ## Status
 
-**Current status (2026-09-24).** Component table with the evidence date behind
-each claim; older narrative below is kept as a dated record.
+For the current cross-repository pins, public snapshot boundary, and next
+qualification gates, see [`PROJECT_STATUS.md`](PROJECT_STATUS.md). The dated
+status and session notes below remain as historical records; their version
+claims should be read at their recorded evidence dates.
+Future-project entry criteria and deferred platform lanes are in
+[`NEXT_PROJECT_GATES.md`](NEXT_PROJECT_GATES.md).
+
+**Status snapshot (2026-09-24).** This table distinguishes the working
+candidate from the public snapshot. See `PROJECT_STATUS.md` for exact pins and
+qualification gates; older narrative below is kept as a dated record.
 
 | Component | Repo / artifact | Version | Evidence date | State |
 |---|---|---|---|---|
-| gate-lite | `mandala-os` (private); public snapshot `mandalaos-gate-lite` | spec 0.3 via `continuity-receipt` 0.3.3 | 2026-09-24 (86 tests green) | built + locally tested; stub-safety guard + authorization contract + idempotency scoping added; public snapshot is the 2026-09-18 curation (refresh pending) |
-| Continuity Receipt | `continuity-receipt` (public) | 0.3.3 (PyPI + crates.io) | 2026-09-23 | spec published; 0.4 hardening in flight (board #192) |
+| gate-lite | `mandala-os` (private); public snapshot `mandalaos-gate-lite` | working and public review snapshot spec 0.4 (PR #3, `bd8eee3`); historical 0.3 evidence retained | 2026-09-24 (86 tests green locally and on clean export; 0.4 real-runner bundle TRUSTED) | other-host tester remains separate |
+| Continuity Receipt | `continuity-receipt` (public) | 0.4.0 (PyPI + crates.io) | 2026-09-24 | spec/verifiers published separately; gate-lite uses the PyPI implementation |
 | Eval endpoint | live at `api.whitemagic.dev/eval` | — | 2026-09-24 (24 tests green; `/eval/health` ok) | hosted (evaluation infrastructure, not a product surface) |
-| Sovereign | `mandalaos-sovereign` (private) | WM pin v9.2.7 | VM dogfood 2026-09-15 | built + VM tested; pin bump needs a fresh VM re-verify |
+| Sovereign | `mandalaos-sovereign` (private) | local WM pin v9.2.8, one commit ahead of origin/main at review | VM reverified 2026-09-24 on v9.2.7 | built + VM tested on 9.2.7; 9.2.8 candidate needs its own verification |
 | Lakshmi | `lakshmi` (private) | — | 2026-09-24 (94 tests green) | built + locally tested; S3 live |
-| WM substrate | `whitemagic` (public) | v9.2.7 | 2026-09-23 | released (all channels) |
+| WM substrate | `whitemagic` (public) | v9.2.8 | 2026-09-24 | public release; Sovereign validation is tracked separately |
 
 **2026-09-14/15 record (history, kept as written).** The Sovereign VM boots and is
 dogfooded (NixOS 26.05, in-guest sandbox matrix green); WM is at v9.1.5 with
