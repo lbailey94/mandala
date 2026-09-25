@@ -92,6 +92,20 @@ class TestRunnerProfileFailClosed(unittest.TestCase):
             self.assertEqual(info["profile_status"], "simulated")
             self.assertEqual(bundle["spec"], "continuity-receipt/0.4")
 
+    def test_cached_exec_cannot_bypass_unqualified_profile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = self.make_runner(Path(tmp) / "runner")
+            orch = Orchestrator(Path(tmp) / "state", runner=runner)
+            orch.add_tenant("tenant", ["did:key:test"])
+            issued = orch.pass_("tenant", "did:key:test")
+            slot_id = issued["slot_id"]
+            orch.registry.remember(
+                f"exec:tenant:{slot_id}:old",
+                {"request": {"payload_ref": "echo old"}, "result": {"exit": 0}},
+            )
+            with self.assertRaises(RunnerProfileError):
+                orch.exec_("tenant", slot_id, "echo old", idempotency_key="old", token=issued["token"])
+
     def test_unexpected_receipt_dependency_version_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             with patch("importlib.metadata.version", return_value="0.5.0"):

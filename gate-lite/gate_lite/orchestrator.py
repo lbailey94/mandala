@@ -890,6 +890,11 @@ class Orchestrator:
         # the original payload. Cache keys are tenant+slot scoped.
         slot = self._authorized_slot(tenant_id, slot_id)
         claims = self._verify_exec_token(slot, token, agent_id)
+        if isinstance(self.runner, SandboxRunner):
+            # An old idempotency result must not make an unqualified runner
+            # appear ready. This also precedes reservation, token burn, and
+            # all paths that could spawn a new process.
+            self.runner._require_profile()
         cache_key = (
             f"exec:{tenant_id}:{slot_id}:{idempotency_key}" if idempotency_key else None
         )
@@ -899,11 +904,6 @@ class Orchestrator:
                 if cached.get("request", {}).get("payload_ref") != payload_ref:
                     raise ValueError("idempotency key reused with a different request")
                 return cached["result"]
-        if isinstance(self.runner, SandboxRunner):
-            # Readiness is checked before the start reservation, token burn,
-            # decision receipt, or payload parse; run() repeats identity checks
-            # immediately before any possible process spawn.
-            self.runner._require_profile()
         if self._expire_if_needed(slot):
             raise ValueError("slot is expired")
         if slot["state"] in BLOCKED_STATES:
