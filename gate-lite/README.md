@@ -208,6 +208,11 @@ choice, not a scaling need. Earlier fixes from the same suite:
   first run 2026-09-24 against pin `ac078e2` with the real runner — **PASS**,
   86/86 tests on a clean export, exec `sandbox_class=bwrap-landlock`, bundle
   TRUSTED offline; evidence + friction log in `evidence/outsider-2026-09-24/`.
+  The signed sandbox label is a historical issuer claim, not proof that both
+  mechanisms ran. The portable wrapper's observed path is Bubblewrap-only;
+  runner classification and independent other-host adoption remain open (see
+  `evidence/wm-probe-2026-09-25/REPORT.md` and
+  `../design/RUNNER_CLASS_CLOSURE_PLAN_2026-09-25.md`).
 - Compatibility changes (2026-09-24, authorization contract): `mandala-ctl
   exec` now **requires `--token`** (from the `pass` output); `mandala.exec`
   over MCP now **requires `token`** (schema `required` updated); `mandala.pass`

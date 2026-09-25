@@ -58,7 +58,9 @@ $PY -m continuity_receipt.verify vectors/02_happy_full.json
 
 1. Test suite green on the export; count recorded.
 2. Exec via the real runner: `exit 0` and `task.execution.sandbox_class` is the
-   runner class (e.g. `bwrap-landlock`) — **not** `stub`.
+   class supported by the declared receipt spec and independently evidenced
+   for the exact runner invocation — **not** `stub`. A signed class string
+   alone does not establish which mechanism ran.
 3. Bundle `TRUSTED` from `mandala-ctl receipt --verdict` **and** offline from
    the published verifier (console script and module), exit 0.
 4. $0 settlement recorded in the bundle.
@@ -88,3 +90,10 @@ exercise with its own evidence.
 First run: 2026-09-24, candidate `ac078e2` — report in
 `gate-lite/evidence/outsider-2026-09-24/REPORT.md` (PASS with 8 friction
 notes; reviewed #209; friction docs fixed in `a4553b0`).
+
+2026-09-25 classification review: that run used a pre-existing portable
+Bubblewrap runner while its signed receipt said `bwrap-landlock`. The historical
+bundle remains immutable and verifier `TRUSTED`, but its containment label is
+overstated. It does not close runner classification or independent other-host
+adoption. See `gate-lite/evidence/wm-probe-2026-09-25/REPORT.md` and
+`design/RUNNER_CLASS_CLOSURE_PLAN_2026-09-25.md` for the required new evidence.
