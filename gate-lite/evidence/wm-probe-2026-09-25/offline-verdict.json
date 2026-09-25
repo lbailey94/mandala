@@ -1,0 +1,35 @@
+{
+  "verdict": "TRUSTED",
+  "errors": [],
+  "provisional_reasons": [],
+  "insufficient_reasons": [],
+  "summary": {
+    "receipts": 7,
+    "types": [
+      "session.pass.created",
+      "task.decision",
+      "task.execution",
+      "delivery.attestation",
+      "settlement",
+      "delivery.attestation",
+      "task.termination"
+    ],
+    "issuers": [
+      "did:key:z6Mkw3AqH44zmtTCnY2zxHLiAdmC6EYbT1M7RN8hgmgcLuxR"
+    ],
+    "terminated": true,
+    "settled": true,
+    "attestations": [
+      {
+        "receipt_id": "urn:uuid:01a0d93b-b933-7524-ad3d-df0cc82343c8",
+        "counterparty": "did:key:z6Mkw3AqH44zmtTCnY2zxHLiAdmC6EYbT1M7RN8hgmgcLuxR",
+        "attestation": "absent"
+      },
+      {
+        "receipt_id": "urn:uuid:01a0d93b-c990-70e7-b3eb-58fda80dd266",
+        "counterparty": "did:key:z6Mkw3AqH44zmtTCnY2zxHLiAdmC6EYbT1M7RN8hgmgcLuxR",
+        "attestation": "absent"
+      }
+    ]
+  }
+}
