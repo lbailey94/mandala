@@ -158,7 +158,7 @@ class TestMcpInProcess(unittest.TestCase):
                     }
                 )
             )
-            self.assertEqual(status["runner"]["class"], "stub")
+            self.assertEqual(status["runner"]["class"], "none")
             self.assertTrue(status["runner"]["simulated"])
 
     def test_pass_verify_tool_returns_claims_and_registry(self):

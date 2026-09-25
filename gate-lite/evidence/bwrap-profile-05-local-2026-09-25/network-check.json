@@ -1,0 +1,21 @@
+{
+  "schema": "mandala-local-network-check-v1",
+  "wrapper_sha256": "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e",
+  "destination": "host loopback listener (ephemeral port, omitted)",
+  "checks": [
+    {
+      "network_requested": true,
+      "exit_code": 0,
+      "connected": true,
+      "stderr_tail": ""
+    },
+    {
+      "network_requested": false,
+      "exit_code": 1,
+      "connected": false,
+      "stderr_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nConnectionRefusedError: [Errno 111] Connection refused"
+    }
+  ],
+  "expected_result": true,
+  "scope": "same-host loopback control; does not establish denial to every destination"
+}

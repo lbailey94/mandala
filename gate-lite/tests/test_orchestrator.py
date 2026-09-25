@@ -148,7 +148,7 @@ class TestGateLite(unittest.TestCase):
             orch, agent_did = make_orchestrator(Path(tmp))
             issued = orch.pass_("dogfood", agent_did)
             status = orch.status("dogfood", issued["slot_id"])
-            self.assertEqual(status["runner"]["class"], "stub")
+            self.assertEqual(status["runner"]["class"], "none")
             self.assertTrue(status["runner"]["simulated"])
 
 

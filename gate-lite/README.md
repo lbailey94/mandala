@@ -2,7 +2,7 @@
 
 First buildable slice of the Mandala Gate program: a cooperative-tenant
 orchestrator that issues governed passes and emits **Continuity Receipts**
-(`continuity-receipt/0.4`, via the published `continuity-receipt` reference
+(`continuity-receipt/0.5` in this unpublished candidate, via the reference
 implementation — no vendored copy). Separate module/versioning from the
 Gen-2/WMv9 release train (decision 2026-09-17).
 
@@ -16,21 +16,22 @@ is gate-hard (microVM floor, v0.2).
 gate_lite/            orchestrator: pass → exec → settle → terminate
   ctl.py              mandala-ctl CLI
   mcp_server.py       MCP control surface (stdio + loopback HTTP/SSE)
-tools/make_vectors.py generates the spec test vectors (0.4; rewrites the
+tools/make_vectors.py generates historical spec test vectors (0.4; rewrites the
                       tracked files — expect git status changes)
 tools/dogfood_run.py  full CLI dogfood on the real runner, evidence capture
 tools/install_sweep_timer.sh  systemd user timer for the expiry sweep
-tests/                unittest suites (86 tests)
+tests/                unittest suites
 vectors/              generated bundles + INDEX.md
 evidence/             dogfood runs (run.json, SUMMARY.md, bundles, transcript)
-Dependency:           continuity-receipt==0.4.0 (PyPI; new bundles pin spec 0.4)
+Dependency:           continuity-receipt==0.5.0a0 (unpublished candidate; new bundles pin spec 0.5)
 ```
 
 ## Quick start
 
 ```bash
-# install (venv; hosts with PEP 668 need this) — pulls continuity-receipt from PyPI
+# install the unpublished 0.5 source into a venv before gate-lite
 python3 -m venv .venv
+.venv/bin/pip install -e /path/to/continuity-receipt-0.5-candidate
 .venv/bin/pip install -e .
 PY=.venv/bin/python
 
@@ -97,10 +98,12 @@ with the Sovereign Edition
 (`MANDALAOS_SOVEREIGN/modules/landlock-isolation.nix`, bwrap + Landlock,
 `--exec <json envelope>` contract) and is installed to
 `~/.local/bin/mandala-sandbox`. Real execution requires it explicitly;
-without a runner the gate refuses (stub only via `--demo`). The current 0.4
-containment hold also refuses real execution with this wrapper: its observed
-Bubblewrap-only behavior cannot honestly use the 0.4 `bwrap-landlock` class.
-These examples show runner selection, not a qualified execution path.
+without a runner the gate refuses (stub only via `--demo`). This candidate
+accepts only the exact portable wrapper and Bubblewrap/jq hashes recorded in
+`evidence/bwrap-profile-05-local-2026-09-25/REPORT.md` for a `bwrap` claim;
+all other runner identities fail closed. The signed receipt binds the profile
+identifier, wrapper digest, and invocation digest. It does not prove the
+issuer used that wrapper. These examples still need the matching pinned files.
 
 ```bash
 WM_GATELITE_RUNNER=~/.local/bin/mandala-sandbox python3 $CTL ...   # bwrap
@@ -172,13 +175,12 @@ choice, not a scaling need. Earlier fixes from the same suite:
 `TCP_NODELAY` on the MCP HTTP handler (41 ms → 0.42 ms keep-alive ping) and a
 1 s SIGTERM grace before SIGKILL escalation (kill p95 5.1 s → 1.1 s).
 
-## Status (2026-09-24)
+## Status (2026-09-25 candidate)
 
-- Receipts: emits **`continuity-receipt/0.4`** via the published PyPI
-  reference implementation (`==0.4.0`) — no vendored copy
-  (migration `77821a7`, 2026-09-23). 11 gate-lite vectors green; the spec repo
-  `github.com/lbailey94/continuity-receipt` (Apache-2.0) carries the wider
-  vector set and the anchoring policy (`ANCHORING.md`).
+- Receipts: this branch emits **`continuity-receipt/0.5`** using the
+  unpublished `0.5.0a0` source candidate. Earlier 0.4 evidence and vectors
+  remain historical. The spec repository carries the wider vector set and
+  anchoring policy (`ANCHORING.md`).
 - Pass binding (S2b, `c310b22`, 2026-09-22): tokens carry
   `pass_id`/`slot_id`/`mandate_ref`; `session.pass.created` commits the token
   (`pass_token_id`); `mandala.pass.verify` answers from the registry;
@@ -215,7 +217,8 @@ choice, not a scaling need. Earlier fixes from the same suite:
   TRUSTED offline; evidence + friction log in `evidence/outsider-2026-09-24/`.
   The signed sandbox label is a historical issuer claim, not proof that both
   mechanisms ran. The portable wrapper's observed path is Bubblewrap-only;
-  runner classification and independent other-host adoption remain open (see
+  candidate runner classification has local evidence, while independent
+  other-host adoption remains open (see
   `evidence/wm-probe-2026-09-25/REPORT.md` and
   `../design/RUNNER_CLASS_CLOSURE_PLAN_2026-09-25.md`).
 - Compatibility changes (2026-09-24, authorization contract): `mandala-ctl

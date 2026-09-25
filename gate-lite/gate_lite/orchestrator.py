@@ -3,6 +3,7 @@ import hashlib
 import importlib.metadata
 import json
 import os
+import shutil
 import shlex
 import signal as signal_mod
 import subprocess
@@ -15,15 +16,19 @@ from pathlib import Path
 
 from continuity_receipt import __version__ as RECEIPT_RUNTIME_VERSION, records
 from continuity_receipt.bundle import TaskChain
-from continuity_receipt.canon import sha256_prefixed
+from continuity_receipt.canon import canonical_bytes, sha256_prefixed
 
 from .models import SLOT_CLASSES, Slot, Tenant, now_epoch
 from .registry import Registry
 from .tokens import issue_pass, verify_pass
 
 POLICY_VERSION = "2026-09-17.1"
-RECEIPT_SPEC = "continuity-receipt/0.4"
-RECEIPT_PACKAGE_VERSION = "0.4.0"
+RECEIPT_SPEC = "continuity-receipt/0.5"
+RECEIPT_PACKAGE_VERSION = "0.5.0a0"
+PROFILE_ID = "urn:mandala:runner-profile:bwrap-v1"
+PROFILE_WRAPPER_SHA256 = "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e"
+PROFILE_BWRAP_SHA256 = "sha256:e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71"
+PROFILE_JQ_SHA256 = "sha256:59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566"
 GATE_CLASS = "gate-lite"
 BLOCKED_STATES = ("terminated", "expired", "denied", "frozen")
 CPU_QUOTA_PERCENT = {"small": 100, "medium": 200}
@@ -170,7 +175,7 @@ def _plan_envelope(plan: dict) -> str:
 class StubRunner:
     """Deterministic runner for tests and dogfood dry-runs."""
 
-    sandbox_class = "stub"
+    sandbox_class = "none"
 
     def run(self, slot: dict, payload_ref: str, on_spawn=None) -> ExecResult:
         return ExecResult(
@@ -190,9 +195,6 @@ class SandboxRunner:
     containment behavior.
     """
 
-    # Published receipt 0.4 has no honest class for the current portable
-    # Bubblewrap wrapper. Keep this unknown until a reviewed, versioned profile
-    # is available; in particular, never inherit bwrap-landlock by default.
     sandbox_class = "unknown"
 
     def __init__(self, runner_path: str):
@@ -205,8 +207,12 @@ class SandboxRunner:
             raise
         except OSError as exc:
             raise RunnerProfileError(f"runner identity unavailable: {exc}") from exc
-        self.profile_id = None
-        self.profile_status = "unqualified"
+        self.profile_id = PROFILE_ID if (
+            self.runner_digest == PROFILE_WRAPPER_SHA256 and self._dependencies_match()
+        ) else None
+        self.profile_status = "locally_qualified" if self.profile_id else "unqualified"
+        if self.profile_id:
+            self.sandbox_class = "bwrap"
         self._observed_class = self.sandbox_class
 
     @staticmethod
@@ -216,6 +222,18 @@ class SandboxRunner:
             for chunk in iter(lambda: runner_file.read(1024 * 1024), b""):
                 digest.update(chunk)
         return "sha256:" + digest.hexdigest()
+
+    def _dependencies_match(self) -> bool:
+        for name, expected in (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)):
+            path = shutil.which(name)
+            if not path:
+                return False
+            try:
+                if self._digest(path) != expected:
+                    return False
+            except OSError:
+                return False
+        return True
 
     def _require_profile(self) -> None:
         if self.sandbox_class != self._observed_class:
@@ -227,15 +245,25 @@ class SandboxRunner:
             raise RunnerProfileError(f"runner identity unavailable: {exc}") from exc
         if current_path != self.runner_path or current_digest != self.runner_digest:
             raise RunnerProfileError("runner identity changed after inspection")
-        # No profile is currently qualified against the published 0.4 class
-        # vocabulary. Hashing identifies bytes; it does not prove mechanisms.
-        raise RunnerProfileError(
-            "no reviewed runner profile is qualified for Continuity Receipt 0.4; "
-            "real payload execution is disabled"
-        )
+        if self.profile_id != PROFILE_ID:
+            raise RunnerProfileError("no reviewed runner profile matches executable; real payload execution is disabled")
+        for name, expected in (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)):
+            path = shutil.which(name)
+            if not path or self._digest(path) != expected:
+                raise RunnerProfileError(f"runner dependency identity mismatch: {name}")
 
     def _argv(self, plan: dict) -> list[str]:
         return [self.runner_path, "--exec", _plan_envelope(plan)]
+
+    def profile_for(self, slot: dict, payload_ref: str) -> dict:
+        plan = parse_payload(payload_ref)
+        if slot.get("workspace"):
+            plan["workspace"] = slot["workspace"]
+        return {
+            "profile_id": PROFILE_ID,
+            "executable_digest": self.runner_digest,
+            "invocation_digest": sha256_prefixed(canonical_bytes(self._argv(plan)[1:])),
+        }
 
     def _wall_seconds(self, slot: dict) -> int:
         return max(int(slot["quotas"].get("wall_ms", 60000) / 1000), 1)
@@ -967,6 +995,7 @@ class Orchestrator:
 
         run_slot = dict(slot)
         run_slot["workspace"] = str(self.workspaces_dir / slot_id)
+        runner_profile = self.runner.profile_for(run_slot, payload_ref) if isinstance(self.runner, SandboxRunner) else None
         try:
             result = self.runner.run(run_slot, payload_ref, on_spawn=on_spawn)
         except Exception:
@@ -981,21 +1010,24 @@ class Orchestrator:
         self._last_exec[slot_id] = result
         self._run_path(slot_id).unlink(missing_ok=True)
 
+        execution_body = {
+            "tool_calls": [
+                {
+                    "name": "mandala.exec",
+                    "args_hash": sha256_prefixed(payload_ref.encode()),
+                    "result_hash": result.stdout_hash,
+                }
+            ],
+            "egress": result.egress or [{"destination": "none", "bytes": 0, "allowed": True}],
+            "resources": result.resources,
+            "sandbox_class": getattr(self.runner, "sandbox_class", "unknown"),
+        }
+        if runner_profile is not None:
+            execution_body["runner_profile"] = runner_profile
         execution = self._emit(
             slot,
             "task.execution",
-            {
-                "tool_calls": [
-                    {
-                        "name": "mandala.exec",
-                        "args_hash": sha256_prefixed(payload_ref.encode()),
-                        "result_hash": result.stdout_hash,
-                    }
-                ],
-                "egress": result.egress or [{"destination": "none", "bytes": 0, "allowed": True}],
-                "resources": result.resources,
-                "sandbox_class": getattr(self.runner, "sandbox_class", "unknown"),
-            },
+            execution_body,
         )
 
         kill_request = self._consume_kill_request(slot_id)
