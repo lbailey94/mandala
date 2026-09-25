@@ -50,7 +50,7 @@ qualification gates; older narrative below is kept as a dated record.
 | gate-lite | `mandala-os` (private); public snapshot `mandalaos-gate-lite` | working and public review snapshot spec 0.4 (PR #3, `bd8eee3`); historical 0.3 evidence retained | 2026-09-24 (86 tests green locally and on clean export; 0.4 real-runner bundle TRUSTED) | other-host tester remains separate |
 | Continuity Receipt | `continuity-receipt` (public) | 0.4.0 (PyPI + crates.io) | 2026-09-24 | spec/verifiers published separately; gate-lite uses the PyPI implementation |
 | Eval endpoint | live at `api.whitemagic.dev/eval` | — | 2026-09-24 (24 tests green; `/eval/health` ok) | hosted (evaluation infrastructure, not a product surface) |
-| Sovereign | `mandalaos-sovereign` (private) | local WM pin v9.2.8, one commit ahead of origin/main at review | VM reverified 2026-09-24 on v9.2.7 | built + VM tested on 9.2.7; 9.2.8 candidate needs its own verification |
+| Sovereign | `mandalaos-sovereign` (private) | WM pin v9.2.8 | VM reverified 2026-09-24/25 on v9.2.8 | 13/13 in-guest containment checks, active services, enforced Landlock; stranger install separate |
 | Lakshmi | `lakshmi` (private) | — | 2026-09-24 (94 tests green) | built + locally tested; S3 live |
 | WM substrate | `whitemagic` (public) | v9.2.8 | 2026-09-24 | public release; Sovereign validation is tracked separately |
 
@@ -71,12 +71,14 @@ into the live store, and the fleet sampler transitioned `shadow.access.v1` to
 `observing` (value 5, mirror-first feed); evidence in
 `session-notes/2026-09-15_s4-tetragon-observe.md`.
 
-Canonical status and supersession map: `CURRENT_REALITY_2026-09-13.md` (wins
-over plans). Latest handoffs: `SESSION_HANDOFF_2026-09-13.md` (software) and
+The historical 2026-09-13 supersession map is `CURRENT_REALITY_2026-09-13.md`;
+`PROJECT_STATUS.md` now carries the current cross-repository pins. Earlier
+handoffs: `SESSION_HANDOFF_2026-09-13.md` (software) and
 `SESSION_HANDOFF_2026-09-14.md` (website/release truth pass). Bridge design:
 `implementation/yama-v0-bridge-design.md`.
 
-Publication gates in flight: edge-galaxy **≥72 h of accumulated active soak
+**Publication-gate record from 2026-09-15/24 (historical; recheck before use):**
+edge-galaxy **≥72 h of accumulated active soak
 time** (gate redefined 2026-09-15, public: host suspend excluded and disclosed,
 every other interruption resets the run; soak run at 13.9/72 h — see
 `publication/GATE_EVIDENCE_PLAYBOOK.md`), Sovereign VM stranger install (≥4/5
@@ -114,7 +116,8 @@ strategy: `WHITEMAGIC/planning/ADOPTION_DEFAULT_THESIS_2026-09-18.md`).
 Focused sessions on receipts/evidence should read the gate-lite handoff
 first.
 
-**Update 2026-09-24:** gate-lite emits spec **0.3** via the published PyPI
+**Earlier 2026-09-24 update (superseded by the 0.4 status above):** gate-lite
+emitted spec **0.3** via the published PyPI
 implementation (vendored copy dropped, `77821a7`); S2b pass binding
 (`c310b22`), the stub-safety guard, the **authorization contract** (tenant
 agent list at issuance; required single-use token at exec; durable replay),
