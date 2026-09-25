@@ -3,7 +3,9 @@
 This contract is for a cooperating agent whose workload can run through a
 configured `mandala-sandbox` runner. The runner provides shared-kernel
 containment; it is not an untrusted-tenant boundary. This document describes
-the private `mandala-os` 0.4 candidate, not the public 0.3 review snapshot.
+the private `mandala-os` 0.4 candidate. The public `mandalaos-gate-lite` main
+branch is a curated 0.4 review snapshot; its historical 0.3 exercise remains
+separate from the 0.4 clean-export evidence.
 
 ## Version and ownership boundaries
 
