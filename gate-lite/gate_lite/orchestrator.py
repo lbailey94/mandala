@@ -677,6 +677,21 @@ class Orchestrator:
             raise EmitterError(f"receipt emitter unavailable: {exc}") from exc
         return receipt
 
+    def _state_commitment(self) -> dict:
+        """Commitment over the orchestrator registry state (0.5 §state.commitment).
+
+        The count and head digest are taken from the same `Registry.reload()`
+        snapshot a verifier can recompute from the state directory; the digest
+        is never taken over raw SQLite file bytes.
+        """
+        state = self.registry.reload()
+        return {
+            "state_kind": "gate-lite.registry-head",
+            "scope": "gate-lite.registry",
+            "count": sum(len(section) for section in state.values()),
+            "head_digest": sha256_prefixed(canonical_bytes(state)),
+        }
+
     def task_id_for(self, slot_id: str) -> str | None:
         chain = self._chains.get(slot_id)
         return chain.task_id if chain else None
@@ -1029,6 +1044,7 @@ class Orchestrator:
             "task.execution",
             execution_body,
         )
+        commitment = self._emit(slot, "state.commitment", self._state_commitment())
 
         kill_request = self._consume_kill_request(slot_id)
         if kill_request is not None and kill_request.get("run_generation") not in (
@@ -1042,7 +1058,11 @@ class Orchestrator:
             "slot_id": slot_id,
             "exit": result.exit_code,
             "stdout_hash": result.stdout_hash,
-            "receipt_ids": [decision["receipt_id"], execution["receipt_id"]],
+            "receipt_ids": [
+                decision["receipt_id"],
+                execution["receipt_id"],
+                commitment["receipt_id"],
+            ],
         }
         if result.stderr_hash:
             response["stderr_hash"] = result.stderr_hash

@@ -9,7 +9,8 @@ acceptance criteria from the issue:
   1. no process starts after a terminal or expiry seal;
   2. a pre-start race returns an explicit rejected/unknown outcome and emits
      no `task.execution`;
-  3. receipt ordering is monotonic (decision → execution → termination);
+  3. receipt ordering is monotonic (decision → execution → state commitment
+     → termination);
   4. a kill request is bound to a slot/run generation, so a late start cannot
      consume an old request.
 """
@@ -129,6 +130,7 @@ class TestLifecycleRace(unittest.TestCase):
                     "session.pass.created",
                     "task.decision",
                     "task.execution",
+                    "state.commitment",
                     "task.termination",
                 ],
                 "termination must follow execution (monotonic receipts)",
@@ -172,6 +174,7 @@ class TestLifecycleRace(unittest.TestCase):
                     "session.pass.created",
                     "task.decision",
                     "task.execution",
+                    "state.commitment",
                     "task.termination",
                 ],
             )
@@ -192,7 +195,7 @@ class TestLifecycleRace(unittest.TestCase):
             self.assertNotIn("kill_signal", executed)
             self.assertEqual(
                 receipt_types(orch, slot_id),
-                ["session.pass.created", "task.decision", "task.execution"],
+                ["session.pass.created", "task.decision", "task.execution", "state.commitment"],
                 "an old-generation request must not terminate a new run",
             )
             self.assertEqual(orch.registry.get_slot(slot_id)["state"], "active")
@@ -238,6 +241,7 @@ class TestLifecycleRace(unittest.TestCase):
                     "session.pass.created",
                     "task.decision",
                     "task.execution",
+                    "state.commitment",
                     "task.termination",
                 ],
             )

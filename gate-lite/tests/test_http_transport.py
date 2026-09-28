@@ -135,7 +135,7 @@ class TestHttpTransport(unittest.TestCase):
         terminated = call(5, "mandala.terminate", {"slot": passed["slot_id"]})
         receipt = call(6, "mandala.receipt", {"task_id": terminated["task_id"], "verify": True})
         self.assertEqual(receipt["verdict"]["verdict"], "TRUSTED", receipt["verdict"]["errors"])
-        self.assertEqual(receipt["verdict"]["summary"]["receipts"], 6)
+        self.assertEqual(receipt["verdict"]["summary"]["receipts"], 7)
 
     def test_get_and_unknown_paths(self):
         status, headers, _ = rpc(self.port, method="GET")

@@ -130,7 +130,7 @@ class TestMcpInProcess(unittest.TestCase):
                 )
             )
             self.assertEqual(receipt["verdict"]["verdict"], "TRUSTED", receipt["verdict"]["errors"])
-            self.assertEqual(receipt["verdict"]["summary"]["receipts"], 6)
+            self.assertEqual(receipt["verdict"]["summary"]["receipts"], 7)
 
     def test_status_reports_effective_runner(self):
         with tempfile.TemporaryDirectory() as tmp:
