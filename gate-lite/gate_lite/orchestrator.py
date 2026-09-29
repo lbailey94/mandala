@@ -1046,7 +1046,7 @@ class Orchestrator:
         )
         try:
             commitment = self._emit(slot, "state.commitment", self._state_commitment())
-        except EmitterError:
+        except Exception:
             # The payload and task.execution are already durable. Do not leave
             # the slot retryable or report a successful exec without its
             # required state commitment. This terminal hold is intentionally

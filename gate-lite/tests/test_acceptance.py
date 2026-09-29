@@ -123,6 +123,28 @@ class TestStateCommitmentFailure(unittest.TestCase):
                 )
             self.assertEqual(runner.calls, 1)
 
+    def test_commitment_snapshot_failure_is_terminal_after_execution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = SpyRunner()
+            orch, agent = make_orchestrator(Path(tmp), runner=runner)
+            issued = orch.pass_("dogfood", agent)
+
+            def fail_snapshot():
+                raise RuntimeError("snapshot failed")
+
+            orch._state_commitment = fail_snapshot
+
+            with self.assertRaisesRegex(RuntimeError, "snapshot failed"):
+                orch.exec_("dogfood", issued["slot_id"], "fixed payload", token=issued["token"])
+
+            self.assertEqual(runner.calls, 1)
+            self.assertEqual(orch.status("dogfood", issued["slot_id"])["slot"]["state"], "receipt_incomplete")
+            bundle = orch.receipt(orch.task_id_for(issued["slot_id"]))
+            self.assertEqual(
+                [receipt["type"] for receipt in bundle["receipts"]],
+                ["session.pass.created", "task.decision", "task.execution"],
+            )
+
 
 @unittest.skipIf(os.geteuid() == 0, "chmod-based fault injection is bypassed by root")
 class TestFailClosedEmitter(unittest.TestCase):
