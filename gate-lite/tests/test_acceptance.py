@@ -77,6 +77,53 @@ class SpyRunner:
         return ExecResult(exit_code=0, stdout_hash="sha256:spy", resources={}, egress=[])
 
 
+class TestStateCommitmentFailure(unittest.TestCase):
+    """A post-execution commitment failure must hold the slot against replay."""
+
+    def test_commitment_emitter_failure_is_terminal_and_never_returns_success(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            runner = SpyRunner()
+            orch, agent = make_orchestrator(state, runner=runner)
+            issued = orch.pass_("dogfood", agent)
+            original_emit = orch._emit
+
+            def fail_commitment(slot, record_type, body):
+                if record_type == "state.commitment":
+                    raise EmitterError("injected failure after task.execution")
+                return original_emit(slot, record_type, body)
+
+            orch._emit = fail_commitment
+            with self.assertRaisesRegex(EmitterError, "injected failure"):
+                orch.exec_(
+                    "dogfood",
+                    issued["slot_id"],
+                    "fixed payload",
+                    idempotency_key="commitment-failure",
+                    token=issued["token"],
+                )
+
+            self.assertEqual(runner.calls, 1)
+            self.assertEqual(orch.status("dogfood", issued["slot_id"])["slot"]["state"], "receipt_incomplete")
+            self.assertIsNone(orch.registry.recall(f"exec:dogfood:{issued['slot_id']}:commitment-failure"))
+            bundle = orch.receipt(orch.task_id_for(issued["slot_id"]))
+            self.assertEqual(
+                [receipt["type"] for receipt in bundle["receipts"]],
+                ["session.pass.created", "task.decision", "task.execution"],
+            )
+
+            orch._emit = original_emit
+            with self.assertRaisesRegex(ValueError, "slot is receipt_incomplete"):
+                orch.exec_(
+                    "dogfood",
+                    issued["slot_id"],
+                    "fixed payload",
+                    idempotency_key="commitment-failure",
+                    token=issued["token"],
+                )
+            self.assertEqual(runner.calls, 1)
+
+
 @unittest.skipIf(os.geteuid() == 0, "chmod-based fault injection is bypassed by root")
 class TestFailClosedEmitter(unittest.TestCase):
     """G8: receipt emitter down ⇒ exec refused, no work runs."""

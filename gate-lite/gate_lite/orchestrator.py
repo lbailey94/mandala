@@ -30,9 +30,9 @@ PROFILE_WRAPPER_SHA256 = "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0
 PROFILE_BWRAP_SHA256 = "sha256:e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71"
 PROFILE_JQ_SHA256 = "sha256:59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566"
 GATE_CLASS = "gate-lite"
-BLOCKED_STATES = ("terminated", "expired", "denied", "frozen")
+BLOCKED_STATES = ("terminated", "expired", "denied", "frozen", "receipt_incomplete")
 CPU_QUOTA_PERCENT = {"small": 100, "medium": 200}
-TERMINAL_STATES = ("terminated", "expired", "denied")
+TERMINAL_STATES = ("terminated", "expired", "denied", "receipt_incomplete")
 # Lifecycle transitions that are in flight (issue #1): a start may not be
 # sealed and a seal may not be started while one of these is held. `starting`
 # is written by the atomic start CAS before any receipt or side effect;
@@ -1044,7 +1044,18 @@ class Orchestrator:
             "task.execution",
             execution_body,
         )
-        commitment = self._emit(slot, "state.commitment", self._state_commitment())
+        try:
+            commitment = self._emit(slot, "state.commitment", self._state_commitment())
+        except EmitterError:
+            # The payload and task.execution are already durable. Do not leave
+            # the slot retryable or report a successful exec without its
+            # required state commitment. This terminal hold is intentionally
+            # visible in status; recovery requires operator review of the
+            # incomplete bundle rather than rerunning the payload.
+            self.registry.cas_slot(
+                slot_id, (STARTING_STATE,), {"state": "receipt_incomplete"}
+            )
+            raise
 
         kill_request = self._consume_kill_request(slot_id)
         if kill_request is not None and kill_request.get("run_generation") not in (

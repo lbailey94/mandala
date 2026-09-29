@@ -234,6 +234,11 @@ choice, not a scaling need. Earlier fixes from the same suite:
   with a different request is rejected (`idempotency key reused with a
   different request`). State rejections (frozen/terminated/expired) now also
   require a valid token. Legacy global-key cache entries are unreachable.
+- If `task.execution` is durable but the following `state.commitment` cannot
+  be written, the slot enters terminal `receipt_incomplete`: the caller gets
+  an error, the result is not cached, and the consumed pass cannot run the
+  payload again. Inspect the partial receipt and registry before operator
+  recovery; this state does not imply a complete or trusted bundle.
 - Not yet: gate-hard (microVM floor), external-anchor issuance (policy decided;
   OTS proof verification is a 0.3 item), WM-store + karma-ledger registry
   integration. See `HANDOFF_2026-09-18.md` and
