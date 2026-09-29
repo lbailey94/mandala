@@ -11,7 +11,7 @@ virtual environment, probe result, generated bundle, or gate state.
 - Continuity Receipt unpublished 0.5 candidate: `lbailey94/continuity-receipt`,
   commit `73c2086f3421ba4e8ce11bbacfe6ad39e0fff309` (draft PR #8 head).
 - Gate-lite candidate: `lbailey94/mandala-os`, commit
-  `de16fdebd71b01e272f3e96724ae5debb6827748` (candidate code pin; the
+  `a7116fc5aa0d1893c3bf56d8c7d4955055fd0e53` (candidate code pin; the
   packet update changes documentation only).
 
 ## Required independent checks
@@ -39,10 +39,10 @@ virtual environment, probe result, generated bundle, or gate state.
    `state.commitment` from the captured registry state and verify the count,
    head, and ordering. Check missing and altered profile/commitment negatives.
 5. Inject a controlled emitter failure after `task.execution` and before
-   `state.commitment`. Confirm the slot cannot report success or retry the
-   payload in a way that repeats side effects; preserve the incomplete bundle
-   and registry state. If the pinned candidate has no defined safe recovery
-   behavior, stop here and record this acceptance gate as open.
+   `state.commitment`. Confirm status reports terminal `receipt_incomplete`,
+   no success result is cached, the partial bundle ends at `task.execution`,
+   and another call cannot rerun the payload. Preserve the incomplete bundle
+   and registry state; treat any deviation as a failed acceptance gate.
 6. Separately build a small WhiteMagic `wm-receipts` consumer against this
    exact unpublished 0.5 source and run it through a new gate-lite slot.
    Export the consumer verdict and final gate bundle. Label this as source
