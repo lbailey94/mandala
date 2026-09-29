@@ -9,9 +9,10 @@ virtual environment, probe result, generated bundle, or gate state.
 
 - Sovereign portable wrapper: `lbailey94/mandalaos-sovereign`, commit `9a0faf1`.
 - Continuity Receipt unpublished 0.5 candidate: `lbailey94/continuity-receipt`,
-  commit `e4d2f8a3a564eb3af85c472eaed0cdc70eb65e88`.
+  commit `73c2086f3421ba4e8ce11bbacfe6ad39e0fff309` (draft PR #8 head).
 - Gate-lite candidate: `lbailey94/mandala-os`, commit
-  `d7afa551346a9fe66f303c015b8c9d52dd8d9327`.
+  `de16fdebd71b01e272f3e96724ae5debb6827748` (candidate code pin; the
+  packet update changes documentation only).
 
 ## Required independent checks
 
@@ -25,7 +26,8 @@ virtual environment, probe result, generated bundle, or gate state.
    Bubblewrap digests pinned, an enabled/disabled network control, and
    read-only/writable workspace controls. Preserve raw JSON and exits.
 3. Install Continuity Receipt 0.5 source and gate-lite in a fresh venv.
-   Run their focused tests. If bwrap or jq hashes differ from the current
+   Run the full `gate-lite/tests` suite and confirm any skipped cases are
+   explicitly runner-qualified skips. If bwrap or jq hashes differ from the current
    gate-lite profile, expect a fail-closed `unknown` status. Review a new
    exact profile before retrying; do not change the hardcoded pins just to
    force a passing receipt.
@@ -33,14 +35,20 @@ virtual environment, probe result, generated bundle, or gate state.
    through the candidate wrapper, terminate the task, and export the bundle.
    Verify it offline with Python and Rust 0.5. Recompute the wrapper and
    canonical invocation digest from the captured execution arguments and
-   compare them with the signed `runner_profile` claim. Check missing and
-   altered profile negatives.
-5. Separately build a small WhiteMagic `wm-receipts` consumer against this
+   compare them with the signed `runner_profile` claim. Recompute
+   `state.commitment` from the captured registry state and verify the count,
+   head, and ordering. Check missing and altered profile/commitment negatives.
+5. Inject a controlled emitter failure after `task.execution` and before
+   `state.commitment`. Confirm the slot cannot report success or retry the
+   payload in a way that repeats side effects; preserve the incomplete bundle
+   and registry state. If the pinned candidate has no defined safe recovery
+   behavior, stop here and record this acceptance gate as open.
+6. Separately build a small WhiteMagic `wm-receipts` consumer against this
    exact unpublished 0.5 source and run it through a new gate-lite slot.
    Export the consumer verdict and final gate bundle. Label this as source
    integration, since WhiteMagic's current tag still pins 0.4.
 
 The acceptance record must distinguish: host mechanism checks, signed
-receipt conformance, source integration, and unassisted installation. A
-same-host replay of the first laptop's artifacts does not count as
-independent adoption.
+receipt conformance, state commitment recomputation, failure recovery, source
+integration, and unassisted installation. A same-host replay of the first
+laptop's artifacts does not count as independent adoption.
