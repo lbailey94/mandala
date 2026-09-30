@@ -133,8 +133,8 @@ class TestRunnerProfileFailClosed(unittest.TestCase):
 
     def test_unexpected_receipt_dependency_version_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with patch("importlib.metadata.version", return_value="0.5.0"):
-                with self.assertRaisesRegex(RuntimeError, "expected continuity-receipt==0.5.0a0"):
+            with patch("importlib.metadata.version", return_value="0.5.1"):
+                with self.assertRaisesRegex(RuntimeError, "expected continuity-receipt==0.5.0"):
                     Orchestrator(tmp)
 
     def test_imported_receipt_code_must_support_pinned_spec(self):

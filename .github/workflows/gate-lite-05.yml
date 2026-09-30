@@ -18,24 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The candidate deliberately depends on unpublished CR 0.5 code.
-      # Pin the exact reviewed PR #8 commit, not its moving branch name.
-      - uses: actions/checkout@v4
-        with:
-          repository: lbailey94/continuity-receipt
-          ref: 73c2086f3421ba4e8ce11bbacfe6ad39e0fff309
-          path: continuity-receipt
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install the pinned candidate pair
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ./continuity-receipt
           python -m pip install -e ./gate-lite
-          python -c 'import continuity_receipt; assert continuity_receipt.__version__ == "0.5.0a0"'
+          python -c 'import continuity_receipt; assert continuity_receipt.__version__ == "0.5.0"'
 
       - name: Run gate-lite unit and protocol tests
         working-directory: gate-lite

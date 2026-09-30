@@ -24,7 +24,7 @@ from .tokens import issue_pass, verify_pass
 
 POLICY_VERSION = "2026-09-17.1"
 RECEIPT_SPEC = "continuity-receipt/0.5"
-RECEIPT_PACKAGE_VERSION = "0.5.0a0"
+RECEIPT_PACKAGE_VERSION = "0.5.0"
 PROFILE_ID = "urn:mandala:runner-profile:bwrap-v1"
 PROFILE_WRAPPER_SHA256 = "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e"
 PROFILE_BWRAP_SHA256 = "sha256:e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71"

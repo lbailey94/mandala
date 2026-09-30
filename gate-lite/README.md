@@ -23,15 +23,15 @@ tools/install_sweep_timer.sh  systemd user timer for the expiry sweep
 tests/                unittest suites
 vectors/              generated bundles + INDEX.md
 evidence/             dogfood runs (run.json, SUMMARY.md, bundles, transcript)
-Dependency:           continuity-receipt==0.5.0a0 (unpublished candidate; new bundles pin spec 0.5)
+Dependency:           continuity-receipt==0.5.0 (published; new bundles pin spec 0.5)
 ```
 
 ## Quick start
 
 ```bash
-# install the unpublished 0.5 source into a venv before gate-lite
+# install the published continuity-receipt 0.5.0 package and gate-lite
 python3 -m venv .venv
-.venv/bin/pip install -e /path/to/continuity-receipt-0.5-candidate
+.venv/bin/pip install "continuity-receipt>=0.5.0,<0.6"
 .venv/bin/pip install -e .
 PY=.venv/bin/python
 
@@ -178,7 +178,7 @@ choice, not a scaling need. Earlier fixes from the same suite:
 ## Status (2026-09-25 candidate)
 
 - Receipts: this branch emits **`continuity-receipt/0.5`** using the
-  unpublished `0.5.0a0` source candidate. Earlier 0.4 evidence and vectors
+  published `0.5.0` package from PyPI and crates.io. Earlier 0.4 evidence and vectors
   remain historical. The spec repository carries the wider vector set and
   anchoring policy (`ANCHORING.md`).
 - Pass binding (S2b, `c310b22`, 2026-09-22): tokens carry
