@@ -10,33 +10,32 @@ own history), so every port is a review act — never a fast-forward.
   `curation/2026-09-30-egress-truth`): per-entry `"enforced"` flag, whole-network
   disclosure, design note, 4 tests. Public CI green; local clean-venv run
   against published `continuity-receipt==0.4.0`: 89 passed, 1 skipped.
+- **Runner-profile hold + receipt pinning** (private `7fd8d54`, `704a863`,
+  `63af388`, `4332d55` → public PR #7,
+  `curation/2026-10-01-runner-profile-hold`, stacked on PR #6): hold with
+  `unknown`/`unqualified` refusal before token/payload/cache, `==0.4.0`
+  pinning, qualifier tool + tests. Public CI green; clean-venv:
+  102 passed, 6 skipped (all explicit runner-qualified skips).
 
 ## Private → public backlog (not yet ported)
 
-1. **Runner-profile hold** (the largest slice): private `7fd8d54`, `704a863`,
-   `63af388`, `4332d55` and the accompanying tests
-   (`test_runner_profile.py`, `test_qualify_bwrap_runner.py`),
-   `tools/qualify_bwrap_runner.py`, `tools/README.md`, pyproject pinning and
-   `RunnerProfileError`/`sandbox_class = "unknown"` machinery. Requires an
-   exact diff review plus privacy scan; the public snapshot must keep its own
-   tested-pin provenance updated when this lands.
-2. **Receipt version pinning** in orchestrator (`RECEIPT_SPEC`,
-   `RECEIPT_PACKAGE_VERSION`) and the related `test_vectors` /
-   `test_lifecycle_race` adjustments — coordinate with 1.
-3. **Evidence refresh choices:** `evidence/bench-2026-09-18*/` updates,
+1. **Evidence refresh choices:** `evidence/bench-2026-09-18*/` updates,
    `bwrap-probe-2026-09-25/`, `wm-probe-2026-09-25/`. Decide case by case
    whether they are public-review material; keep version labels on all
    historical captures.
-4. **Doc drift:** `gate-lite/HANDOFF_2026-09-18.md`,
-   `gate-lite/INTEGRATION_CONTRACT.md`, `gate-lite/pyproject.toml`.
+2. **Doc drift:** `gate-lite/INTEGRATION_CONTRACT.md` (and the historical
+   `HANDOFF_2026-09-18.md` if it should be refreshed; pyproject drift was
+   resolved in PR #7).
+3. **L2 egress slice → public** after private PR #2 review: proxy, helper,
+   egress wrapper, enforced receipt outcomes, probe evidence.
 
 ## Public → private backports needed
 
 1. **POSIX kill fallback** (public `f9b3b1f`, PR #5): the systemd-absent /
    refusing fallback in the terminate path exists in the public snapshot but
-   not in private `mandala-os` main. Reconcile deliberately (port into private
-   or document why private differs) before the next curation, so the two trees
-   do not silently diverge on the kill path.
+   not in private `mandala-os` main. Public PR #7 deliberately kept the public
+   behavior and documented the divergence; the backport into private main is
+   still pending.
 2. Public runner-class claim review (`470b53c`) vs private
    `7fd8d54` — likely the same intent done independently in both histories;
    verify equivalence when touching the runner slice.
