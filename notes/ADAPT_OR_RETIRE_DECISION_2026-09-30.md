@@ -89,3 +89,20 @@ not fixtures, not same-host demos. Concretely:
    the first external pilot or after it.
 3. If A or C: say so explicitly so effort stops flowing to the product
    surface and the site copy gets updated accordingly.
+
+## Decision update — 2026-09-30 (same session, after review)
+
+- **Direction: pilot milestone; brand deferred.** B vs C naming is parked
+  until pilot results land; the engineering for both is identical.
+- **First pilot channel: mac-stranger / Aria (the CR rehearsal channel).**
+  The CR packet (claim #456) stays Codex-owned and unchanged; the gate-lite
+  run is a complementary Linux-side follow-on — see
+  `notes/PILOT_ONE_PAGER_2026-09-30.md`.
+- **Egress enforcement comes before the pilot (Lucas).** Applied to the
+  workload: a no-network workload (W1) is already enforced today (L0); the
+  declared-egress workload (W2) waits for the L2 Unix-socket proxy slice and
+  its acceptance evidence. Receipts may not claim `"enforced": true` before
+  that qualification runs on the pilot host.
+- **Sequencing:** W1 on an operator-administered Linux VM/VPS first, then W2
+  after L2; L3 (rootful nftables) only if the operator consents and a broader
+  toolset is required.
