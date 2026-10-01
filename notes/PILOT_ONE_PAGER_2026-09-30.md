@@ -46,10 +46,13 @@ independence) a runner on our netcup box under their operator account.
   `state.commitment`, offline verification. Follows the reviewed
   `SECOND_LAPTOP_PACKET`; snapshot/restore and refusal/replay cases are
   follow-on additions rather than blockers here.
-- **W2 (P1b, declared egress):** fetch two pinned URLs (one declared and
-  permitted, one declared-but-unpermitted), hash and record both outcomes,
-  emit the chain. This is the actual test of the "states what it may do"
-  claim and requires the L2 proxy slice (below).
+- **W2 (P1b, declared egress):** fetch two destinations (one declared and
+  permitted, one declared-but-unpermitted), record both outcomes, emit the
+  chain. **L2 is built and locally verified** (branch
+  `opencode/gate-lite-egress-l2`, draft PR #2): proxy-only egress, enforced
+  receipt entries, probe PASSED. W2 packet assembly is next; the workload is
+  self-contained (local allowed endpoint + a foreign host denied before DNS,
+  so no external network is needed at run time).
 - Recommendation: run W1 first to get a real second-host rehearsal quickly,
   then W2 once L2 is qualified. Do not merge the two — P1a proves the
   lifecycle on a foreign host; P1b proves enforcement.
