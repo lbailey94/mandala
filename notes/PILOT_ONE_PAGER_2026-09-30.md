@@ -19,9 +19,20 @@ operator channel:
 | Stage | What | Owner | Host |
 |---|---|---|---|
 | P0 | CR relying-agent rehearsal (claim #456) | Codex/Luna | Mac (synthetic, local) |
-| P1a | gate-lite governed run, no-network workload (L0 enforcement, already present) | to assign | Linux environment administered by the operator |
+| P1a | gate-lite governed run, no-network workload (L0 enforcement, already present) | **packet ready 2026-09-30; operator = mac-stranger/Aria** | Linux environment administered by the operator |
 | P1b | gate-lite governed run with egress, declared destinations (L2 enforced) | to assign | same as P1a |
 | P2 | Adoption-scale pilot / paid-lane decision | Lucas | TBD |
+
+**P1a status (2026-09-30):** packet published at
+`uploads/t4800-s/gate-lite-pilot-w1/` (archive
+`gate-lite-pilot-w1-2026-09-30.tar.gz`, sha256
+`18f4be577cbae22a430c4c0824157ca31c76589c448172726f618ca6ba0f025d`; board post
+#478). It packages the reviewed `SECOND_LAPTOP_PACKET` flow: wrapper probe,
+suite, one governed no-network task, five-receipt chain, offline `TRUSTED`.
+Pins: wrapper `9a0faf1` (`f7da8d6c…`), gate-lite `a7116fc5`, Continuity
+Receipt public `73c2086` (0.5.0a0). Verified end-to-end on T4800-S before
+release (same host class: Ubuntu 24.04-lineage, bwrap `e31890…`, jq
+`59cfd5…`). Fail-closed on any digest mismatch.
 
 Why Linux: gate-lite's executor is bwrap/systemd-based; macOS has no
 equivalent runner. P1 therefore needs a Linux environment the operator
@@ -30,11 +41,11 @@ independence) a runner on our netcup box under their operator account.
 
 ## Workload proposal
 
-- **W1 (P1a, no network):** produce a signed artifact from pinned inputs, run
-  local checks, snapshot → destroy → recreate → restore, terminate normally.
-  Exercises authority, lifecycle, receipts, and the already-enforced
-  default-deny (L0). No new machinery; can be packaged as soon as a host is
-  chosen.
+- **W1 (P1a, no network) — shipped:** fixed no-network payload through the
+  real runner, `pass → exec → terminate`, five-receipt chain including
+  `state.commitment`, offline verification. Follows the reviewed
+  `SECOND_LAPTOP_PACKET`; snapshot/restore and refusal/replay cases are
+  follow-on additions rather than blockers here.
 - **W2 (P1b, declared egress):** fetch two pinned URLs (one declared and
   permitted, one declared-but-unpermitted), hash and record both outcomes,
   emit the chain. This is the actual test of the "states what it may do"
@@ -78,10 +89,11 @@ HTTP(S)-only.
 
 ## Open questions
 
-1. Exact workload and pinned inputs for W1/W2 (needs Lucas + operator input).
+1. W1 workload is fixed in the packet (no-network `print(42)` run per the
+   reviewed packet); W2's pinned URLs still need Lucas + operator input.
 2. Host choice from the table; if L3 is desired, does the operator consent to
    root-level network rules on their host?
-3. Who packages and reviews the P1 packet — Codex/Luna lane or this lane —
-   given claim #456 is already moving on the CR side.
+3. W1 packet is packaged by this lane and published (#478); review of the
+   returned evidence should still be a separate pass (Codex/Luna or primary).
 4. Is the L2 slice scheduled now (my recommendation) or after the P0
-   rehearsal returns?
+   rehearsal returns? W1 does not depend on it; W2 does.
