@@ -46,13 +46,16 @@ independence) a runner on our netcup box under their operator account.
   `state.commitment`, offline verification. Follows the reviewed
   `SECOND_LAPTOP_PACKET`; snapshot/restore and refusal/replay cases are
   follow-on additions rather than blockers here.
-- **W2 (P1b, declared egress):** fetch two destinations (one declared and
-  permitted, one declared-but-unpermitted), record both outcomes, emit the
-  chain. **L2 is built and locally verified** (branch
-  `opencode/gate-lite-egress-l2`, draft PR #2): proxy-only egress, enforced
-  receipt entries, probe PASSED. W2 packet assembly is next; the workload is
-  self-contained (local allowed endpoint + a foreign host denied before DNS,
-  so no external network is needed at run time).
+- **W2 (P1b, declared egress) — shipped:** packet at
+  `uploads/t4800-s/gate-lite-pilot-w2/` (archive
+  `gate-lite-pilot-w2-2026-10-01.tar.gz`, sha256
+  `9e5f3961cdc33a6d33c68e021f059cd68685892f6e128888762e95af0236773a`, board
+  post #481). Runs the L2 candidate (`54eedcc`, draft PR #2) end-to-end:
+  raw network blocked, allowlisted local endpoint reachable only through the
+  Unix-socket proxy, unlisted host refused and recorded, enforced receipt
+  entries under `urn:mandala:runner-profile:bwrap-egress-v1`, TRUSTED. The
+  workload is self-contained (local endpoint + a name denied before DNS; no
+  external network at run time). Verified on T4800-S before release.
 - Recommendation: run W1 first to get a real second-host rehearsal quickly,
   then W2 once L2 is qualified. Do not merge the two — P1a proves the
   lifecycle on a foreign host; P1b proves enforcement.
