@@ -1,2 +1,2 @@
-mandala-egress-proxy listening on /tmp/mandala-egress.457q6x/egress.sock (1 allowlist entries)
-mandala-sandbox-egress: egress via /tmp/mandala-egress.457q6x/egress.sock (log /tmp/opencode/gl-l2/gate-lite/evidence/egress-l2-local-2026-10-01/proxy-standalone.jsonl)
+mandala-egress-proxy listening on <proxy-socket> (1 allowlist entries)
+mandala-sandbox-egress: egress via <proxy-socket> (log <probe-log>)

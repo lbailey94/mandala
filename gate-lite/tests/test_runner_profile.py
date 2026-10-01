@@ -84,14 +84,60 @@ class TestRunnerProfileFailClosed(unittest.TestCase):
             path = Path(tmp) / "runner"
             path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             path.chmod(0o700)
+            proxy = Path(tmp) / "mandala-egress-proxy.py"
+            helper = Path(tmp) / "mandala-fetch.py"
+            proxy.write_text("proxy candidate\n", encoding="utf-8")
+            helper.write_text("fetch candidate\n", encoding="utf-8")
             digest = SandboxRunner._digest(str(path))
+            sidecars = {
+                proxy.name: SandboxRunner._digest(str(proxy)),
+                helper.name: SandboxRunner._digest(str(helper)),
+            }
             with patch.object(profile_module, "PROFILE_WRAPPER_EGRESS_SHA256", digest), \
+                 patch.object(profile_module, "PROFILE_EGRESS_SIDECAR_SHA256", sidecars), \
                  patch.object(SandboxRunner, "_dependencies_match", return_value=True):
                 runner = SandboxRunner(str(path))
                 self.assertEqual(runner.profile_id, profile_module.PROFILE_ID_EGRESS)
                 self.assertEqual(runner.sandbox_class, "bwrap")
                 profile = runner.profile_for({"workspace": "/tmp/w"}, "echo hello")
                 self.assertEqual(profile["profile_id"], profile_module.PROFILE_ID_EGRESS)
+                self.assertEqual(
+                    set(profile), {"profile_id", "executable_digest", "invocation_digest"}
+                )
+                plan = profile_module.parse_payload("echo hello")
+                plan["workspace"] = "/tmp/w"
+                expected_invocation = {
+                    "argv": runner._argv(plan)[1:],
+                    "sidecar_digests": sidecars,
+                }
+                self.assertEqual(
+                    profile["invocation_digest"],
+                    profile_module.sha256_prefixed(
+                        profile_module.canonical_bytes(expected_invocation)
+                    ),
+                )
+
+    def test_changed_egress_proxy_sidecar_fails_before_payload_spawn(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "runner"
+            path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            path.chmod(0o700)
+            proxy = Path(tmp) / "mandala-egress-proxy.py"
+            helper = Path(tmp) / "mandala-fetch.py"
+            proxy.write_text("expected proxy\n", encoding="utf-8")
+            helper.write_text("expected helper\n", encoding="utf-8")
+            digest = SandboxRunner._digest(str(path))
+            sidecars = {
+                proxy.name: SandboxRunner._digest(str(proxy)),
+                helper.name: SandboxRunner._digest(str(helper)),
+            }
+            with patch.object(profile_module, "PROFILE_WRAPPER_EGRESS_SHA256", digest), \
+                 patch.object(profile_module, "PROFILE_EGRESS_SIDECAR_SHA256", sidecars), \
+                 patch.object(SandboxRunner, "_dependencies_match", return_value=True):
+                runner = SandboxRunner(str(path))
+            proxy.write_text("changed proxy\n", encoding="utf-8")
+            with self.assertRaisesRegex(RunnerProfileError, "sidecar identity mismatch"):
+                runner.run({}, "echo should-not-run", on_spawn=lambda *_: self.fail("spawned"))
 
     def test_non_executable_runner_fails_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -281,6 +327,15 @@ class TestRunnerProfileFailClosed(unittest.TestCase):
             self.assertEqual(status["profile_status"], "unqualified")
             bundle = orch.receipt(orch.task_id_for(issued["slot_id"]))
             self.assertFalse(any(r["type"] in ("task.decision", "task.execution") for r in bundle["receipts"]))
+
+    def test_imported_receipt_version_must_match_distribution_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("importlib.metadata.version", return_value="0.5.0"):
+                with patch("gate_lite.orchestrator.RECEIPT_RUNTIME_VERSION", "0.6.0"):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "does not match installed distribution"
+                    ):
+                        Orchestrator(tmp)
 
 
 if __name__ == "__main__":

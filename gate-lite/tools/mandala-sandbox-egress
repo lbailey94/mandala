@@ -61,7 +61,11 @@ fi
 workspace="${workspace_override:-${WM_SANDBOX_WORKSPACE:-${HOME:-/nonexistent}/.local/share/whitemagic/safe_corpus}}"
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-proxy_path="${MANDALA_EGRESS_PROXY:-$script_dir/mandala-egress-proxy.py}"
+if [ -n "${MANDALA_EGRESS_PROXY:-}" ]; then
+  echo "mandala-sandbox-egress: MANDALA_EGRESS_PROXY override is not permitted by the qualified profile" >&2
+  exit 70
+fi
+proxy_path="$script_dir/mandala-egress-proxy.py"
 helper_path="$script_dir/mandala-fetch.py"
 
 args=(
@@ -89,6 +93,10 @@ if [ "$with_net" = 1 ]; then
   fi
   if [ ! -f "$proxy_path" ]; then
     echo "mandala-sandbox-egress: egress proxy not found: $proxy_path" >&2
+    exit 70
+  fi
+  if [ ! -f "$helper_path" ]; then
+    echo "mandala-sandbox-egress: fetch helper not found: $helper_path" >&2
     exit 70
   fi
   rundir=$(mktemp -d "${TMPDIR:-/tmp}/mandala-egress.XXXXXX")
@@ -120,9 +128,7 @@ if [ "$with_net" = 1 ]; then
   fi
   args+=( --dir /run )
   args+=( --ro-bind "$socket_path" /run/mandala-egress.sock )
-  if [ -f "$helper_path" ]; then
-    args+=( --ro-bind "$helper_path" /run/mandala-fetch.py )
-  fi
+  args+=( --ro-bind "$helper_path" /run/mandala-fetch.py )
   args+=( --ro-bind-try /etc/ssl/certs /etc/ssl/certs )
   args+=( --setenv MANDALA_EGRESS_SOCK /run/mandala-egress.sock )
   echo "mandala-sandbox-egress: egress via $socket_path (log $log_path)" >&2

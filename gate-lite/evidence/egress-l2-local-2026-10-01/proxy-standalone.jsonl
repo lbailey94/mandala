@@ -1,2 +1,14 @@
 {"allowed": true, "bytes_in": 125, "bytes_out": 87, "event": "connect", "host": "127.0.0.1", "port": 42387, "ts": 1790821101.0140588}
 {"allowed": false, "event": "connect", "host": "example.org", "port": 80, "reason": "not-in-allowlist", "ts": 1790821101.0592396}
+{"allowed": true, "connection_id": "6c859c81fb0e4e61a12ff89557e3686b", "event": "connect_start", "host": "127.0.0.1", "port": 45547, "ts": 1790829341.5593746}
+{"allowed": true, "bytes_in": 125, "bytes_out": 87, "connection_id": "6c859c81fb0e4e61a12ff89557e3686b", "event": "connect_complete", "host": "127.0.0.1", "port": 45547, "ts": 1790829341.566742}
+{"allowed": false, "event": "connect", "host": "example.org", "port": 80, "reason": "not-in-allowlist", "ts": 1790829341.6114783}
+{"allowed": true, "connection_id": "bbe05191feb147b29124ef52d898bb94", "event": "connect_start", "host": "127.0.0.1", "port": 41229, "ts": 1790829413.5740108}
+{"allowed": true, "bytes_in": 125, "bytes_out": 87, "connection_id": "bbe05191feb147b29124ef52d898bb94", "event": "connect_complete", "host": "127.0.0.1", "port": 41229, "ts": 1790829413.5764499}
+{"allowed": false, "event": "connect", "host": "example.org", "port": 80, "reason": "not-in-allowlist", "ts": 1790829413.6309512}
+{"allowed": true, "connection_id": "22529075b78140958d9be1f784a1f1df", "event": "connect_start", "host": "127.0.0.1", "port": 32917, "ts": 1790829633.9867969}
+{"allowed": true, "bytes_in": 125, "bytes_out": 87, "connection_id": "22529075b78140958d9be1f784a1f1df", "event": "connect_complete", "host": "127.0.0.1", "port": 32917, "ts": 1790829633.9896066}
+{"allowed": false, "event": "connect", "host": "example.org", "port": 80, "reason": "not-in-allowlist", "ts": 1790829634.0408611}
+{"allowed": true, "connection_id": "f8518217c2a347b0a0a74ba22b78cb14", "event": "connect_start", "host": "127.0.0.1", "port": 42933, "ts": 1790829776.9486978}
+{"allowed": true, "bytes_in": 125, "bytes_out": 87, "connection_id": "f8518217c2a347b0a0a74ba22b78cb14", "event": "connect_complete", "host": "127.0.0.1", "port": 42933, "ts": 1790829776.9514506}
+{"allowed": false, "event": "connect", "host": "example.org", "port": 80, "reason": "not-in-allowlist", "ts": 1790829777.0152867}

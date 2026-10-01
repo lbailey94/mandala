@@ -1,10 +1,12 @@
 # Egress enforcement — current truth and the destination-allowlist path
 
-**Status:** design note and vocabulary correction, 2026-09-30. It changes no
-runtime containment beyond receipt vocabulary; no qualified destination
-enforcement exists yet. Companion correction: gate-lite receipts now carry a
-per-entry `"enforced"` flag and state the granted scope as whole-network
-(`gate-lite/gate_lite/orchestrator.py`, `gate-lite/README.md`).
+**Status:** this note first recorded the 2026-09-30 vocabulary correction.
+Private PR #2 adds an L2 candidate with a Unix-socket proxy, host-and-port
+checks, raw-network isolation, and receipt evidence. The candidate is local
+qualification work pending adversarial review; a green CI or local probe does
+not establish independent-host adoption. Gate-lite receipts retain the
+per-entry `"enforced"` flag and the older whole-network profile remains
+distinct from the L2 candidate.
 
 ## What is true today (0.4 lane)
 
@@ -49,6 +51,17 @@ above is a truth fix independent of when enforcement lands.
    fixed endpoints; option C belongs to the microVM track.
 3. A profile may only claim `"enforced": true` with an enforcer id when the
    acceptance suite below passes on the host where it runs.
+
+## L2 candidate boundary
+
+The proxy checks the destination host and port in an HTTP `CONNECT` request,
+then relays the tunnel bytes. It does not inspect HTTP paths, methods, TLS
+content, or application behavior. It also does not pin or restrict the IP
+addresses returned for an allowed hostname. The L2 candidate therefore makes
+a destination claim only; it is not an application policy or DNS-to-IP
+firewall. Each allowed connection must have a matching start and terminal log
+record; an absent, malformed, or incomplete log forces a non-success runner
+result and an explicit incomplete slot hold.
 
 ## Acceptance criteria for a future qualified egress profile
 

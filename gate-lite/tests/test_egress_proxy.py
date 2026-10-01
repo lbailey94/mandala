@@ -8,8 +8,10 @@ records, and the sandbox-side fetch helper.
 
 import http.server
 import json
+import os
 import pathlib
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -20,6 +22,7 @@ import unittest
 TOOLS = pathlib.Path(__file__).resolve().parent.parent / "tools"
 PROXY = TOOLS / "mandala-egress-proxy.py"
 FETCH = TOOLS / "mandala-fetch.py"
+WRAPPER = TOOLS / "mandala-sandbox-egress"
 BODY = b"hello-egress\n"
 
 
@@ -51,6 +54,7 @@ class TestEgressProxy(unittest.TestCase):
             [sys.executable, str(PROXY),
              "--socket", str(cls.socket_path),
              "--log", str(cls.log_path),
+             "--timeout", "1",
              "--allow", f"127.0.0.1:{cls.http_port}"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -111,6 +115,104 @@ class TestEgressProxy(unittest.TestCase):
                   if not r.get("allowed") and r.get("host") == "example.org"]
         self.assertTrue(denied, "denied record missing")
         self.assertEqual(denied[-1]["reason"], "not-in-allowlist")
+
+    def test_allowlist_is_port_specific(self):
+        other_port = self.http_port + 1
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(3)
+        client.connect(str(self.socket_path))
+        client.sendall(f"CONNECT 127.0.0.1:{other_port} HTTP/1.1\r\n\r\n".encode())
+        response = client.recv(256)
+        client.close()
+        self.assertIn(b"403 Forbidden", response)
+        denied = [r for r in self._records()
+                  if not r.get("allowed") and r.get("port") == other_port]
+        self.assertTrue(denied)
+
+    def test_malformed_connect_authority_is_rejected(self):
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(3)
+        client.connect(str(self.socket_path))
+        client.sendall(b"CONNECT 127.0.0.1:notaport HTTP/1.1\r\n\r\n")
+        response = client.recv(256)
+        client.close()
+        self.assertIn(b"502 Bad Gateway", response)
+
+    def test_zero_port_authority_is_rejected_instead_of_using_default_port(self):
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(3)
+        client.connect(str(self.socket_path))
+        client.sendall(b"CONNECT 127.0.0.1:0 HTTP/1.1\r\n\r\n")
+        response = client.recv(256)
+        client.close()
+        self.assertIn(b"502 Bad Gateway", response)
+
+    def test_idle_tunnel_closes_and_records_a_bounded_outcome(self):
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(4)
+        client.connect(str(self.socket_path))
+        client.sendall(f"CONNECT 127.0.0.1:{self.http_port} HTTP/1.1\r\n\r\n".encode())
+        self.assertIn(b"200 Connection Established", client.recv(256))
+        started = time.monotonic()
+        self.assertEqual(client.recv(1), b"")
+        self.assertLess(time.monotonic() - started, 3.5)
+        client.close()
+        allowed = [r for r in self._records()
+                   if r.get("allowed") and r.get("port") == self.http_port]
+        self.assertTrue(allowed)
+        self.assertEqual(allowed[-1]["bytes_out"], 0)
+
+    def test_proxy_socket_is_private_to_the_runner_uid(self):
+        mode = stat.S_IMODE(self.socket_path.stat().st_mode)
+        self.assertEqual(mode, 0o600)
+
+    def test_proxy_override_is_rejected_before_payload_output(self):
+        env = {**os.environ, "MANDALA_EGRESS_PROXY": "/tmp/unreviewed-proxy.py"}
+        result = subprocess.run(
+            [str(WRAPPER), "--exec", json.dumps({"program": "echo", "args": ["MUST_NOT_RUN"]})],
+            capture_output=True, text=True, env=env, timeout=5,
+        )
+        self.assertEqual(result.returncode, 70)
+        self.assertNotIn("MUST_NOT_RUN", result.stdout)
+        self.assertIn("override is not permitted", result.stderr)
+
+    def test_sigterm_drains_active_connect_and_flushes_terminal_log(self):
+        with tempfile.TemporaryDirectory(prefix="egress-proxy-stop-") as tmp:
+            root = pathlib.Path(tmp)
+            socket_path = root / "egress.sock"
+            log_path = root / "egress.jsonl"
+            proxy = subprocess.Popen(
+                [sys.executable, str(PROXY), "--socket", str(socket_path),
+                 "--log", str(log_path), "--timeout", "1",
+                 "--allow", f"127.0.0.1:{self.http_port}"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            try:
+                deadline = time.monotonic() + 5
+                while not socket_path.exists() and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                self.assertTrue(socket_path.exists(), "proxy socket did not start")
+                client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                client.settimeout(3)
+                client.connect(str(socket_path))
+                client.sendall(
+                    f"CONNECT 127.0.0.1:{self.http_port} HTTP/1.1\r\n\r\n".encode()
+                )
+                self.assertIn(b"200 Connection Established", client.recv(256))
+                proxy.terminate()
+                proxy.wait(timeout=5)
+                self.assertEqual(client.recv(1), b"")
+                client.close()
+                records = [json.loads(line) for line in log_path.read_text().splitlines()]
+                self.assertEqual(
+                    [record["event"] for record in records],
+                    ["connect_start", "connect_complete"],
+                )
+                self.assertEqual(records[0]["connection_id"], records[1]["connection_id"])
+            finally:
+                if proxy.poll() is None:
+                    proxy.kill()
+                    proxy.wait(timeout=5)
 
     def test_fetch_helper_through_proxy(self):
         result = subprocess.run(

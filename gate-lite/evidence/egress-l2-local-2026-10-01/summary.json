@@ -10,7 +10,7 @@
     "profile_id": "urn:mandala:runner-profile:bwrap-egress-v1",
     "egress": [
       {
-        "destination": "127.0.0.1:42387",
+        "destination": "127.0.0.1:42933",
         "bytes": 212,
         "bytes_out": 87,
         "bytes_in": 125,
@@ -19,7 +19,7 @@
         "enforcer": "unix-proxy-allowlist"
       },
       {
-        "destination": "example.org",
+        "destination": "example.org:80",
         "bytes": 0,
         "allowed": false,
         "enforced": true,

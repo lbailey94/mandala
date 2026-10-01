@@ -24,6 +24,7 @@ import http.server
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -84,6 +85,17 @@ def build_payload(port: int) -> str:
     )
 
 
+def redact_local_paths(stderr: str) -> str:
+    """Keep machine-specific temporary paths out of checked-in probe evidence."""
+    lines = []
+    for line in stderr.splitlines():
+        line = re.sub(r"listening on \S+ \(", "listening on <proxy-socket> (", line)
+        line = re.sub(r"egress via \S+ \(log .+\)$",
+                      "egress via <proxy-socket> (log <probe-log>)", line)
+        lines.append(line)
+    return "\n".join(lines) + ("\n" if stderr.endswith("\n") else "")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="L2 egress acceptance probe.")
     default_out = TOOLS.parent / "evidence" / "egress-l2-local-2026-10-01"
@@ -108,7 +120,9 @@ def main() -> int:
             capture_output=True, text=True, env=env, timeout=120,
         )
         (out / "standalone-stdout.txt").write_text(proc.stdout, encoding="utf-8")
-        (out / "standalone-stderr.txt").write_text(proc.stderr, encoding="utf-8")
+        (out / "standalone-stderr.txt").write_text(
+            redact_local_paths(proc.stderr), encoding="utf-8"
+        )
         standalone = json.loads(proc.stdout.strip().splitlines()[-1]) if proc.stdout.strip() else {}
         if proc.returncode != 0:
             failures.append(f"standalone wrapper rc={proc.returncode}")
@@ -150,7 +164,7 @@ def main() -> int:
             if profile_id != orchestrator_module.PROFILE_ID_EGRESS:
                 failures.append(f"profile_id={profile_id}")
             allowed_entry = next((e for e in egress if e.get("destination") == f"127.0.0.1:{port}"), None)
-            denied_entry = next((e for e in egress if e.get("destination") == "example.org"), None)
+            denied_entry = next((e for e in egress if e.get("destination") == "example.org:80"), None)
             if not allowed_entry or not (allowed_entry.get("allowed") and allowed_entry.get("enforced")):
                 failures.append(f"allowed entry is not enforced: {allowed_entry}")
             elif not allowed_entry.get("bytes_out"):

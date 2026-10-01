@@ -1,5 +1,6 @@
 """Gate-lite orchestrator v0: pass → exec → settle → terminate with Continuity Receipts."""
 import hashlib
+import ipaddress
 import importlib.metadata
 import json
 import os
@@ -44,7 +45,11 @@ PROFILE_WRAPPER_SHA256 = "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0
 # network). Same bwrap/jq dependencies; a distinct wrapper digest and profile
 # id so receipts can bind the enforced-egress mechanism.
 PROFILE_ID_EGRESS = "urn:mandala:runner-profile:bwrap-egress-v1"
-PROFILE_WRAPPER_EGRESS_SHA256 = "sha256:5bbe68bdfd875f95ea02d72e4ceb4a2fa45153c0997270397e79b0840cf510b6"
+PROFILE_WRAPPER_EGRESS_SHA256 = "sha256:0a0720955e135ec2a6b31a74fcdb1a9c8ecfb372177fb8f6d925d48379b17a43"
+PROFILE_EGRESS_SIDECAR_SHA256 = {
+    "mandala-egress-proxy.py": "sha256:73826dcc2390fa55b5e78cc1f5ceece99c52a73d20a2573240aaf39b7abc6227",
+    "mandala-fetch.py": "sha256:d1ce7db2a926d80174319582e047f87d1f65672d4f22661dfd71b13f404bfb33",
+}
 PROFILE_BWRAP_SHA256 = "sha256:e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71"
 PROFILE_JQ_SHA256 = "sha256:59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566"
 GATE_CLASS = "gate-lite"
@@ -212,70 +217,153 @@ def _plan_envelope(plan: dict) -> str:
 def _egress_outcomes_from_log(plan: dict, log_path) -> list[dict] | None:
     """Build enforced egress outcomes from the wrapper's proxy log.
 
-    Returns None when no log exists (the runner predates egress enforcement or
-    is not the egress-capable wrapper), so callers keep the declared-intent
-    entries. When a log exists, entries are enforced outcomes: declared hosts
-    carry actual byte counts, denied attempts to any host are recorded, and
-    unused declared hosts appear with zero bytes.
+    Returns None only when no egress log was requested. Once a log path was
+    requested, missing, unreadable, or malformed evidence becomes an explicit
+    fail-closed outcome; callers must not fall back to declared intent.
+    Successful outcomes are keyed by normalized host *and port* so traffic to
+    multiple services on one host is not attributed to the first port seen.
     """
     path = Path(log_path)
+
+    def unavailable(reason: str) -> list[dict]:
+        return [
+            {
+                "destination": destination,
+                "bytes": 0,
+                "allowed": False,
+                "enforced": False,
+                "enforcer": "unix-proxy-allowlist",
+                "evidence_error": reason,
+            }
+            for destination in plan.get("declared") or []
+        ]
+
     if not path.is_file():
-        return None
+        return unavailable("proxy log missing")
     records = []
     try:
         for line in path.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line:
                 record = json.loads(line)
-                if isinstance(record, dict):
-                    records.append(record)
-    except (OSError, ValueError):
-        return None
+                if not isinstance(record, dict):
+                    return unavailable("proxy log contains a non-object JSONL record")
+                records.append(record)
+    except (OSError, UnicodeError, ValueError):
+        return unavailable("proxy log unreadable or malformed")
 
-    totals: dict[str, dict] = {}
-    denies: dict[str, dict] = {}
+    totals: dict[tuple[str, int], dict] = {}
+    denies: dict[tuple[str, int], dict] = {}
+    starts: dict[str, tuple[str, int]] = {}
+    completed: set[str] = set()
     for record in records:
         host = record.get("host")
-        if not isinstance(host, str) or not host:
+        port = record.get("port")
+        if (not isinstance(host, str) or not host.strip()
+                or not isinstance(port, int) or isinstance(port, bool)
+                or not 1 <= port <= 65535
+                or not isinstance(record.get("allowed"), bool)):
+            return unavailable("proxy log contains an invalid destination record")
+        normalized_host = host.strip().strip("[]").lower().rstrip(".")
+        try:
+            normalized_host = ipaddress.ip_address(normalized_host).compressed.lower()
+        except ValueError:
+            pass
+        key = (normalized_host, port)
+        event = record.get("event")
+        connection_id = record.get("connection_id")
+        if event in ("connect_start", "http_start"):
+            if (not record["allowed"] or not isinstance(connection_id, str)
+                    or not connection_id or connection_id in starts):
+                return unavailable("proxy log contains an invalid or duplicate connection start")
+            starts[connection_id] = key
             continue
-        key = host.lower()
-        if record.get("allowed"):
-            bucket = totals.setdefault(key, {"bytes_out": 0, "bytes_in": 0, "port": record.get("port")})
-            bucket["bytes_out"] += int(record.get("bytes_out") or 0)
-            bucket["bytes_in"] += int(record.get("bytes_in") or 0)
+        if event in ("connect_complete", "http_complete"):
+            if (not record["allowed"] or not isinstance(connection_id, str)
+                    or connection_id not in starts or connection_id in completed
+                    or starts[connection_id] != key):
+                return unavailable("proxy log contains an orphan or duplicate connection completion")
+            completed.add(connection_id)
+            out_bytes, in_bytes = record.get("bytes_out", 0), record.get("bytes_in", 0)
+            if (not isinstance(out_bytes, int) or isinstance(out_bytes, bool) or out_bytes < 0
+                    or not isinstance(in_bytes, int) or isinstance(in_bytes, bool) or in_bytes < 0):
+                return unavailable("proxy log contains invalid byte counts")
+            bucket = totals.setdefault(key, {"bytes_out": 0, "bytes_in": 0})
+            bucket["bytes_out"] += out_bytes
+            bucket["bytes_in"] += in_bytes
+        elif not record["allowed"] and event in ("connect", "http"):
+            denies.setdefault(key, {"reason": record.get("reason") or "denied"})
         else:
-            denies.setdefault(key, {"port": record.get("port"),
-                                    "reason": record.get("reason") or "denied"})
+            return unavailable("proxy log contains an unsupported or incomplete event")
+
+    if set(starts) != completed:
+        return unavailable("proxy log contains a connection without a terminal outcome")
+
+    def parse_destination(destination: str) -> tuple[str, int | None]:
+        if destination.startswith("["):
+            host, marker, rest = destination[1:].partition("]")
+            if not marker:
+                return destination.lower(), None
+            if rest.startswith(":") and rest[1:].isdigit():
+                port = int(rest[1:])
+                try:
+                    host = ipaddress.ip_address(host).compressed.lower()
+                except ValueError:
+                    host = host.lower().rstrip(".")
+                return host, port
+            if not rest:
+                try:
+                    host = ipaddress.ip_address(host).compressed.lower()
+                except ValueError:
+                    host = host.lower().rstrip(".")
+                return host, None
+            return destination.lower(), None
+        try:
+            return ipaddress.ip_address(destination).compressed.lower(), None
+        except ValueError:
+            pass
+        host, marker, port_text = destination.rpartition(":")
+        if marker and port_text.isdigit() and host:
+            return host.lower().rstrip("."), int(port_text)
+        return destination.lower().rstrip("."), None
+
+    def format_destination(host: str, port: int) -> str:
+        return f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
 
     entries: list[dict] = []
-    declared_keys = set()
+    declared_keys: set[tuple[str, int | None]] = set()
     for declared in plan.get("declared") or []:
-        host, _, port_text = declared.rpartition(":")
-        if not host or not port_text.isdigit():
-            host, port = declared, None
-        else:
-            port = int(port_text)
-        key = host.lower()
+        host, port = parse_destination(declared)
+        key = (host, port)
         declared_keys.add(key)
-        total = totals.get(key)
-        if total and (port is None or total.get("port") == port):
+        matched_totals = [
+            (record_key, total) for record_key, total in totals.items()
+            if record_key[0] == host and (port is None or record_key[1] == port)
+        ]
+        matched_denies = [
+            (record_key, deny) for record_key, deny in denies.items()
+            if record_key[0] == host and (port is None or record_key[1] == port)
+        ]
+        if matched_totals:
+            bytes_out = sum(total["bytes_out"] for _, total in matched_totals)
+            bytes_in = sum(total["bytes_in"] for _, total in matched_totals)
             entries.append({
                 "destination": declared,
-                "bytes": total["bytes_out"] + total["bytes_in"],
-                "bytes_out": total["bytes_out"],
-                "bytes_in": total["bytes_in"],
+                "bytes": bytes_out + bytes_in,
+                "bytes_out": bytes_out,
+                "bytes_in": bytes_in,
                 "allowed": True,
                 "enforced": True,
                 "enforcer": "unix-proxy-allowlist",
             })
-        elif key in denies:
+        elif matched_denies:
             entries.append({
                 "destination": declared,
                 "bytes": 0,
                 "allowed": False,
                 "enforced": True,
                 "enforcer": "unix-proxy-allowlist",
-                "denied_reason": denies[key]["reason"],
+                "denied_reason": matched_denies[0][1]["reason"],
             })
         else:
             entries.append({
@@ -286,9 +374,9 @@ def _egress_outcomes_from_log(plan: dict, log_path) -> list[dict] | None:
                 "enforcer": "unix-proxy-allowlist",
             })
     for key, deny in denies.items():
-        if key not in declared_keys:
+        if key not in declared_keys and (key[0], None) not in declared_keys:
             entries.append({
-                "destination": key,
+                "destination": format_destination(key[0], key[1]),
                 "bytes": 0,
                 "allowed": False,
                 "enforced": True,
@@ -396,7 +484,25 @@ class SandboxRunner:
                     return False
             except OSError:
                 return False
+        if self.runner_digest == PROFILE_WRAPPER_EGRESS_SHA256:
+            if not self._egress_sidecars_match():
+                return False
         return True
+
+    def _egress_sidecar_digests(self) -> dict[str, str] | None:
+        sidecars = {}
+        root = Path(self.runner_path).parent
+        for name in PROFILE_EGRESS_SIDECAR_SHA256:
+            path = root / name
+            try:
+                sidecars[name] = self._digest(str(path.resolve(strict=True)))
+            except OSError:
+                return None
+        return sidecars
+
+    def _egress_sidecars_match(self) -> bool:
+        observed = self._egress_sidecar_digests()
+        return observed == PROFILE_EGRESS_SIDECAR_SHA256
 
     def _require_profile(self) -> None:
         if self.sandbox_class != self._observed_class:
@@ -414,6 +520,8 @@ class SandboxRunner:
             raise RunnerProfileError(f"runner identity unavailable: {exc}", expected=self.runner_path, found="unavailable") from exc
         if current_path != self.runner_path or current_digest != self.runner_digest:
             raise RunnerProfileError("runner identity changed after inspection", expected=self.runner_digest, found=current_digest)
+        if self.profile_id == PROFILE_ID_EGRESS and not self._egress_sidecars_match():
+            raise RunnerProfileError("runner sidecar identity mismatch", expected=PROFILE_EGRESS_SIDECAR_SHA256, found=self._egress_sidecar_digests())
         if self.profile_id not in (PROFILE_ID, PROFILE_ID_EGRESS):
             raise RunnerProfileError("no reviewed runner profile matches executable; real payload execution is disabled", expected=[PROFILE_ID, PROFILE_ID_EGRESS], found=self.profile_id)
         for name, expected in (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)):
@@ -446,10 +554,19 @@ class SandboxRunner:
         plan = parse_payload(payload_ref)
         if slot.get("workspace"):
             plan["workspace"] = slot["workspace"]
+        invocation = self._argv(plan)[1:]
+        if self.profile_id == PROFILE_ID_EGRESS:
+            # Keep the Continuity Receipt runner_profile wire shape stable:
+            # sidecar identity is committed by the invocation digest rather
+            # than added as an unrecognized profile field.
+            invocation = {
+                "argv": invocation,
+                "sidecar_digests": self._egress_sidecar_digests(),
+            }
         return {
             "profile_id": self.profile_id,
             "executable_digest": self.runner_digest,
-            "invocation_digest": sha256_prefixed(canonical_bytes(self._argv(plan)[1:])),
+            "invocation_digest": sha256_prefixed(canonical_bytes(invocation)),
         }
 
     def _wall_seconds(self, slot: dict) -> int:
@@ -529,6 +646,8 @@ class SandboxRunner:
             killed_by = "wall"
         exit_code = 137 if killed_by else proc.returncode
         egress = self._egress_log_result(plan, log_dir)
+        if any(entry.get("evidence_error") for entry in (egress or [])):
+            exit_code = 125
         return self._result(plan, exit_code, stdout or b"", stderr or b"",
                             killed_by=killed_by, egress=egress)
 
@@ -639,6 +758,8 @@ class SliceRunner(SandboxRunner):
             "disk_peak_mb": 0,
         }
         egress = self._egress_log_result(plan, log_dir)
+        if any(entry.get("evidence_error") for entry in (egress or [])):
+            exit_code = 125
         return self._result(plan, exit_code, stdout or b"", stderr or b"",
                             killed_by=killed_by, resources=resources, egress=egress)
 
@@ -1295,6 +1416,9 @@ class Orchestrator:
         self._last_exec[slot_id] = result
         self._run_path(slot_id).unlink(missing_ok=True)
 
+        egress_evidence_incomplete = any(
+            entry.get("evidence_error") for entry in (result.egress or [])
+        )
         execution_body = {
             "tool_calls": [
                 {
@@ -1314,6 +1438,8 @@ class Orchestrator:
             ],
             "resources": result.resources,
             "sandbox_class": getattr(self.runner, "sandbox_class", "unknown"),
+            "exit_code": result.exit_code,
+            "egress_evidence_complete": not egress_evidence_incomplete,
         }
         if runner_profile is not None:
             execution_body["runner_profile"] = runner_profile
@@ -1359,7 +1485,11 @@ class Orchestrator:
         termination = None
         final_state = "terminated"
         fresh_slot = self.registry.get_slot(slot_id) or slot
-        if kill_request is not None:
+        if egress_evidence_incomplete:
+            response["egress_evidence_incomplete"] = True
+            response["reason"] = "egress_evidence_incomplete"
+            final_state = "receipt_incomplete"
+        elif kill_request is not None:
             latency_ms = max(int(time.time() * 1000) - int(kill_request.get("requested_at_ms", 0)), 0)
             termination = self._emit(
                 slot,
@@ -1396,7 +1526,9 @@ class Orchestrator:
                 slot_id, (STARTING_STATE,), {"state": final_state}
             )
         else:
-            self.registry.cas_slot(slot_id, (STARTING_STATE,), {"state": "active"})
+            self.registry.cas_slot(slot_id, (STARTING_STATE,), {"state": (
+                "receipt_incomplete" if egress_evidence_incomplete else "active"
+            )})
 
         if cache_key:
             self.registry.remember(

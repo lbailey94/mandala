@@ -148,9 +148,17 @@ proves the issuer recorded the identity; it does not prove the issuer used it.
   outcomes from the proxy log (`"enforcer": "unix-proxy-allowlist"`, per-entry
   `bytes_out`/`bytes_in`, and denied attempts recorded). Non-proxy tools
   simply have no network. The signed `runner_profile` binds the egress wrapper
-  digest and the invocation (including the allowlist) under
+  digest plus proxy/helper sidecar digests through its invocation digest
+  (along with the allowlist) under
   `urn:mandala:runner-profile:bwrap-egress-v1`. Acceptance probe:
   `python3 tools/egress_l2_probe.py` (local, qualified-host only).
+  This candidate checks the host and port in an HTTP `CONNECT` request and
+  then passes bytes through to that endpoint. It does not filter paths,
+  methods, TLS content, or application behavior, and it does not pin DNS
+  answers to IP addresses. Treat the allowlist as a destination boundary, not
+  an application policy. Missing, malformed, or incomplete proxy evidence
+  produces a failed execution outcome and an explicit `receipt_incomplete`
+  slot hold.
 - The slot workspace is mounted writable at `/workspace` inside the sandbox
   (wrapper envelope `rw: true`), so payload artifacts land in
   `state/workspaces/<slot>/` and are captured by `mandala.snapshot`.
