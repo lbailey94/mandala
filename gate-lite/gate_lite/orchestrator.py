@@ -3,6 +3,7 @@ import hashlib
 import importlib.metadata
 import json
 import os
+import shutil
 import shlex
 import signal as signal_mod
 import subprocess
@@ -609,13 +610,23 @@ class Orchestrator:
             return False
 
     def _signal_run(self, run: dict, signal_name: str) -> None:
+        """Use systemd when available; fall back to the journaled POSIX group.
+
+        macOS has no `systemctl`, and containers can have a systemctl client
+        that cannot reach a user session. In either case the run's recorded
+        process group remains the termination target.
+        """
         unit = run.get("unit")
-        if unit:
-            subprocess.run(
-                ["systemctl", "--user", "kill", "--kill-whom=all", "-s", signal_name, unit],
-                capture_output=True,
-            )
-            return
+        if unit and shutil.which("systemctl"):
+            try:
+                completed = subprocess.run(
+                    ["systemctl", "--user", "kill", "--kill-whom=all", "-s", signal_name, unit],
+                    capture_output=True,
+                )
+                if completed.returncode == 0:
+                    return
+            except OSError:
+                pass
         sig = getattr(signal_mod, signal_name)
         pgid, pid = run.get("pgid"), run.get("pid")
         try:
