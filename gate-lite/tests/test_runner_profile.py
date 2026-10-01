@@ -67,12 +67,31 @@ class TestRunnerProfileFailClosed(unittest.TestCase):
     def test_profile_binds_exact_argv_and_executable(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "runner"
-            runner = self.make_runner(path)
-            first = runner.profile_for({"workspace": "/tmp/w"}, "echo first")
-            second = runner.profile_for({"workspace": "/tmp/w"}, "echo second")
-            self.assertEqual(first["executable_digest"], runner.runner_digest)
-            self.assertEqual(first["profile_id"], profile_module.PROFILE_ID)
-            self.assertNotEqual(first["invocation_digest"], second["invocation_digest"])
+            path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            path.chmod(0o700)
+            digest = SandboxRunner._digest(str(path))
+            with patch.object(profile_module, "PROFILE_WRAPPER_SHA256", digest), \
+                 patch.object(SandboxRunner, "_dependencies_match", return_value=True):
+                runner = SandboxRunner(str(path))
+                first = runner.profile_for({"workspace": "/tmp/w"}, "echo first")
+                second = runner.profile_for({"workspace": "/tmp/w"}, "echo second")
+                self.assertEqual(first["executable_digest"], runner.runner_digest)
+                self.assertEqual(first["profile_id"], profile_module.PROFILE_ID)
+                self.assertNotEqual(first["invocation_digest"], second["invocation_digest"])
+
+    def test_egress_wrapper_binds_the_egress_profile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "runner"
+            path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            path.chmod(0o700)
+            digest = SandboxRunner._digest(str(path))
+            with patch.object(profile_module, "PROFILE_WRAPPER_EGRESS_SHA256", digest), \
+                 patch.object(SandboxRunner, "_dependencies_match", return_value=True):
+                runner = SandboxRunner(str(path))
+                self.assertEqual(runner.profile_id, profile_module.PROFILE_ID_EGRESS)
+                self.assertEqual(runner.sandbox_class, "bwrap")
+                profile = runner.profile_for({"workspace": "/tmp/w"}, "echo hello")
+                self.assertEqual(profile["profile_id"], profile_module.PROFILE_ID_EGRESS)
 
     def test_non_executable_runner_fails_closed(self):
         with tempfile.TemporaryDirectory() as tmp:

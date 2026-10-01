@@ -1,0 +1,1 @@
+{"allowed_body_ok": true, "allowed_rc": 0, "denied_rc": 1, "raw": "blocked"}

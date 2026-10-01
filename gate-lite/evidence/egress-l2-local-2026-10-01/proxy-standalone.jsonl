@@ -1,0 +1,2 @@
+{"allowed": true, "bytes_in": 125, "bytes_out": 87, "event": "connect", "host": "127.0.0.1", "port": 42387, "ts": 1790821101.0140588}
+{"allowed": false, "event": "connect", "host": "example.org", "port": 80, "reason": "not-in-allowlist", "ts": 1790821101.0592396}

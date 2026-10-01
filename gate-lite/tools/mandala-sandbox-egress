@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# mandala-sandbox-egress — L2 candidate of the portable containment wrapper.
+#
+# Same CLI contract as `mandala-sandbox` (Sovereign host twin), plus
+# enforced egress: when the envelope requests `net: true` with a declared
+# `egress` allowlist, the sandbox keeps `--unshare-all` (no network) and the
+# ONLY egress channel is the allowlist proxy's Unix socket, bind-mounted at
+# /run/mandala-egress.sock. No raw network, no resolver in the sandbox; the
+# host proxy resolves names and refuses everything not on the allowlist.
+# `mandala-fetch.py` (shipped beside this script) is bound read-only at
+# /run/mandala-fetch.py for use inside the sandbox.
+#
+# Fail-closed: net requested without declared egress, proxy start failure,
+# or a missing socket all abort before the payload starts (exit 64/70).
+#
+# Legacy whole-network sharing (`net: true` with no allowlist mechanism) is
+# intentionally NOT available here; use the stock wrapper for that.
+#
+# Envelope schema `wm-sandbox-exec-v1`:
+#   {"schema":"wm-sandbox-exec-v1","program":"curl","args":["https://..."],
+#    "net":true,"egress":["example.com","api.example.com:443"], ...}
+set -euo pipefail
+
+with_net=0
+workspace_override=""
+workspace_rw=0
+egress_json="[]"
+
+if [ "${1:-}" = "--exec" ]; then
+  envelope="${2:?mandala-sandbox-egress: --exec requires a JSON envelope}"
+  shift 2
+  coproc parsed_stream { jq -j 'if type != "object" or (.program | type) != "string" or .program == "" or (.program | index("\u0000")) != null or (has("args") and (.args | type) != "array") or any((if has("args") then .args else [] end)[]; type != "string" or index("\u0000") != null) or (has("net") and (.net | type) != "boolean") or (has("workspace") and ((.workspace | type) != "string" or (.workspace | index("\u0000")) != null)) or (has("rw") and (.rw | type) != "boolean") or (has("egress") and ((.egress | type) != "array" or any(.egress[]; (type != "string") or (. == "") or (index("\u0000") != null)))) then error("invalid sandbox envelope") else ([.program, (if has("net") then .net else false end | tostring), (if has("workspace") then .workspace else "" end), (if has("rw") then .rw else false end | tostring), (if has("egress") then (.egress | tojson) else "[]" end)] + (if has("args") then .args else [] end))[] | ., "\u0000" end' <<<"$envelope"; }
+  mapfile -d '' -t fields <&"${parsed_stream[0]}"
+  # shellcheck disable=SC2154 # Bash assigns this PID for the named coprocess.
+  if ! wait "${parsed_stream_PID}"; then
+    echo "mandala-sandbox-egress: invalid JSON envelope or argument types" >&2
+    exit 64
+  fi
+  program="${fields[0]}"
+  if [ "${fields[1]}" = "true" ]; then
+    with_net=1
+  fi
+  workspace_override="${fields[2]}"
+  if [ "${fields[3]}" = "true" ]; then
+    workspace_rw=1
+  fi
+  egress_json="${fields[4]}"
+  exec_args=("${fields[@]:5}")
+  set -- "$program" "${exec_args[@]}"
+elif [ "${1:-}" = "--net" ]; then
+  with_net=1
+  shift
+  # CLI form: allowlist comes from MANDALA_EGRESS_ALLOW (comma-separated).
+  if [ -n "${MANDALA_EGRESS_ALLOW:-}" ]; then
+    egress_json=$(jq -c 'split(",") | map(select(length > 0))' <<<"$MANDALA_EGRESS_ALLOW")
+  fi
+fi
+
+# HOME may be unbound under systemd (`set -u`) — default to a path that
+# will not exist, so the workspace bind is skipped, not fatal.
+workspace="${workspace_override:-${WM_SANDBOX_WORKSPACE:-${HOME:-/nonexistent}/.local/share/whitemagic/safe_corpus}}"
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+proxy_path="${MANDALA_EGRESS_PROXY:-$script_dir/mandala-egress-proxy.py}"
+helper_path="$script_dir/mandala-fetch.py"
+
+args=(
+  --ro-bind /usr /usr
+  --ro-bind-try /lib /lib
+  --ro-bind-try /lib64 /lib64
+  --ro-bind-try /nix /nix
+  --ro-bind-try /bin /bin
+  --ro-bind-try /run/current-system /run/current-system
+  --proc /proc
+  --dev /dev
+  --unshare-all
+  --tmpfs /tmp
+  --die-with-parent
+  --setenv WM_SANDBOXED 1
+)
+
+egress_count=$(jq 'length' <<<"$egress_json")
+proxy_pid=""
+rundir=""
+if [ "$with_net" = 1 ]; then
+  if [ "$egress_count" -lt 1 ]; then
+    echo "mandala-sandbox-egress: net requested without a declared egress allowlist" >&2
+    exit 64
+  fi
+  if [ ! -f "$proxy_path" ]; then
+    echo "mandala-sandbox-egress: egress proxy not found: $proxy_path" >&2
+    exit 70
+  fi
+  rundir=$(mktemp -d "${TMPDIR:-/tmp}/mandala-egress.XXXXXX")
+  socket_path="$rundir/egress.sock"
+  log_path="${MANDALA_EGRESS_LOG:-$rundir/egress.log}"
+  allow_args=()
+  while IFS= read -r entry; do
+    allow_args+=(--allow "$entry")
+  done < <(jq -r '.[]' <<<"$egress_json")
+  python3 "$proxy_path" --socket "$socket_path" --log "$log_path" "${allow_args[@]}" &
+  proxy_pid=$!
+  cleanup() {
+    if [ -n "$proxy_pid" ]; then
+      kill "$proxy_pid" 2>/dev/null || true
+      wait "$proxy_pid" 2>/dev/null || true
+    fi
+    if [ -n "$rundir" ]; then
+      rm -rf "$rundir"
+    fi
+  }
+  trap cleanup EXIT
+  for _ in $(seq 1 50); do
+    [ -S "$socket_path" ] && break
+    sleep 0.1
+  done
+  if [ ! -S "$socket_path" ]; then
+    echo "mandala-sandbox-egress: egress proxy failed to start" >&2
+    exit 70
+  fi
+  args+=( --dir /run )
+  args+=( --ro-bind "$socket_path" /run/mandala-egress.sock )
+  if [ -f "$helper_path" ]; then
+    args+=( --ro-bind "$helper_path" /run/mandala-fetch.py )
+  fi
+  args+=( --ro-bind-try /etc/ssl/certs /etc/ssl/certs )
+  args+=( --setenv MANDALA_EGRESS_SOCK /run/mandala-egress.sock )
+  echo "mandala-sandbox-egress: egress via $socket_path (log $log_path)" >&2
+fi
+
+if [ -e "$workspace" ]; then
+  if [ "$workspace_rw" = 1 ]; then
+    args+=( --bind "$workspace" /workspace )
+  else
+    args+=( --ro-bind "$workspace" /workspace )
+  fi
+elif [ "$workspace_rw" = 1 ]; then
+  echo "mandala-sandbox-egress: writable workspace does not exist" >&2
+  exit 64
+fi
+
+if [ -n "$proxy_pid" ]; then
+  # Proxy mode: wait for the sandbox so the proxy can be stopped after it.
+  rc=0
+  bwrap "${args[@]}" -- "$@" || rc=$?
+  exit "$rc"
+else
+  exec bwrap "${args[@]}" -- "$@"
+fi
