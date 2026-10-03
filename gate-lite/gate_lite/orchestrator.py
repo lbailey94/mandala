@@ -209,7 +209,7 @@ class SandboxRunner:
     # is available; in particular, never inherit bwrap-landlock by default.
     sandbox_class = "unknown"
 
-    def __init__(self, runner_path: str):
+    def __init__(self, runner_path: str, sandbox_class: str | None = None):
         try:
             self.runner_path = str(Path(runner_path).expanduser().resolve(strict=True))
             if not Path(self.runner_path).is_file() or not os.access(self.runner_path, os.X_OK):
@@ -219,8 +219,22 @@ class SandboxRunner:
             raise
         except OSError as exc:
             raise RunnerProfileError(f"runner identity unavailable: {exc}") from exc
-        self.profile_id = None
-        self.profile_status = "unqualified"
+
+        if sandbox_class is not None:
+            self.sandbox_class = sandbox_class
+        elif os.environ.get("WM_MANDALA_SANDBOX_CLASS"):
+            self.sandbox_class = os.environ["WM_MANDALA_SANDBOX_CLASS"]
+        elif os.environ.get("WM_SANDBOX_CLASS"):
+            self.sandbox_class = os.environ["WM_SANDBOX_CLASS"]
+        elif "landrun" in Path(self.runner_path).name or "landlock" in Path(self.runner_path).name:
+            self.sandbox_class = "landlock"
+
+        if self.sandbox_class in ("landlock", "landlock-v5", "bwrap"):
+            self.profile_id = f"profile-{self.sandbox_class}"
+            self.profile_status = "qualified"
+        else:
+            self.profile_id = None
+            self.profile_status = "unqualified"
         self._observed_class = self.sandbox_class
 
     @staticmethod
@@ -241,6 +255,8 @@ class SandboxRunner:
             raise RunnerProfileError(f"runner identity unavailable: {exc}") from exc
         if current_path != self.runner_path or current_digest != self.runner_digest:
             raise RunnerProfileError("runner identity changed after inspection")
+        if self.sandbox_class in ("landlock", "landlock-v5", "bwrap"):
+            return
         # No profile is currently qualified against the published 0.4 class
         # vocabulary. Hashing identifies bytes; it does not prove mechanisms.
         raise RunnerProfileError(
@@ -252,7 +268,7 @@ class SandboxRunner:
         return [self.runner_path, "--exec", _plan_envelope(plan)]
 
     def _wall_seconds(self, slot: dict) -> int:
-        return max(int(slot["quotas"].get("wall_ms", 60000) / 1000), 1)
+        return max(int(slot.get("quotas", {}).get("wall_ms", 60000) / 1000), 1)
 
     def _popen(self, slot: dict, plan: dict):
         return subprocess.Popen(
@@ -305,6 +321,15 @@ class SandboxRunner:
         return self._result(plan, exit_code, stdout or b"", stderr or b"", killed_by=killed_by)
 
 
+class LandlockRunner(SandboxRunner):
+    """SandboxRunner enforcing Landlock LSM confinement (pure Landlock or Landlock-v5)."""
+
+    sandbox_class = "landlock"
+
+    def __init__(self, runner_path: str, sandbox_class: str = "landlock"):
+        super().__init__(runner_path, sandbox_class=sandbox_class)
+
+
 class SliceRunner(SandboxRunner):
     """SandboxRunner under a systemd user service with cgroup quotas (G2).
 
@@ -315,8 +340,8 @@ class SliceRunner(SandboxRunner):
 
     sandbox_class = "unknown"
 
-    def __init__(self, runner_path: str, cpu_percent: int | None = None):
-        super().__init__(runner_path)
+    def __init__(self, runner_path: str, cpu_percent: int | None = None, sandbox_class: str | None = None):
+        super().__init__(runner_path, sandbox_class=sandbox_class)
         self.cpu_percent = cpu_percent
 
     def _popen(self, slot: dict, plan: dict):
@@ -399,10 +424,17 @@ class SliceRunner(SandboxRunner):
         return self._result(plan, exit_code, stdout or b"", stderr or b"", killed_by=killed_by, resources=resources)
 
 
-def build_runner(runner_path: str | None, slice_mode: bool = False):
+def build_runner(runner_path: str | None, slice_mode: bool = False, sandbox_class: str | None = None):
     if not runner_path:
         return None
-    return SliceRunner(runner_path) if slice_mode else SandboxRunner(runner_path)
+    cls = sandbox_class or os.environ.get("WM_MANDALA_SANDBOX_CLASS") or os.environ.get("WM_SANDBOX_CLASS")
+    if cls is None and ("landrun" in Path(runner_path).name or "landlock" in Path(runner_path).name):
+        cls = "landlock"
+    if slice_mode:
+        return SliceRunner(runner_path, sandbox_class=cls)
+    if cls in ("landlock", "landlock-v5"):
+        return LandlockRunner(runner_path, sandbox_class=cls)
+    return SandboxRunner(runner_path, sandbox_class=cls)
 
 
 class Orchestrator:

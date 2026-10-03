@@ -492,6 +492,11 @@ def main(argv=None) -> int:
     parser.add_argument("--tenant", required=True)
     parser.add_argument("--gate-id", default="gate-lite-1")
     parser.add_argument("--runner", default=None)
+    parser.add_argument(
+        "--sandbox-class",
+        default=None,
+        help="sandbox confinement class (e.g. landlock, landlock-v5, bwrap)",
+    )
     parser.add_argument("--slice", action="store_true", help="systemd slice quotas (G2)")
     parser.add_argument(
         "--demo",
@@ -506,12 +511,13 @@ def main(argv=None) -> int:
 
     runner_path = args.runner or os.environ.get("WM_GATELITE_RUNNER")
     slice_mode = args.slice or os.environ.get("WM_GATELITE_SLICE") == "1"
+    sandbox_class = getattr(args, "sandbox_class", None) or os.environ.get("WM_MANDALA_SANDBOX_CLASS")
     if slice_mode and not runner_path:
         parser.error(
             "--slice/WM_GATELITE_SLICE requires a runner path: pass --runner <path> "
             "or set WM_GATELITE_RUNNER"
         )
-    runner = build_runner(runner_path, slice_mode)
+    runner = build_runner(runner_path, slice_mode, sandbox_class=sandbox_class)
     if runner is None and not args.demo:
         parser.error(
             "refusing to start: no sandbox runner configured (pass --runner <path> "

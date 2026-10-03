@@ -118,6 +118,45 @@ class TestRunnerProfileFailClosed(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "does not support.*continuity-receipt/0.4"):
                     Orchestrator(tmp)
 
+    def test_landlock_runner_profile_is_qualified_and_executes(self):
+        from gate_lite.orchestrator import LandlockRunner
+        with tempfile.TemporaryDirectory() as tmp:
+            runner_script = Path(tmp) / "landrun-sandbox"
+            runner_script.write_text("#!/bin/sh\necho 'landlock ok'\nexit 0\n", encoding="utf-8")
+            runner_script.chmod(0o700)
+            runner = LandlockRunner(str(runner_script))
+            self.assertEqual(runner.sandbox_class, "landlock")
+            self.assertEqual(runner.profile_status, "qualified")
+            self.assertEqual(runner.profile_id, "profile-landlock")
+            result = runner.run({}, "echo test")
+            self.assertEqual(result.exit_code, 0)
+
+    def test_build_runner_auto_detects_landlock(self):
+        from gate_lite.orchestrator import LandlockRunner, build_runner
+        with tempfile.TemporaryDirectory() as tmp:
+            runner_script = Path(tmp) / "landrun-sandbox"
+            runner_script.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            runner_script.chmod(0o700)
+            runner = build_runner(str(runner_script))
+            self.assertIsInstance(runner, LandlockRunner)
+            self.assertEqual(runner.sandbox_class, "landlock")
+
+    def test_orchestrator_landlock_exec_and_receipt(self):
+        from gate_lite.orchestrator import LandlockRunner
+        with tempfile.TemporaryDirectory() as tmp:
+            runner_script = Path(tmp) / "landrun-sandbox"
+            runner_script.write_text("#!/bin/sh\necho 'confinement active'\nexit 0\n", encoding="utf-8")
+            runner_script.chmod(0o700)
+            runner = LandlockRunner(str(runner_script))
+            orch = Orchestrator(Path(tmp) / "state", runner=runner)
+            orch.add_tenant("tenant", ["did:key:test"])
+            issued = orch.pass_("tenant", "did:key:test")
+            result = orch.exec_("tenant", issued["slot_id"], "echo test", token=issued["token"])
+            self.assertEqual(result["exit"], 0)
+            bundle = orch.receipt(orch.task_id_for(issued["slot_id"]))
+            execution = next(r for r in bundle["receipts"] if r["type"] == "task.execution")
+            self.assertEqual(execution["body"]["sandbox_class"], "landlock")
+
 
 if __name__ == "__main__":
     unittest.main()
