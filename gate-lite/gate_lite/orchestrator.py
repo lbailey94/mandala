@@ -199,9 +199,10 @@ class SandboxRunner:
     """Identity-check a host wrapper pending a qualified receipt profile.
 
     The configured binary is resolved and hashed, but real runs remain blocked
-    until the exact executable and its mechanisms map to a reviewed class in
-    the pinned receipt vocabulary. A digest identifies bytes; it proves no
-    containment behavior.
+    until evidence for the exact executable and its mechanisms is reviewed
+    against the pinned receipt vocabulary. An adapter hint selects how the
+    wrapper is invoked; it does not qualify the mechanism. A digest identifies
+    bytes; it proves no containment behavior.
     """
 
     # Published receipt 0.4 has no honest class for the current portable
@@ -220,22 +221,27 @@ class SandboxRunner:
         except OSError as exc:
             raise RunnerProfileError(f"runner identity unavailable: {exc}") from exc
 
-        if sandbox_class is not None:
-            self.sandbox_class = sandbox_class
-        elif os.environ.get("WM_MANDALA_SANDBOX_CLASS"):
-            self.sandbox_class = os.environ["WM_MANDALA_SANDBOX_CLASS"]
-        elif os.environ.get("WM_SANDBOX_CLASS"):
-            self.sandbox_class = os.environ["WM_SANDBOX_CLASS"]
-        elif "landrun" in Path(self.runner_path).name or "landlock" in Path(self.runner_path).name:
-            self.sandbox_class = "landlock"
+        adapter_hint = sandbox_class
+        if adapter_hint is None:
+            adapter_hint = os.environ.get("WM_MANDALA_SANDBOX_CLASS")
+        if adapter_hint is None:
+            adapter_hint = os.environ.get("WM_SANDBOX_CLASS")
+        if adapter_hint is None and (
+            "landrun" in Path(self.runner_path).name
+            or "landlock" in Path(self.runner_path).name
+        ):
+            adapter_hint = "landlock"
 
-        if self.sandbox_class in ("landlock", "landlock-v5", "bwrap"):
-            self.profile_id = f"profile-{self.sandbox_class}"
-            self.profile_status = "qualified"
-        else:
-            self.profile_id = None
-            self.profile_status = "unqualified"
+        # Selection is useful for choosing a wrapper adapter, but neither a
+        # class string nor the wrapper's filename is qualification evidence.
+        self.adapter_id = adapter_hint
+        self.sandbox_class = "unknown"
+        self.profile_id = None
+        self.profile_status = "unqualified"
+        self._observed_adapter_id = self.adapter_id
         self._observed_class = self.sandbox_class
+        self._observed_profile_id = self.profile_id
+        self._observed_profile_status = self.profile_status
 
     @staticmethod
     def _digest(path: str) -> str:
@@ -248,6 +254,13 @@ class SandboxRunner:
     def _require_profile(self) -> None:
         if self.sandbox_class != self._observed_class:
             raise RunnerProfileError("runner profile class mismatch")
+        if self.adapter_id != self._observed_adapter_id:
+            raise RunnerProfileError("runner adapter selection mismatch")
+        if (
+            self.profile_id != self._observed_profile_id
+            or self.profile_status != self._observed_profile_status
+        ):
+            raise RunnerProfileError("runner profile status mismatch")
         try:
             current_path = str(Path(self.runner_path).resolve(strict=True))
             current_digest = self._digest(current_path)
@@ -255,10 +268,9 @@ class SandboxRunner:
             raise RunnerProfileError(f"runner identity unavailable: {exc}") from exc
         if current_path != self.runner_path or current_digest != self.runner_digest:
             raise RunnerProfileError("runner identity changed after inspection")
-        if self.sandbox_class in ("landlock", "landlock-v5", "bwrap"):
-            return
-        # No profile is currently qualified against the published 0.4 class
-        # vocabulary. Hashing identifies bytes; it does not prove mechanisms.
+        # There is no reviewed profile evidence bound to this executable in
+        # the published 0.4 class vocabulary. Hashing and adapter selection
+        # identify inputs; they do not prove mechanisms.
         raise RunnerProfileError(
             "no reviewed runner profile is qualified for Continuity Receipt 0.4; "
             "real payload execution is disabled"
@@ -322,9 +334,12 @@ class SandboxRunner:
 
 
 class LandlockRunner(SandboxRunner):
-    """SandboxRunner enforcing Landlock LSM confinement (pure Landlock or Landlock-v5)."""
+    """Adapter for invoking a runner intended to provide Landlock confinement.
 
-    sandbox_class = "landlock"
+    The adapter name describes the selected runner contract; it does not
+    establish that the executable enforces Landlock or qualifies a receipt
+    sandbox class.
+    """
 
     def __init__(self, runner_path: str, sandbox_class: str = "landlock"):
         super().__init__(runner_path, sandbox_class=sandbox_class)
@@ -1463,6 +1478,9 @@ class Orchestrator:
         digest = getattr(runner, "runner_digest", None)
         if digest:
             info["executable_sha256"] = digest
+        adapter_id = getattr(runner, "adapter_id", None)
+        if adapter_id:
+            info["adapter_id"] = adapter_id
         profile_id = getattr(runner, "profile_id", None)
         if profile_id:
             info["profile_id"] = profile_id

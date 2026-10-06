@@ -76,7 +76,13 @@ The server refuses to start without a configured sandbox runner unless
 `--demo` is passed (`--runner`/`--slice` or `WM_GATELITE_RUNNER` otherwise).
 Configured real runners currently report `unknown` / `unqualified`, and
 `mandala.exec` refuses them before token consumption or payload spawn.
-`mandala.status` reports the resolved runner path and digest. Execution requires the
+`mandala.status` reports the resolved runner path and digest, plus an
+`adapter_id` when a wrapper adapter was selected. The adapter name may come
+from an executable name or configuration hint; it is not qualification
+evidence, and the mechanism class remains `unknown`. Enabling real execution
+requires evidence bound to the exact executable and dependency versions,
+mechanism-specific checks, and a reviewed mapping into the pinned receipt
+class vocabulary. Once such a profile is available, exec also requires the
 single-use pass token from `mandala.pass` (bound to agent + slot; durable
 replay rejection).
 
@@ -220,7 +226,9 @@ choice, not a scaling need. Earlier fixes from the same suite:
   TRUSTED offline; evidence + friction log in `evidence/outsider-2026-09-24/`.
   The signed sandbox label is a historical issuer claim, not proof that both
   mechanisms ran. The portable wrapper's observed path is Bubblewrap-only;
-  runner classification and independent other-host adoption remain open (see
+  runner classification and independent other-host adoption remain open. This
+  historical run does not qualify the current candidate's real-runner profile;
+  current configured runners are refused before payload spawn (see
   `evidence/wm-probe-2026-09-25/REPORT.md` and
   `../design/RUNNER_CLASS_CLOSURE_PLAN_2026-09-25.md`).
 - Compatibility changes (2026-09-24, authorization contract): `mandala-ctl
