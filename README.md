@@ -41,14 +41,14 @@ claims should be read at their recorded evidence dates.
 Future-project entry criteria and deferred platform lanes are in
 [`NEXT_PROJECT_GATES.md`](NEXT_PROJECT_GATES.md).
 
-**Status snapshot (2026-09-24).** This table distinguishes the working
+**Status snapshot (2026-10-06).** This table distinguishes the working
 candidate from the public snapshot. See `PROJECT_STATUS.md` for exact pins and
 qualification gates; older narrative below is kept as a dated record.
 
 | Component | Repo / artifact | Version | Evidence date | State |
 |---|---|---|---|---|
-| gate-lite | `mandala-os` (private); public snapshot `mandalaos-gate-lite` | working and public review snapshot spec 0.4 (PR #3, `bd8eee3`); historical 0.3 evidence retained | 2026-09-24 (86 tests green locally and on clean export; 0.4 real-runner bundle TRUSTED) | other-host tester remains separate |
-| Continuity Receipt | `continuity-receipt` (public) | 0.4.0 (PyPI + crates.io) | 2026-09-24 | spec/verifiers published separately; gate-lite uses the PyPI implementation |
+| gate-lite | `mandala-os` (private); public snapshot `mandalaos-gate-lite` | private `main` `5386f5f` emits/pins `continuity-receipt/0.4` (`==0.4.0`); public snapshot HEAD `47eae84` (PRs #6/#7 merged), predates the refusal fix | 2026-09-30 (0.4 lane green: 102 tests in a clean venv); `4301245` "refuse unreviewed runner hints" merged 2026-10-06; the 86-test figure is the 2026-09-24 outsider run | 0.4 lane green on main; curate `4301245` into the public snapshot next; other-host tester remains separate |
+| Continuity Receipt | `continuity-receipt` (public) | 0.5.1 (PyPI + crates.io; spec `continuity-receipt/0.5` published 2026-09-30) | 2026-10-01 (published); gate-lite still pins `==0.4.0` | spec/verifiers published separately; gate-lite uses the PyPI implementation |
 | Eval endpoint | live at `api.whitemagic.dev/eval` | — | 2026-09-24 (24 tests green; `/eval/health` ok) | hosted (evaluation infrastructure, not a product surface) |
 | Sovereign | `mandalaos-sovereign` (private) | WM pin v9.2.8 | VM reverified 2026-09-24/25 on v9.2.8 | 13/13 in-guest containment checks, active services, enforced Landlock; stranger install separate |
 | Lakshmi | `lakshmi` (private) | — | 2026-09-24 (94 tests green) | built + locally tested; S3 live |
@@ -96,6 +96,13 @@ across the two cards: A1+B1 on FA99, B2+C1 on FEEC; B's identity and signature
 chain proven; rotation runbook drafted; pre-release gate
 `security/custody_gate.sh`; hardware-token and Shamir hardening tracked for
 near-future releases).
+
+**Newer records (2026-09-25 → 2026-10-06, read these first):**
+`session-notes/2026-09-25_wm_receipt_04_compat.md` (WhiteMagic reads the 0.4
+bundle), `notes/ADAPT_OR_RETIRE_DECISION_2026-09-30.md` (direction: pilot
+milestone, brand deferred), `notes/PILOT_ONE_PAGER_2026-09-30.md`,
+`notes/PUBLIC_SNAPSHOT_BACKLOG_2026-09-30.md` (curation state), and the
+`gate-lite/README.md`/`HANDOFF_2026-09-18.md` lane docs.
 
 **Latest handoff: `SESSION_HANDOFF_2026-09-13.md`** — VM dogfooding infra, WM
 B1/B3 (daemon Landlock + dharma counters), Lakshmi dims 6/7, the telemetry

@@ -1,5 +1,7 @@
 # MandalaOS — Current Reality (2026-09-13)
 
+> **Historical (superseded):** records the 2026-09-13 supersession map. Current status: [`PROJECT_STATUS.md`](PROJECT_STATUS.md); newer records in `notes/` (2026-09-30) and `session-notes/`.
+
 **Status:** canonical status + supersession map, written after a synthesis pass
 over the 2026-04→09 plan corpus. When a plan contradicts this doc, this doc
 wins — and the plan should carry a banner pointing here.

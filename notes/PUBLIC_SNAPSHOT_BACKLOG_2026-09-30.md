@@ -28,14 +28,19 @@ own history), so every port is a review act — never a fast-forward.
    resolved in PR #7).
 3. **L2 egress slice → public** after private PR #2 review: proxy, helper,
    egress wrapper, enforced receipt outcomes, probe evidence.
+4. **Refusal fix** (private `4301245`, merged as `5386f5f`): refuse
+   unreviewed runner hints before token consumption or payload spawn; public
+   HEAD `47eae84` (PRs #6/#7 merged 2026-10-01) predates it. Curate next.
 
 ## Public → private backports needed
 
-1. **POSIX kill fallback** (public `f9b3b1f`, PR #5): the systemd-absent /
+1. ~~**POSIX kill fallback** (public `f9b3b1f`, PR #5): the systemd-absent /
    refusing fallback in the terminate path exists in the public snapshot but
    not in private `mandala-os` main. Public PR #7 deliberately kept the public
    behavior and documented the divergence; the backport into private main is
-   still pending.
+   still pending.~~ **Landed 2026-10-01** as private `2a52027` (same intent).
+   The branch `codex/posix-kill-backport` (`57001fb`) is now redundant; do not
+   merge it. The public behavior is mirrored in private main.
 2. Public runner-class claim review (`470b53c`) vs private
    `7fd8d54` — likely the same intent done independently in both histories;
    verify equivalence when touching the runner slice.
