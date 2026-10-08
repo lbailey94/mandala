@@ -1,0 +1,1099 @@
+test_declared_but_unpermitted_destination_denied (test_acceptance.TestEgressDeny.test_declared_but_unpermitted_destination_denied) ... skipped 'runner profile is not qualified'
+test_net_without_declared_destinations_denied (test_acceptance.TestEgressDeny.test_net_without_declared_destinations_denied) ... skipped 'runner profile is not qualified'
+test_exec_refused_when_emitter_down (test_acceptance.TestFailClosedEmitter.test_exec_refused_when_emitter_down) ... ERROR
+test_mcp_reports_emitter_unavailable (test_acceptance.TestFailClosedEmitter.test_mcp_reports_emitter_unavailable) ... ERROR
+test_kill_idle_slot_records_operator (test_acceptance.TestOperatorKillIdle.test_kill_idle_slot_records_operator) ... ERROR
+test_kill_stops_live_run (test_acceptance.TestOperatorKillLive.test_kill_stops_live_run) ... skipped 'runner profile is not qualified'
+test_memory_overrun_kills_slot (test_acceptance.TestQuotaKill.test_memory_overrun_kills_slot) ... skipped 'runner profile is not qualified'
+test_wall_overrun_kills_slot (test_acceptance.TestQuotaKill.test_wall_overrun_kills_slot) ... skipped 'runner profile is not qualified'
+test_snapshot_freezes_and_attests_artifact (test_acceptance.TestSnapshot.test_snapshot_freezes_and_attests_artifact) ... ERROR
+test_commitment_emitter_failure_is_terminal_and_never_returns_success (test_acceptance.TestStateCommitmentFailure.test_commitment_emitter_failure_is_terminal_and_never_returns_success) ... ERROR
+test_commitment_snapshot_failure_is_terminal_after_execution (test_acceptance.TestStateCommitmentFailure.test_commitment_snapshot_failure_is_terminal_after_execution) ... ERROR
+test_sandbox_write_snapshot_restore (test_acceptance.TestWorkspaceRoundtrip.test_sandbox_write_snapshot_restore) ... skipped 'runner profile is not qualified'
+test_demo_flag_allows_stub_exec (test_ctl.TestCtlRunnerGuard.test_demo_flag_allows_stub_exec) ... FAIL
+test_exec_refuses_without_runner_or_demo (test_ctl.TestCtlRunnerGuard.test_exec_refuses_without_runner_or_demo) ... FAIL
+test_exec_requires_token_flag (test_ctl.TestCtlRunnerGuard.test_exec_requires_token_flag) ... ok
+test_slice_without_runner_rejected (test_ctl.TestCtlRunnerGuard.test_slice_without_runner_rejected) ... FAIL
+test_cli_redact_verify_end_to_end (test_disclose.TestDisclosure.test_cli_redact_verify_end_to_end) ... ERROR
+test_redact_then_attach_verifies_trusted (test_disclose.TestDisclosure.test_redact_then_attach_verifies_trusted) ... ERROR
+test_required_field_refused (test_disclose.TestDisclosure.test_required_field_refused) ... ERROR
+test_reveal_subset_stays_provisional (test_disclose.TestDisclosure.test_reveal_subset_stays_provisional) ... ERROR
+test_tampered_disclosure_detected (test_disclose.TestDisclosure.test_tampered_disclosure_detected) ... ERROR
+test_subprocess_http_end_to_end (test_http_transport.TestHttpSubprocess.test_subprocess_http_end_to_end) ... ERROR
+test_auth_token_enforced (test_http_transport.TestHttpTransport.test_auth_token_enforced) ... ERROR
+test_full_flow_over_http_verifies_trusted (test_http_transport.TestHttpTransport.test_full_flow_over_http_verifies_trusted) ... ERROR
+test_get_and_unknown_paths (test_http_transport.TestHttpTransport.test_get_and_unknown_paths) ... ERROR
+test_initialize_tools_list_and_session_header (test_http_transport.TestHttpTransport.test_initialize_tools_list_and_session_header) ... ERROR
+test_notification_returns_202 (test_http_transport.TestHttpTransport.test_notification_returns_202) ... ERROR
+test_parse_error_and_invalid_request (test_http_transport.TestHttpTransport.test_parse_error_and_invalid_request) ... ERROR
+test_sse_response_mode (test_http_transport.TestHttpTransport.test_sse_response_mode) ... ERROR
+test_expiry_during_start_defers_to_post_run_seal (test_lifecycle_race.TestLifecycleRace.test_expiry_during_start_defers_to_post_run_seal) ... ERROR
+test_kill_during_start_defers_and_keeps_receipts_monotonic (test_lifecycle_race.TestLifecycleRace.test_kill_during_start_defers_and_keeps_receipts_monotonic) ... ERROR
+test_kill_live_run_terminates_after_execution (test_lifecycle_race.TestLifecycleRace.test_kill_live_run_terminates_after_execution) ... ERROR
+test_stale_kill_request_cannot_bind_a_late_start (test_lifecycle_race.TestLifecycleRace.test_stale_kill_request_cannot_bind_a_late_start) ... ERROR
+test_start_rejected_after_seal_emits_no_execution (test_lifecycle_race.TestLifecycleRace.test_start_rejected_after_seal_emits_no_execution) ... ERROR
+test_exec_enforces_slot_binding_and_single_use (test_mcp.TestMcpInProcess.test_exec_enforces_slot_binding_and_single_use) ... ERROR
+test_exec_without_token_is_rejected (test_mcp.TestMcpInProcess.test_exec_without_token_is_rejected) ... ERROR
+test_full_flow_over_mcp (test_mcp.TestMcpInProcess.test_full_flow_over_mcp) ... ERROR
+test_initialize_and_ping (test_mcp.TestMcpInProcess.test_initialize_and_ping) ... ERROR
+test_method_not_found (test_mcp.TestMcpInProcess.test_method_not_found) ... ERROR
+test_pass_verify_tool_returns_claims_and_registry (test_mcp.TestMcpInProcess.test_pass_verify_tool_returns_claims_and_registry) ... ERROR
+test_status_reports_effective_runner (test_mcp.TestMcpInProcess.test_status_reports_effective_runner) ... ERROR
+test_tool_errors_are_structured (test_mcp.TestMcpInProcess.test_tool_errors_are_structured) ... ERROR
+test_tools_list_is_the_contract_surface (test_mcp.TestMcpInProcess.test_tools_list_is_the_contract_surface) ... ERROR
+test_slice_without_runner_rejected (test_mcp.TestMcpSubprocess.test_slice_without_runner_rejected) ... FAIL
+test_stdio_end_to_end (test_mcp.TestMcpSubprocess.test_stdio_end_to_end) ... ERROR
+test_stdio_refuses_without_runner_or_demo (test_mcp.TestMcpSubprocess.test_stdio_refuses_without_runner_or_demo) ... FAIL
+test_cross_process_chain_continuity (test_orchestrator.TestGateLite.test_cross_process_chain_continuity)
+CLI reality: every command is a new process; chains must reload from disk. ... ERROR
+test_cross_tenant_denied (test_orchestrator.TestGateLite.test_cross_tenant_denied) ... ERROR
+test_exec_idempotency_key_rejects_changed_payload (test_orchestrator.TestGateLite.test_exec_idempotency_key_rejects_changed_payload) ... ERROR
+test_exec_idempotency_keys_are_tenant_scoped (test_orchestrator.TestGateLite.test_exec_idempotency_keys_are_tenant_scoped) ... ERROR
+test_exec_idempotent_replay_denies_cross_tenant (test_orchestrator.TestGateLite.test_exec_idempotent_replay_denies_cross_tenant) ... ERROR
+test_exec_idempotent_replay_requires_token (test_orchestrator.TestGateLite.test_exec_idempotent_replay_requires_token)
+#203: cached exec results must not be returned without authorization. ... ERROR
+test_exec_rejects_token_for_other_agent (test_orchestrator.TestGateLite.test_exec_rejects_token_for_other_agent) ... ERROR
+test_exec_requires_token (test_orchestrator.TestGateLite.test_exec_requires_token) ... ERROR
+test_full_dogfood_flow_verifies_trusted (test_orchestrator.TestGateLite.test_full_dogfood_flow_verifies_trusted) ... ERROR
+test_idempotent_replay (test_orchestrator.TestGateLite.test_idempotent_replay) ... ERROR
+test_pass_claims_and_receipt_binding (test_orchestrator.TestGateLite.test_pass_claims_and_receipt_binding)
+S2b: the pass token carries pass/slot/mandate identity and the ... ERROR
+test_pass_idempotency_key_rejects_changed_request (test_orchestrator.TestGateLite.test_pass_idempotency_key_rejects_changed_request) ... ERROR
+test_pass_idempotency_keys_are_tenant_agent_scoped (test_orchestrator.TestGateLite.test_pass_idempotency_keys_are_tenant_agent_scoped) ... ERROR
+test_pass_idempotent_replay_requires_membership (test_orchestrator.TestGateLite.test_pass_idempotent_replay_requires_membership)
+#204: cached passes (with tokens) must not bypass membership. ... ERROR
+test_pass_rejects_unregistered_agent (test_orchestrator.TestGateLite.test_pass_rejects_unregistered_agent) ... ERROR
+test_receipt_persisted_and_pass_token_roundtrips (test_orchestrator.TestGateLite.test_receipt_persisted_and_pass_token_roundtrips) ... ERROR
+test_replay_holds_under_concurrent_requests (test_orchestrator.TestGateLite.test_replay_holds_under_concurrent_requests) ... ERROR
+test_replay_rejected_and_survives_restart (test_orchestrator.TestGateLite.test_replay_rejected_and_survives_restart) ... ERROR
+test_spend_cap_enforced_at_settlement (test_orchestrator.TestGateLite.test_spend_cap_enforced_at_settlement) ... ERROR
+test_status_reports_effective_runner (test_orchestrator.TestGateLite.test_status_reports_effective_runner) ... ERROR
+test_unknown_tenant_rejected (test_orchestrator.TestGateLite.test_unknown_tenant_rejected) ... ERROR
+test_bwrap_digest_mismatch_is_rejected_before_wrapper_invocation (test_qualify_bwrap_runner.QualifyBwrapTests.test_bwrap_digest_mismatch_is_rejected_before_wrapper_invocation) ... ok
+test_changed_bwrap_during_probe_is_rejected (test_qualify_bwrap_runner.QualifyBwrapTests.test_changed_bwrap_during_probe_is_rejected) ... ok
+test_changed_wrapper_digest_is_rejected_before_probe (test_qualify_bwrap_runner.QualifyBwrapTests.test_changed_wrapper_digest_is_rejected_before_probe) ... ok
+test_changed_wrapper_during_probe_is_rejected (test_qualify_bwrap_runner.QualifyBwrapTests.test_changed_wrapper_during_probe_is_rejected) ... ok
+test_failed_namespace_or_write_probe_is_not_qualified (test_qualify_bwrap_runner.QualifyBwrapTests.test_failed_namespace_or_write_probe_is_not_qualified) ... ok
+test_missing_bwrap_fails_closed (test_qualify_bwrap_runner.QualifyBwrapTests.test_missing_bwrap_fails_closed) ... ok
+test_observed_bwrap_hash_without_expected_digest_is_explicitly_unpinned (test_qualify_bwrap_runner.QualifyBwrapTests.test_observed_bwrap_hash_without_expected_digest_is_explicitly_unpinned) ... ok
+test_passed_fixed_probe_captures_identity_argv_and_open_classification (test_qualify_bwrap_runner.QualifyBwrapTests.test_passed_fixed_probe_captures_identity_argv_and_open_classification) ... ok
+test_consume_jti_is_atomic_and_durable (test_registry.TestRegistry.test_consume_jti_is_atomic_and_durable) ... ok
+test_corrupt_idempotency_record_survives_upsert (test_registry.TestRegistry.test_corrupt_idempotency_record_survives_upsert) ... ok
+test_legacy_json_migration (test_registry.TestRegistry.test_legacy_json_migration) ... ok
+test_persistence_across_instances (test_registry.TestRegistry.test_persistence_across_instances) ... ok
+test_put_many_replaces (test_registry.TestRegistry.test_put_many_replaces) ... ok
+test_reload_shape (test_registry.TestRegistry.test_reload_shape) ... ok
+test_roundtrip_all_sections (test_registry.TestRegistry.test_roundtrip_all_sections) ... ok
+test_tenant_scoping_and_order (test_registry.TestRegistry.test_tenant_scoping_and_order) ... ok
+test_exec_refused_after_expiry (test_restore.TestExpirySweep.test_exec_refused_after_expiry) ... ERROR
+test_sweep_scoped_to_tenant (test_restore.TestExpirySweep.test_sweep_scoped_to_tenant) ... ERROR
+test_sweep_seals_expired_slot (test_restore.TestExpirySweep.test_sweep_seals_expired_slot) ... ERROR
+test_gate_key_is_owner_only (test_restore.TestKeyHardening.test_gate_key_is_owner_only) ... ERROR
+test_cross_tenant_restore_denied (test_restore.TestRestore.test_cross_tenant_restore_denied) ... ERROR
+test_restore_requires_placed_slot (test_restore.TestRestore.test_restore_requires_placed_slot) ... ERROR
+test_snapshot_destroy_recreate_restore_roundtrip (test_restore.TestRestore.test_snapshot_destroy_recreate_restore_roundtrip) ... ERROR
+test_tampered_artifact_rejected (test_restore.TestRestore.test_tampered_artifact_rejected) ... ERROR
+test_cached_exec_cannot_bypass_unqualified_profile (test_runner_profile.TestRunnerProfileFailClosed.test_cached_exec_cannot_bypass_unqualified_profile) ... ERROR
+test_changed_executable_fails_before_spawn (test_runner_profile.TestRunnerProfileFailClosed.test_changed_executable_fails_before_spawn) ... ok
+test_class_mismatch_fails_before_spawn (test_runner_profile.TestRunnerProfileFailClosed.test_class_mismatch_fails_before_spawn) ... ok
+test_imported_receipt_code_must_support_pinned_spec (test_runner_profile.TestRunnerProfileFailClosed.test_imported_receipt_code_must_support_pinned_spec) ... FAIL
+test_matching_wrapper_still_requires_pinned_bwrap_and_jq (test_runner_profile.TestRunnerProfileFailClosed.test_matching_wrapper_still_requires_pinned_bwrap_and_jq) ... ok
+test_missing_profile_is_unknown_and_refuses_before_spawn (test_runner_profile.TestRunnerProfileFailClosed.test_missing_profile_is_unknown_and_refuses_before_spawn) ... ok
+test_missing_runner_executable_fails_closed (test_runner_profile.TestRunnerProfileFailClosed.test_missing_runner_executable_fails_closed) ... ok
+test_non_executable_runner_fails_closed (test_runner_profile.TestRunnerProfileFailClosed.test_non_executable_runner_fails_closed) ... ok
+test_profile_binds_exact_argv_and_executable (test_runner_profile.TestRunnerProfileFailClosed.test_profile_binds_exact_argv_and_executable) ... ok
+test_status_reports_runner_identity_and_stub_receipt_class_agrees (test_runner_profile.TestRunnerProfileFailClosed.test_status_reports_runner_identity_and_stub_receipt_class_agrees) ... ERROR
+test_stub_status_identity_is_explicitly_simulated (test_runner_profile.TestRunnerProfileFailClosed.test_stub_status_identity_is_explicitly_simulated) ... ERROR
+test_unexpected_receipt_dependency_version_rejected (test_runner_profile.TestRunnerProfileFailClosed.test_unexpected_receipt_dependency_version_rejected) ... ok
+test_canonical_determinism (test_vectors.TestPrimitives.test_canonical_determinism) ... ok
+test_chain_link_tamper_detected (test_vectors.TestPrimitives.test_chain_link_tamper_detected) ... ok
+test_did_key_roundtrip (test_vectors.TestPrimitives.test_did_key_roundtrip) ... ok
+test_float_rejected (test_vectors.TestPrimitives.test_float_rejected) ... ok
+test_all_vectors (test_vectors.TestVectors.test_all_vectors) ... ok
+
+======================================================================
+ERROR: test_exec_refused_when_emitter_down (test_acceptance.TestFailClosedEmitter.test_exec_refused_when_emitter_down)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 157, in test_exec_refused_when_emitter_down
+    orch, agent = make_orchestrator(state, runner=spy)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 60, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did, runner=runner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_mcp_reports_emitter_unavailable (test_acceptance.TestFailClosedEmitter.test_mcp_reports_emitter_unavailable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 179, in test_mcp_reports_emitter_unavailable
+    orch, agent = make_orchestrator(state, runner=SpyRunner())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 60, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did, runner=runner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_kill_idle_slot_records_operator (test_acceptance.TestOperatorKillIdle.test_kill_idle_slot_records_operator)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 211, in test_kill_idle_slot_records_operator
+    orch, agent = make_orchestrator(Path(tmp))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 60, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did, runner=runner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_snapshot_freezes_and_attests_artifact (test_acceptance.TestSnapshot.test_snapshot_freezes_and_attests_artifact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 417, in test_snapshot_freezes_and_attests_artifact
+    orch, agent = make_orchestrator(state)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 60, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did, runner=runner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_commitment_emitter_failure_is_terminal_and_never_returns_success (test_acceptance.TestStateCommitmentFailure.test_commitment_emitter_failure_is_terminal_and_never_returns_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 87, in test_commitment_emitter_failure_is_terminal_and_never_returns_success
+    orch, agent = make_orchestrator(state, runner=runner)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 60, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did, runner=runner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_commitment_snapshot_failure_is_terminal_after_execution (test_acceptance.TestStateCommitmentFailure.test_commitment_snapshot_failure_is_terminal_after_execution)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 129, in test_commitment_snapshot_failure_is_terminal_after_execution
+    orch, agent = make_orchestrator(Path(tmp), runner=runner)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_acceptance.py", line 60, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did, runner=runner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_cli_redact_verify_end_to_end (test_disclose.TestDisclosure.test_cli_redact_verify_end_to_end)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_disclose.py", line 87, in test_cli_redact_verify_end_to_end
+    bundle, signer = make_bundle(state)
+                     ^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_disclose.py", line 20, in make_bundle
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_redact_then_attach_verifies_trusted (test_disclose.TestDisclosure.test_redact_then_attach_verifies_trusted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_disclose.py", line 38, in test_redact_then_attach_verifies_trusted
+    bundle, signer = make_bundle(Path(tmp))
+                     ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_disclose.py", line 20, in make_bundle
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_required_field_refused (test_disclose.TestDisclosure.test_required_field_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_disclose.py", line 66, in test_required_field_refused
+    bundle, signer = make_bundle(Path(tmp))
+                     ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_disclose.py", line 20, in make_bundle
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_reveal_subset_stays_provisional (test_disclose.TestDisclosure.test_reveal_subset_stays_provisional)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_disclose.py", line 72, in test_reveal_subset_stays_provisional
+    bundle, signer = make_bundle(Path(tmp))
+                     ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_disclose.py", line 20, in make_bundle
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_tampered_disclosure_detected (test_disclose.TestDisclosure.test_tampered_disclosure_detected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_disclose.py", line 56, in test_tampered_disclosure_detected
+    bundle, signer = make_bundle(Path(tmp))
+                     ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_disclose.py", line 20, in make_bundle
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_subprocess_http_end_to_end (test_http_transport.TestHttpSubprocess.test_subprocess_http_end_to_end)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 182, in test_subprocess_http_end_to_end
+    _server, agent_did = make_server(state)
+                         ^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 23, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-http", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_auth_token_enforced (test_http_transport.TestHttpTransport.test_auth_token_enforced)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 60, in setUp
+    self.mcp, self.agent_did = make_server(self.state)
+                               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 23, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-http", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_full_flow_over_http_verifies_trusted (test_http_transport.TestHttpTransport.test_full_flow_over_http_verifies_trusted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 60, in setUp
+    self.mcp, self.agent_did = make_server(self.state)
+                               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 23, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-http", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_get_and_unknown_paths (test_http_transport.TestHttpTransport.test_get_and_unknown_paths)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 60, in setUp
+    self.mcp, self.agent_did = make_server(self.state)
+                               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 23, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-http", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_initialize_tools_list_and_session_header (test_http_transport.TestHttpTransport.test_initialize_tools_list_and_session_header)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 60, in setUp
+    self.mcp, self.agent_did = make_server(self.state)
+                               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 23, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-http", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_notification_returns_202 (test_http_transport.TestHttpTransport.test_notification_returns_202)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 60, in setUp
+    self.mcp, self.agent_did = make_server(self.state)
+                               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 23, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-http", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_parse_error_and_invalid_request (test_http_transport.TestHttpTransport.test_parse_error_and_invalid_request)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 60, in setUp
+    self.mcp, self.agent_did = make_server(self.state)
+                               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 23, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-http", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_sse_response_mode (test_http_transport.TestHttpTransport.test_sse_response_mode)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 60, in setUp
+    self.mcp, self.agent_did = make_server(self.state)
+                               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_http_transport.py", line 23, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-http", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_expiry_during_start_defers_to_post_run_seal (test_lifecycle_race.TestLifecycleRace.test_expiry_during_start_defers_to_post_run_seal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_lifecycle_race.py", line 144, in test_expiry_during_start_defers_to_post_run_seal
+    orch, agent = make_orchestrator(Path(tmp), runner)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_lifecycle_race.py", line 36, in make_orchestrator
+    orch = Orchestrator(
+           ^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_kill_during_start_defers_and_keeps_receipts_monotonic (test_lifecycle_race.TestLifecycleRace.test_kill_during_start_defers_and_keeps_receipts_monotonic)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_lifecycle_race.py", line 100, in test_kill_during_start_defers_and_keeps_receipts_monotonic
+    orch, agent = make_orchestrator(Path(tmp), runner)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_lifecycle_race.py", line 36, in make_orchestrator
+    orch = Orchestrator(
+           ^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_kill_live_run_terminates_after_execution (test_lifecycle_race.TestLifecycleRace.test_kill_live_run_terminates_after_execution)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_lifecycle_race.py", line 223, in test_kill_live_run_terminates_after_execution
+    orch, agent = make_orchestrator(Path(tmp), runner)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_lifecycle_race.py", line 36, in make_orchestrator
+    orch = Orchestrator(
+           ^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_stale_kill_request_cannot_bind_a_late_start (test_lifecycle_race.TestLifecycleRace.test_stale_kill_request_cannot_bind_a_late_start)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_lifecycle_race.py", line 189, in test_stale_kill_request_cannot_bind_a_late_start
+    orch, agent = make_orchestrator(Path(tmp), runner)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_lifecycle_race.py", line 36, in make_orchestrator
+    orch = Orchestrator(
+           ^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_start_rejected_after_seal_emits_no_execution (test_lifecycle_race.TestLifecycleRace.test_start_rejected_after_seal_emits_no_execution)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_lifecycle_race.py", line 206, in test_start_rejected_after_seal_emits_no_execution
+    orch, agent = make_orchestrator(Path(tmp), runner)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_lifecycle_race.py", line 36, in make_orchestrator
+    orch = Orchestrator(
+           ^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_exec_enforces_slot_binding_and_single_use (test_mcp.TestMcpInProcess.test_exec_enforces_slot_binding_and_single_use)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 199, in test_exec_enforces_slot_binding_and_single_use
+    server, agent_did = make_server(Path(tmp))
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 37, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-mcp", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_exec_without_token_is_rejected (test_mcp.TestMcpInProcess.test_exec_without_token_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 294, in test_exec_without_token_is_rejected
+    server, agent_did = make_server(Path(tmp))
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 37, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-mcp", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_full_flow_over_mcp (test_mcp.TestMcpInProcess.test_full_flow_over_mcp)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 67, in test_full_flow_over_mcp
+    server, agent_did = make_server(Path(tmp))
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 37, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-mcp", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_initialize_and_ping (test_mcp.TestMcpInProcess.test_initialize_and_ping)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 50, in test_initialize_and_ping
+    server, _ = make_server(Path(tmp))
+                ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 37, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-mcp", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_method_not_found (test_mcp.TestMcpInProcess.test_method_not_found)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 352, in test_method_not_found
+    server, _ = make_server(Path(tmp))
+                ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 37, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-mcp", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_pass_verify_tool_returns_claims_and_registry (test_mcp.TestMcpInProcess.test_pass_verify_tool_returns_claims_and_registry)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 166, in test_pass_verify_tool_returns_claims_and_registry
+    server, agent_did = make_server(Path(tmp))
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 37, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-mcp", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_status_reports_effective_runner (test_mcp.TestMcpInProcess.test_status_reports_effective_runner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 137, in test_status_reports_effective_runner
+    server, agent_did = make_server(Path(tmp))
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 37, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-mcp", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_tool_errors_are_structured (test_mcp.TestMcpInProcess.test_tool_errors_are_structured)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 326, in test_tool_errors_are_structured
+    server, agent_did = make_server(Path(tmp))
+                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 37, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-mcp", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_tools_list_is_the_contract_surface (test_mcp.TestMcpInProcess.test_tools_list_is_the_contract_surface)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 59, in test_tools_list_is_the_contract_surface
+    server, _ = make_server(Path(tmp))
+                ^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 37, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-mcp", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_stdio_end_to_end (test_mcp.TestMcpSubprocess.test_stdio_end_to_end)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 361, in test_stdio_end_to_end
+    server, agent_did = make_server(state)  # registers tenant in state.json
+                        ^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 37, in make_server
+    orch = Orchestrator(state_dir, gate_id="gate-mcp", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_cross_process_chain_continuity (test_orchestrator.TestGateLite.test_cross_process_chain_continuity)
+CLI reality: every command is a new process; chains must reload from disk.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 89, in test_cross_process_chain_continuity
+    orch, agent_did = make_orchestrator(state)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_cross_tenant_denied (test_orchestrator.TestGateLite.test_cross_tenant_denied)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 64, in test_cross_tenant_denied
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_exec_idempotency_key_rejects_changed_payload (test_orchestrator.TestGateLite.test_exec_idempotency_key_rejects_changed_payload)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 295, in test_exec_idempotency_key_rejects_changed_payload
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_exec_idempotency_keys_are_tenant_scoped (test_orchestrator.TestGateLite.test_exec_idempotency_keys_are_tenant_scoped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 280, in test_exec_idempotency_keys_are_tenant_scoped
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_exec_idempotent_replay_denies_cross_tenant (test_orchestrator.TestGateLite.test_exec_idempotent_replay_denies_cross_tenant)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 259, in test_exec_idempotent_replay_denies_cross_tenant
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_exec_idempotent_replay_requires_token (test_orchestrator.TestGateLite.test_exec_idempotent_replay_requires_token)
+#203: cached exec results must not be returned without authorization.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 243, in test_exec_idempotent_replay_requires_token
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_exec_rejects_token_for_other_agent (test_orchestrator.TestGateLite.test_exec_rejects_token_for_other_agent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 172, in test_exec_rejects_token_for_other_agent
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_exec_requires_token (test_orchestrator.TestGateLite.test_exec_requires_token)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 164, in test_exec_requires_token
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_full_dogfood_flow_verifies_trusted (test_orchestrator.TestGateLite.test_full_dogfood_flow_verifies_trusted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 27, in test_full_dogfood_flow_verifies_trusted
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_idempotent_replay (test_orchestrator.TestGateLite.test_idempotent_replay)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 49, in test_idempotent_replay
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_pass_claims_and_receipt_binding (test_orchestrator.TestGateLite.test_pass_claims_and_receipt_binding)
+S2b: the pass token carries pass/slot/mandate identity and the
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 127, in test_pass_claims_and_receipt_binding
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_pass_idempotency_key_rejects_changed_request (test_orchestrator.TestGateLite.test_pass_idempotency_key_rejects_changed_request)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 332, in test_pass_idempotency_key_rejects_changed_request
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_pass_idempotency_keys_are_tenant_agent_scoped (test_orchestrator.TestGateLite.test_pass_idempotency_keys_are_tenant_agent_scoped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 322, in test_pass_idempotency_keys_are_tenant_agent_scoped
+    orch, agent_a = make_orchestrator(Path(tmp))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_pass_idempotent_replay_requires_membership (test_orchestrator.TestGateLite.test_pass_idempotent_replay_requires_membership)
+#204: cached passes (with tokens) must not bypass membership.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 309, in test_pass_idempotent_replay_requires_membership
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_pass_rejects_unregistered_agent (test_orchestrator.TestGateLite.test_pass_rejects_unregistered_agent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 157, in test_pass_rejects_unregistered_agent
+    orch, _agent_did = make_orchestrator(Path(tmp))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_receipt_persisted_and_pass_token_roundtrips (test_orchestrator.TestGateLite.test_receipt_persisted_and_pass_token_roundtrips)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 110, in test_receipt_persisted_and_pass_token_roundtrips
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_replay_holds_under_concurrent_requests (test_orchestrator.TestGateLite.test_replay_holds_under_concurrent_requests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 207, in test_replay_holds_under_concurrent_requests
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_replay_rejected_and_survives_restart (test_orchestrator.TestGateLite.test_replay_rejected_and_survives_restart)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 190, in test_replay_rejected_and_survives_restart
+    orch, agent_did = make_orchestrator(state)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_spend_cap_enforced_at_settlement (test_orchestrator.TestGateLite.test_spend_cap_enforced_at_settlement)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 78, in test_spend_cap_enforced_at_settlement
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_status_reports_effective_runner (test_orchestrator.TestGateLite.test_status_reports_effective_runner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 148, in test_status_reports_effective_runner
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_unknown_tenant_rejected (test_orchestrator.TestGateLite.test_unknown_tenant_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 72, in test_unknown_tenant_rejected
+    orch, agent_did = make_orchestrator(Path(tmp))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_orchestrator.py", line 19, in make_orchestrator
+    orch = Orchestrator(state_dir, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_exec_refused_after_expiry (test_restore.TestExpirySweep.test_exec_refused_after_expiry)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 115, in test_exec_refused_after_expiry
+    orch, agent = make_orchestrator(Path(tmp))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 19, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_sweep_scoped_to_tenant (test_restore.TestExpirySweep.test_sweep_scoped_to_tenant)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 127, in test_sweep_scoped_to_tenant
+    orch, agent = make_orchestrator(Path(tmp))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 19, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_sweep_seals_expired_slot (test_restore.TestExpirySweep.test_sweep_seals_expired_slot)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 99, in test_sweep_seals_expired_slot
+    orch, agent = make_orchestrator(Path(tmp))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 19, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_gate_key_is_owner_only (test_restore.TestKeyHardening.test_gate_key_is_owner_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 141, in test_gate_key_is_owner_only
+    Orchestrator(Path(tmp), gate_id="gate-test")
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_cross_tenant_restore_denied (test_restore.TestRestore.test_cross_tenant_restore_denied)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 64, in test_cross_tenant_restore_denied
+    orch, agent = make_orchestrator(Path(tmp))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 19, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_restore_requires_placed_slot (test_restore.TestRestore.test_restore_requires_placed_slot)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 84, in test_restore_requires_placed_slot
+    orch, agent = make_orchestrator(Path(tmp))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 19, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_snapshot_destroy_recreate_restore_roundtrip (test_restore.TestRestore.test_snapshot_destroy_recreate_restore_roundtrip)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 28, in test_snapshot_destroy_recreate_restore_roundtrip
+    orch, agent = make_orchestrator(state)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 19, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_tampered_artifact_rejected (test_restore.TestRestore.test_tampered_artifact_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 74, in test_tampered_artifact_rejected
+    orch, agent = make_orchestrator(Path(tmp))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_restore.py", line 19, in make_orchestrator
+    orch = Orchestrator(state, gate_id="gate-test", gate_key=gate_key, gate_did=gate_did)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_cached_exec_cannot_bypass_unqualified_profile (test_runner_profile.TestRunnerProfileFailClosed.test_cached_exec_cannot_bypass_unqualified_profile)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_runner_profile.py", line 123, in test_cached_exec_cannot_bypass_unqualified_profile
+    orch = Orchestrator(Path(tmp) / "state", runner=runner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_status_reports_runner_identity_and_stub_receipt_class_agrees (test_runner_profile.TestRunnerProfileFailClosed.test_status_reports_runner_identity_and_stub_receipt_class_agrees)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_runner_profile.py", line 88, in test_status_reports_runner_identity_and_stub_receipt_class_agrees
+    orch = Orchestrator(Path(tmp) / "state", runner=runner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+ERROR: test_stub_status_identity_is_explicitly_simulated (test_runner_profile.TestRunnerProfileFailClosed.test_stub_status_identity_is_explicitly_simulated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_runner_profile.py", line 108, in test_stub_status_identity_is_explicitly_simulated
+    orch = Orchestrator(tmp, runner=StubRunner())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+======================================================================
+FAIL: test_demo_flag_allows_stub_exec (test_ctl.TestCtlRunnerGuard.test_demo_flag_allows_stub_exec)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_ctl.py", line 47, in test_demo_flag_allows_stub_exec
+    self.assertEqual(added.returncode, 0, added.stderr)
+AssertionError: 1 != 0 : Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/ctl.py", line 176, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/ctl.py", line 120, in main
+    orch = build_orchestrator(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/ctl.py", line 35, in build_orchestrator
+    return Orchestrator(args.state, gate_id=args.gate_id, runner=runner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+
+======================================================================
+FAIL: test_exec_refuses_without_runner_or_demo (test_ctl.TestCtlRunnerGuard.test_exec_refuses_without_runner_or_demo)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_ctl.py", line 30, in test_exec_refuses_without_runner_or_demo
+    self.assertIn("refusing to exec", proc.stderr)
+AssertionError: 'refusing to exec' not found in 'Traceback (most recent call last):\n  File "<frozen runpy>", line 198, in _run_module_as_main\n  File "<frozen runpy>", line 88, in _run_code\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/ctl.py", line 176, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/ctl.py", line 120, in main\n    orch = build_orchestrator(args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/ctl.py", line 35, in build_orchestrator\n    return Orchestrator(args.state, gate_id=args.gate_id, runner=runner)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__\n    raise RuntimeError(\nRuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1\n'
+
+======================================================================
+FAIL: test_slice_without_runner_rejected (test_ctl.TestCtlRunnerGuard.test_slice_without_runner_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_ctl.py", line 39, in test_slice_without_runner_rejected
+    self.assertIn("requires a runner path", proc.stderr)
+AssertionError: 'requires a runner path' not found in 'Traceback (most recent call last):\n  File "<frozen runpy>", line 198, in _run_module_as_main\n  File "<frozen runpy>", line 88, in _run_code\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/ctl.py", line 176, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/ctl.py", line 120, in main\n    orch = build_orchestrator(args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/ctl.py", line 35, in build_orchestrator\n    return Orchestrator(args.state, gate_id=args.gate_id, runner=runner)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__\n    raise RuntimeError(\nRuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1\n'
+
+======================================================================
+FAIL: test_slice_without_runner_rejected (test_mcp.TestMcpSubprocess.test_slice_without_runner_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 457, in test_slice_without_runner_rejected
+    self.assertIn("requires a runner path", proc.stderr)
+AssertionError: 'requires a runner path' not found in 'Traceback (most recent call last):\n  File "<frozen runpy>", line 198, in _run_module_as_main\n  File "<frozen runpy>", line 88, in _run_code\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/mcp_server.py", line 529, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/mcp_server.py", line 520, in main\n    orchestrator = Orchestrator(args.state, gate_id=args.gate_id, runner=runner)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__\n    raise RuntimeError(\nRuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1\n'
+
+======================================================================
+FAIL: test_stdio_refuses_without_runner_or_demo (test_mcp.TestMcpSubprocess.test_stdio_refuses_without_runner_or_demo)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_mcp.py", line 435, in test_stdio_refuses_without_runner_or_demo
+    self.assertIn("refusing to start", proc.stderr)
+AssertionError: 'refusing to start' not found in 'Traceback (most recent call last):\n  File "<frozen runpy>", line 198, in _run_module_as_main\n  File "<frozen runpy>", line 88, in _run_code\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/mcp_server.py", line 529, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/mcp_server.py", line 520, in main\n    orchestrator = Orchestrator(args.state, gate_id=args.gate_id, runner=runner)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__\n    raise RuntimeError(\nRuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1\n'
+
+======================================================================
+FAIL: test_imported_receipt_code_must_support_pinned_spec (test_runner_profile.TestRunnerProfileFailClosed.test_imported_receipt_code_must_support_pinned_spec)
+----------------------------------------------------------------------
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/tests/test_runner_profile.py", line 143, in test_imported_receipt_code_must_support_pinned_spec
+    with self.assertRaisesRegex(RuntimeError, "does not support.*continuity-receipt/0.5"):
+AssertionError: "does not support.*continuity-receipt/0.5" does not match "gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1"
+
+----------------------------------------------------------------------
+Ran 108 tests in 1.925s
+
+FAILED (failures=6, errors=66, skipped=6)
