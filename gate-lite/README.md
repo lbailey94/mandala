@@ -6,9 +6,10 @@ orchestrator that issues governed passes and emits **Continuity Receipts**
 implementation — no vendored copy). Separate module/versioning from the
 Gen-2/WMv9 release train (decision 2026-09-17).
 
-**Honesty frame:** gate-lite isolation is the Sovereign form — shared-kernel
-containment (bwrap/Landlock). It is never sold as untrusted multi-tenant; that
-is gate-hard (microVM floor, v0.2).
+**Containment boundary:** this candidate qualifies an exact local Bubblewrap
+profile as `bwrap`, with shared-kernel containment for cooperative workloads.
+It does not establish Landlock enforcement, hostile-tenant isolation, a virtual
+machine, payment qualification, or independent adoption.
 
 ## Layout
 
@@ -31,23 +32,26 @@ Dependency:           continuity-receipt==0.5.0 (published; new bundles pin spec
 ```bash
 # install the published continuity-receipt 0.5.0 package and gate-lite
 python3 -m venv .venv
-.venv/bin/pip install "continuity-receipt>=0.5.0,<0.6"
+.venv/bin/pip install "continuity-receipt==0.5.0"
 .venv/bin/pip install -e .
 PY=.venv/bin/python
 
 $PY tools/make_vectors.py        # rewrites the tracked vectors (fresh ids/timestamps)
-$PY -m unittest discover -s tests -v   # OOM-seal drill is opt-in: GATE_LITE_QUOTA_TESTS=1
+$PY -m unittest discover -s tests -v   # real-runner cases require explicit opt-in (below)
 
 CTL=gate_lite/ctl.py
+# Clear inherited runner settings for this explicitly simulated quick start.
+unset WM_GATELITE_RUNNER WM_GATELITE_SLICE
 $PY $CTL --state ./state tenant-add --tenant dogfood --agent did:key:zSmokeAgent1
 # `pass` prints a single-use token; exec requires it (bound to agent + slot)
 PASS=$($PY $CTL --state ./state pass --tenant dogfood --agent did:key:zSmokeAgent1 \
     --minutes 30 --spend-minor 1000)
-TOKEN=$(echo "$PASS" | jq -r .token)   # jq, or parse the JSON with python
-SLOT=$(echo "$PASS" | jq -r .slot_id)
+TOKEN=$(printf %s "$PASS" | jq -r .token)   # jq, or parse the JSON with python
+SLOT=$(printf %s "$PASS" | jq -r .slot_id)
 # exec refuses without a real runner; --demo opts into simulated (stub) execution
 $PY $CTL --state ./state --demo exec --tenant dogfood --slot "$SLOT" \
-    --payload-ref "echo hello" --token "$TOKEN"
+    --payload-ref "echo hello" --token-stdin <<<"$TOKEN"
+unset TOKEN PASS
 $PY $CTL --state ./state settle --tenant dogfood --slot "$SLOT" \
     --rail-ref inv-1 --minor 200
 $PY $CTL --state ./state terminate --tenant dogfood --slot "$SLOT"
@@ -75,7 +79,8 @@ python3 -m gate_lite.mcp_server --state ./state --tenant dogfood --demo \
 
 The server refuses to start without a configured sandbox runner unless
 `--demo` is passed (`--runner`/`--slice` or `WM_GATELITE_RUNNER` otherwise).
-Configured real runners currently report `unknown` / `unqualified`, and
+The exact reviewed wrapper and dependency hashes report `bwrap` /
+`locally_qualified`. Other configured identities report `unknown` / `unqualified`;
 `mandala.exec` refuses them before token consumption or payload spawn.
 `mandala.status` reports the resolved runner path and digest. Execution requires the
 single-use pass token from `mandala.pass` (bound to agent + slot; durable
@@ -93,27 +98,39 @@ issues `Mcp-Session-Id` on initialize; optional bearer token via `--token`.
 
 ## Runner and containment
 
-The sandbox wrapper is **not part of this slice**: `mandala-sandbox` ships
-with the Sovereign Edition
-(`MANDALAOS_SOVEREIGN/modules/landlock-isolation.nix`, bwrap + Landlock,
-`--exec <json envelope>` contract) and is installed to
-`~/.local/bin/mandala-sandbox`. Real execution requires it explicitly;
-without a runner the gate refuses (stub only via `--demo`). This candidate
-accepts only the exact portable wrapper and Bubblewrap/jq hashes recorded in
-`evidence/bwrap-profile-05-local-2026-09-25/REPORT.md` for a `bwrap` claim;
-all other runner identities fail closed. The signed receipt binds the profile
-identifier, wrapper digest, and invocation digest. It does not prove the
-issuer used that wrapper. These examples still need the matching pinned files.
+The byte-identical qualified portable wrapper is included at
+`runners/bwrap-v1/mandala-sandbox`; [provenance](runners/bwrap-v1/PROVENANCE.json)
+records its private upstream commit and exact wrapper/Bubblewrap/jq hashes.
+This provides local acquisition without relying on a preinstalled wrapper or
+access to the private Sovereign repository. Its public license declaration and
+curation sign-off are pending; this is a local publication candidate.
 
 ```bash
-WM_GATELITE_RUNNER=~/.local/bin/mandala-sandbox python3 $CTL ...   # bwrap
-WM_GATELITE_SLICE=1 WM_GATELITE_RUNNER=~/.local/bin/mandala-sandbox ...  # + slice quotas (runner required)
+RUNNER="$(realpath runners/bwrap-v1/mandala-sandbox)"
+sha256sum "$RUNNER" /usr/bin/bwrap /usr/bin/jq  # compare with PROVENANCE.json
+bash -n "$RUNNER"
+$PY runners/bwrap-v1/test_sandbox_argv.py -v    # argv tests use a capture shim
+GATE_LITE_REAL_RUNNER_TESTS=1 WM_GATELITE_RUNNER="$RUNNER" \
+  $PY -m unittest discover -s tests -v
 ```
+
+A host with different executable/tool bytes needs a separately reviewed profile;
+do not change pinned hashes merely to make a run pass. Ordinary unit tests clear
+ambient runner configuration in their absence/demo guard helpers. Real-runner
+acceptance is explicit, checks the exact profile, and fails clearly on a requested
+invalid identity. Systemd quota cases (both wall and memory/OOM) additionally require a ready user
+manager and `GATE_LITE_QUOTA_TESTS=1`. Report every skip separately.
+See [the protocol](../publication/GATE_LITE_OUTSIDER_EXERCISE.md) for capture and
+reproduction, including a fixed no-network CLI payload. A signed profile string
+proves the issuer recorded the identity; it does not prove the issuer used it.
 
 - Egress is default-deny: payloads are commands, or envelopes
   `{"program": "curl", "args": [...], "net": true, "egress": ["host"]}`.
   Undeclared attempts run without network and are recorded as denied in
-  `task.execution.egress`; `net: true` needs declared destinations.
+  `task.execution.egress`; `net: true` needs declared destinations. A granted
+  destination list records intent: `bwrap --share-net` grants the whole network,
+  with `enforced: false` for individual destinations. Denials use an isolated
+  network namespace and are marked `enforced: true`.
 - The slot workspace is mounted writable at `/workspace` inside the sandbox
   (wrapper envelope `rw: true`), so payload artifacts land in
   `state/workspaces/<slot>/` and are captured by `mandala.snapshot`.
@@ -136,6 +153,27 @@ WM_GATELITE_SLICE=1 WM_GATELITE_RUNNER=~/.local/bin/mandala-sandbox ...  # + sli
   slots.
 - Emitter is fail-closed: if a receipt cannot be written, exec is refused
   (`emitter_unavailable`), no work runs.
+
+
+## Tokens and settlement evidence
+
+`pass` returns a token bound to agent and slot; a successful execution consumes
+its JTI and durable replay checks reject reuse. In this unkeyed quick start a lost
+token requires a fresh pass. With `--idempotency-key`, the complete issuance result,
+including its plaintext token, is stored in the private registry cache and can
+be returned on retry. Protect the state directory; never publish the registry,
+signing key, cache, raw issuance stdout, shell trace, or token-bearing transcript.
+
+Use `exec --token-stdin` to keep tokens out of process argument lists; it is
+mutually exclusive with `--token`. Keep the token in process memory, disable
+shell tracing, and clear it after use. The capture tool redacts issuance results
+and uses stdin. MCP accepts the token in its private request arguments.
+
+Settlement recovers the latest persisted `mandala.exec` result hash, so separate
+CLI invocations bind the issuer's delivery response to the recorded execution.
+A settlement before execution retains the explicit `sha256("none")` sentinel.
+The receipt contains an issuer claim; external delivery attestation remains
+absent and a $0 invoice transition does not establish payment finality.
 
 ## Benchmarks
 

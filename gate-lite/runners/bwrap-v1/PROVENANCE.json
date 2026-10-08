@@ -1,0 +1,14 @@
+{
+  "profile_id": "urn:mandala:runner-profile:bwrap-v1",
+  "source_repository": "lbailey94/mandalaos-sovereign",
+  "source_visibility": "private",
+  "source_commit": "9a0faf19fbebfd6a4c803822ed23e8ba6cf055b6",
+  "source_path": "scripts/mandala-sandbox",
+  "sha256": "f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e",
+  "receipt_package": "continuity-receipt==0.5.0",
+  "dependencies": {
+    "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+    "jq": "59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566"
+  },
+  "publication_status": "local candidate; license declaration and public curation sign-off pending"
+}

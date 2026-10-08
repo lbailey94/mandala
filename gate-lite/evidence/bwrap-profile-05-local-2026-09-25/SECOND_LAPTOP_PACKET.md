@@ -1,3 +1,7 @@
+> Historical packet: pins below describe the September 28 unpublished pair.
+> They do not qualify the October 8 repaired candidate. Use protocol v2 and
+> a separately frozen reviewed source/dependency/wrapper set for a new run.
+
 # Second laptop independent adoption packet
 
 Run on a different laptop with a fresh checkout and environment. Preserve
