@@ -14,13 +14,25 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from continuity_receipt import __version__ as RECEIPT_RUNTIME_VERSION, records
-from continuity_receipt.bundle import TaskChain
-from continuity_receipt.canon import canonical_bytes, sha256_prefixed
+from .errors import PreflightError
+
+try:
+    from continuity_receipt import __version__ as RECEIPT_RUNTIME_VERSION, records
+    from continuity_receipt.bundle import TaskChain
+    from continuity_receipt.canon import canonical_bytes, sha256_prefixed
+    from continuity_receipt import keys
+    from .tokens import issue_pass, verify_pass
+    RECEIPT_IMPORT_ERROR = None
+except ModuleNotFoundError as exc:
+    if exc.name != "continuity_receipt" and not (exc.name or "").startswith("continuity_receipt."):
+        raise
+    RECEIPT_RUNTIME_VERSION = "missing"
+    records = TaskChain = canonical_bytes = sha256_prefixed = keys = None
+    issue_pass = verify_pass = None
+    RECEIPT_IMPORT_ERROR = exc
 
 from .models import SLOT_CLASSES, Slot, Tenant, now_epoch
 from .registry import Registry
-from .tokens import issue_pass, verify_pass
 
 POLICY_VERSION = "2026-09-17.1"
 RECEIPT_SPEC = "continuity-receipt/0.5"
@@ -50,8 +62,12 @@ class EmitterError(RuntimeError):
     """Receipt emitter unavailable — the gate fails closed (no unrecorded work)."""
 
 
-class RunnerProfileError(RuntimeError):
+class RunnerProfileError(PreflightError):
     """Real execution is unavailable until its runner has a reviewed profile."""
+
+    def __init__(self, message: str, *, code="runner_profile_refused", expected=None, found=None, action=None):
+        super().__init__(code, message, expected=expected, found=found,
+                         action=action or "configure a runner matching the reviewed profile")
 
 
 class PassError(PermissionError):
@@ -247,24 +263,28 @@ class SandboxRunner:
 
     def _require_profile(self) -> None:
         if self.sandbox_class != self._observed_class:
-            raise RunnerProfileError("runner profile class mismatch")
+            raise RunnerProfileError("runner profile class mismatch", expected=self._observed_class, found=self.sandbox_class)
         if self.profile_id != self._observed_profile_id:
-            raise RunnerProfileError("runner profile identity mismatch")
+            raise RunnerProfileError("runner profile identity mismatch", expected=self._observed_profile_id, found=self.profile_id)
         if self.profile_status != self._observed_profile_status:
-            raise RunnerProfileError("runner profile status mismatch")
+            raise RunnerProfileError("runner profile status mismatch", expected=self._observed_profile_status, found=self.profile_status)
         try:
             current_path = str(Path(self.runner_path).resolve(strict=True))
             current_digest = self._digest(current_path)
         except OSError as exc:
-            raise RunnerProfileError(f"runner identity unavailable: {exc}") from exc
+            raise RunnerProfileError(f"runner identity unavailable: {exc}", expected=self.runner_path, found="unavailable") from exc
         if current_path != self.runner_path or current_digest != self.runner_digest:
-            raise RunnerProfileError("runner identity changed after inspection")
+            raise RunnerProfileError("runner identity changed after inspection", expected=self.runner_digest, found=current_digest)
         if self.profile_id != PROFILE_ID:
-            raise RunnerProfileError("no reviewed runner profile matches executable; real payload execution is disabled")
+            raise RunnerProfileError("no reviewed runner profile matches executable; real payload execution is disabled", expected=PROFILE_ID, found=self.profile_id)
         for name, expected in (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)):
             path = shutil.which(name)
             if not path or self._digest(path) != expected:
-                raise RunnerProfileError(f"runner dependency identity mismatch: {name}")
+                raise RunnerProfileError(
+                    f"runner dependency identity mismatch: {name}", code="runner_dependency_mismatch",
+                    expected=expected, found="missing" if not path else self._digest(path),
+                    action=f"install the reviewed {name} executable and retry",
+                )
 
     def _argv(self, plan: dict) -> list[str]:
         return [self.runner_path, "--exec", _plan_envelope(plan)]
@@ -442,22 +462,37 @@ class Orchestrator:
         gate_did: str | None = None,
         runner=None,
     ):
-        from continuity_receipt import keys
-
+        if RECEIPT_IMPORT_ERROR is not None:
+            raise PreflightError(
+                "dependency_missing", "continuity-receipt runtime is unavailable",
+                expected=f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}", found="missing",
+                action="install gate-lite with its pinned dependencies",
+            ) from RECEIPT_IMPORT_ERROR
         try:
             receipt_version = importlib.metadata.version("continuity-receipt")
         except importlib.metadata.PackageNotFoundError as exc:
-            raise RuntimeError("continuity-receipt==0.4.0 must be installed") from exc
+            raise PreflightError(
+                "dependency_missing", "continuity-receipt is not installed",
+                expected=f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}", found="missing",
+                action="install gate-lite with its pinned dependencies",
+            ) from exc
         if receipt_version != RECEIPT_PACKAGE_VERSION:
-            raise RuntimeError(
+            raise PreflightError(
+                "dependency_version_mismatch",
                 f"gate-lite emits Continuity Receipt {RECEIPT_SPEC}; expected "
-                f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}, found {receipt_version}"
+                f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}, found {receipt_version}",
+                expected=f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}", found=receipt_version,
+                action="install continuity-receipt==0.5.0",
             )
         if RECEIPT_SPEC not in records.SUPPORTED_SPECS:
-            raise RuntimeError(
+            raise PreflightError(
+                "dependency_spec_unsupported",
                 f"imported continuity-receipt {RECEIPT_RUNTIME_VERSION} does not support "
-                f"gate-lite's pinned spec {RECEIPT_SPEC}"
+                f"gate-lite's pinned spec {RECEIPT_SPEC}",
+                expected=RECEIPT_SPEC, found=list(records.SUPPORTED_SPECS),
+                action="install the published receipt runtime that supports continuity-receipt/0.5",
             )
+        keys = __import__("continuity_receipt", fromlist=["keys"]).keys
 
         self.state_dir = Path(state_dir)
         self.state_dir.mkdir(parents=True, exist_ok=True)

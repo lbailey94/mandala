@@ -45,6 +45,7 @@ def payload(response: dict) -> dict:
     return json.loads(text)
 
 
+
 class TestMcpInProcess(unittest.TestCase):
     def test_initialize_and_ping(self):
         with tempfile.TemporaryDirectory() as tmp:
