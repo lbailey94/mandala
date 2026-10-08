@@ -1,5 +1,6 @@
 """Structured dependency and runner-profile refusal coverage."""
 import json
+import hashlib
 import os
 import subprocess
 import sys
@@ -50,8 +51,12 @@ class TestPreflightErrors(unittest.TestCase):
             path = Path(tmp) / "runner"
             path.write_text("#!/bin/sh\nexit 0\n")
             path.chmod(0o755)
-            runner = SandboxRunner(str(path))
-            runner.profile_id = "urn:mandala:runner-profile:bwrap-v1"
+            # Establish the fixture's reviewed identity during inspection;
+            # changing profile_id afterwards correctly hits the tamper guard.
+            wrapper_digest = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+            with patch("gate_lite.orchestrator.PROFILE_WRAPPER_SHA256", wrapper_digest):
+                with patch.object(SandboxRunner, "_dependencies_match", return_value=True):
+                    runner = SandboxRunner(str(path))
             with patch("gate_lite.orchestrator.shutil.which", return_value="/missing/bwrap"):
                 with patch.object(runner, "_digest", side_effect=[runner.runner_digest, OSError("vanished")]):
                     with self.assertRaises(PreflightError) as caught:
