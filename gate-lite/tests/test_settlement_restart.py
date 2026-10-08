@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from continuity_receipt import keys
+from continuity_receipt.canon import sha256_prefixed
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -55,9 +56,7 @@ class TestSettlementRestart(unittest.TestCase):
                 if receipt["type"] == "delivery.attestation"
             )
             self.assertEqual(delivery["body"]["response_hash"], expected_hash)
-            self.assertNotEqual(delivery["body"]["response_hash"], __import__(
-                "continuity_receipt.canon", fromlist=["sha256_prefixed"]
-            ).sha256_prefixed(b"none"))
+            self.assertNotEqual(delivery["body"]["response_hash"], sha256_prefixed(b"none"))
 
     def test_pre_execution_settlement_keeps_explicit_none_sentinel(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -68,8 +67,6 @@ class TestSettlementRestart(unittest.TestCase):
             orch.settle("tenant", issued["slot_id"], "invoice", "empty-invoice", 0)
             bundle = orch.receipt(orch.task_id_for(issued["slot_id"]))
             delivery = next(r for r in bundle["receipts"] if r["type"] == "delivery.attestation")
-            from continuity_receipt.canon import sha256_prefixed
-
             self.assertEqual(delivery["body"]["response_hash"], sha256_prefixed(b"none"))
 
 

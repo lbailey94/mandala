@@ -79,6 +79,24 @@ class GatedRunner:
         self.calls = 0
         self.child = None
 
+    def cleanup(self):
+        """Stop and reap only the isolated child process group owned here."""
+        child = self.child
+        if child is None or child.poll() is not None:
+            return
+        try:
+            os.killpg(child.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            child.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(child.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            child.wait(timeout=1)
+
     def run(self, slot, payload_ref, on_spawn=None):
         self.calls += 1
         if self.before_spawn.is_set():
@@ -232,6 +250,7 @@ class TestLifecycleRace(unittest.TestCase):
     def test_kill_live_run_terminates_after_execution(self):
         with tempfile.TemporaryDirectory() as tmp:
             runner = GatedRunner(live_pid=True)
+            self.addCleanup(runner.cleanup)
             orch, agent = make_orchestrator(Path(tmp), runner)
             issued = orch.pass_("race", agent)
             slot_id = issued["slot_id"]
@@ -273,6 +292,27 @@ class TestLifecycleRace(unittest.TestCase):
                     patch("gate_lite.orchestrator.os.killpg") as killpg:
                 orch._signal_run({"unit": "unavailable.service", "pgid": 456, "pid": 123}, "SIGTERM")
             killpg.assert_called_once_with(456, signal.SIGTERM)
+
+    def test_systemctl_oserror_falls_back_to_journaled_process_group(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, _ = make_orchestrator(Path(tmp), GatedRunner())
+            with patch("gate_lite.orchestrator.shutil.which", return_value="/bin/systemctl"), \
+                    patch("gate_lite.orchestrator.subprocess.run", side_effect=OSError("unavailable")), \
+                    patch("gate_lite.orchestrator.os.killpg") as killpg:
+                orch._signal_run({"unit": "unavailable.service", "pgid": 987, "pid": 123}, "SIGTERM")
+            killpg.assert_called_once_with(987, signal.SIGTERM)
+
+    def test_successful_systemctl_signal_does_not_fall_back(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, _ = make_orchestrator(Path(tmp), GatedRunner())
+            completed = type("Completed", (), {"returncode": 0})()
+            with patch("gate_lite.orchestrator.shutil.which", return_value="/bin/systemctl"), \
+                    patch("gate_lite.orchestrator.subprocess.run", return_value=completed), \
+                    patch("gate_lite.orchestrator.os.killpg") as killpg, \
+                    patch("gate_lite.orchestrator.os.kill") as kill:
+                orch._signal_run({"unit": "active.service", "pgid": 456, "pid": 123}, "SIGTERM")
+            killpg.assert_not_called()
+            kill.assert_not_called()
 
     def test_missing_systemctl_falls_back_without_signalling_test_process(self):
         with tempfile.TemporaryDirectory() as tmp:
