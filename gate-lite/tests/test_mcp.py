@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from test_env import controlled_test_env  # noqa: E402
 
 from continuity_receipt import keys  # noqa: E402
 from gate_lite.mcp_server import TOOLS, McpServer  # noqa: E402
@@ -366,6 +367,7 @@ class TestMcpSubprocess(unittest.TestCase):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                env=controlled_test_env(),
             )
 
             def send(message: dict) -> dict:
@@ -430,6 +432,7 @@ class TestMcpSubprocess(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 timeout=10,
+                env=controlled_test_env(),
             )
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn("refusing to start", proc.stderr)
@@ -452,6 +455,7 @@ class TestMcpSubprocess(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 timeout=10,
+                env=controlled_test_env(),
             )
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn("requires a runner path", proc.stderr)
