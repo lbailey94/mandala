@@ -15,12 +15,15 @@ acceptance criteria from the issue:
      consume an old request.
 """
 import os
+import signal
 import sys
+import subprocess
 import tempfile
 import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -74,15 +77,24 @@ class GatedRunner:
         self.release = threading.Event()
         self.live_pid = live_pid
         self.calls = 0
+        self.child = None
 
     def run(self, slot, payload_ref, on_spawn=None):
         self.calls += 1
         if self.before_spawn.is_set():
             self.allow_spawn.wait(5)
-        pid = os.getpid() if self.live_pid else 4242
-        unit = "gate-test-noop" if self.live_pid else None
+        pid = 4242
+        pgid = None
+        unit = None
+        if self.live_pid:
+            # This real, isolated child is safe to signal in fallback tests;
+            # never journal the test process as the run target.
+            self.child = subprocess.Popen(["sleep", "30"], start_new_session=True)
+            pid = self.child.pid
+            pgid = os.getpgid(pid)
+            unit = "gate-test-noop"
         if on_spawn:
-            on_spawn(pid, None, unit)
+            on_spawn(pid, pgid, unit)
         self.spawned.set()
         self.release.wait(5)
         return ExecResult(
@@ -231,7 +243,8 @@ class TestLifecycleRace(unittest.TestCase):
             self.assertTrue(wait_until(runner.spawned.is_set))
 
             threading.Timer(0.3, runner.release.set).start()
-            killed = orch.kill("race", slot_id, wait_s=2.0)
+            with patch("gate_lite.orchestrator.shutil.which", return_value=None):
+                killed = orch.kill("race", slot_id, wait_s=2.0)
             thread.join(10)
 
             self.assertEqual(killed["state"], "terminated", killed)
@@ -245,6 +258,29 @@ class TestLifecycleRace(unittest.TestCase):
                     "task.termination",
                 ],
             )
+            self.assertIsNotNone(runner.child)
+            self.assertIsNotNone(
+                runner.child.poll(),
+                "kill must terminate the journaled child process group when systemctl is absent",
+            )
+
+    def test_systemctl_nonzero_falls_back_to_journaled_process_group(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, _ = make_orchestrator(Path(tmp), GatedRunner())
+            completed = type("Completed", (), {"returncode": 1})()
+            with patch("gate_lite.orchestrator.shutil.which", return_value="/bin/systemctl"), \
+                    patch("gate_lite.orchestrator.subprocess.run", return_value=completed), \
+                    patch("gate_lite.orchestrator.os.killpg") as killpg:
+                orch._signal_run({"unit": "unavailable.service", "pgid": 456, "pid": 123}, "SIGTERM")
+            killpg.assert_called_once_with(456, signal.SIGTERM)
+
+    def test_missing_systemctl_falls_back_without_signalling_test_process(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orch, _ = make_orchestrator(Path(tmp), GatedRunner())
+            with patch("gate_lite.orchestrator.shutil.which", return_value=None), \
+                    patch("gate_lite.orchestrator.os.killpg") as killpg:
+                orch._signal_run({"unit": "unavailable.service", "pgid": 789, "pid": 123}, "SIGKILL")
+            killpg.assert_called_once_with(789, signal.SIGKILL)
 
 
 if __name__ == "__main__":

@@ -81,6 +81,20 @@ class TestRunnerProfileFailClosed(unittest.TestCase):
             with self.assertRaisesRegex(RunnerProfileError, "class mismatch"):
                 runner.run({}, "echo should-not-run", on_spawn=lambda *_: self.fail("spawned"))
 
+    def test_profile_identity_tampering_fails_before_spawn(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = self.make_runner(Path(tmp) / "runner")
+            runner.profile_id = "urn:forged:profile"
+            with self.assertRaisesRegex(RunnerProfileError, "profile identity mismatch"):
+                runner.run({}, "echo should-not-run", on_spawn=lambda *_: self.fail("spawned"))
+
+    def test_profile_status_tampering_fails_before_spawn(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = self.make_runner(Path(tmp) / "runner")
+            runner.profile_status = "locally_qualified"
+            with self.assertRaisesRegex(RunnerProfileError, "profile status mismatch"):
+                runner.run({}, "echo should-not-run", on_spawn=lambda *_: self.fail("spawned"))
+
     def test_status_reports_runner_identity_and_stub_receipt_class_agrees(self):
         with tempfile.TemporaryDirectory() as tmp:
             runner_path = Path(tmp) / "runner"

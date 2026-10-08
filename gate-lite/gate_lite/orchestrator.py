@@ -109,8 +109,10 @@ def parse_payload(payload_ref: str) -> dict:
 
     Envelope: {"program": "curl", "args": [...], "net": true,
                "egress": ["example.com"]}. Egress is default-deny: network is
-    shared only when `net` is true AND destinations are declared. Undeclared
-    attempts run without network and are recorded as denied.
+    shared only when `net` is true AND destinations are declared. Declared
+    destinations are intent, not an allowlist: the current wrapper shares the
+    whole network, without individual destination enforcement. Unset-network
+    denials are enforced by the network namespace.
     """
     text = payload_ref.strip()
     if text.startswith("{"):
@@ -134,7 +136,11 @@ def parse_payload(payload_ref: str) -> dict:
             "destination": dest,
             "bytes": None if allowed_net else 0,
             "allowed": allowed_net,
-            "enforcer": "bwrap --share-net" if allowed_net else "bwrap --unshare-net",
+            "enforcer": (
+                "bwrap --share-net (whole network; destinations not individually enforced)"
+                if allowed_net else "bwrap --unshare-net"
+            ),
+            "enforced": not allowed_net,
         }
         for dest in declared
     ]
@@ -145,6 +151,7 @@ def parse_payload(payload_ref: str) -> dict:
                 "bytes": 0,
                 "allowed": False,
                 "enforcer": "bwrap --unshare-net",
+                "enforced": True,
                 "denied_reason": "net requested without declared destinations",
             }
         ]
@@ -182,7 +189,8 @@ class StubRunner:
             exit_code=0,
             stdout_hash=sha256_prefixed(("stub:" + payload_ref).encode()),
             resources={"cpu_ms": 900, "mem_peak_mb": 32, "disk_peak_mb": 4},
-            egress=[{"destination": "none", "bytes": 0, "allowed": True}],
+            egress=[{"destination": "none", "bytes": 0, "allowed": True,
+                     "enforcer": "demo-stub", "enforced": False}],
         )
 
 
@@ -214,6 +222,8 @@ class SandboxRunner:
         if self.profile_id:
             self.sandbox_class = "bwrap"
         self._observed_class = self.sandbox_class
+        self._observed_profile_id = self.profile_id
+        self._observed_profile_status = self.profile_status
 
     @staticmethod
     def _digest(path: str) -> str:
@@ -238,6 +248,10 @@ class SandboxRunner:
     def _require_profile(self) -> None:
         if self.sandbox_class != self._observed_class:
             raise RunnerProfileError("runner profile class mismatch")
+        if self.profile_id != self._observed_profile_id:
+            raise RunnerProfileError("runner profile identity mismatch")
+        if self.profile_status != self._observed_profile_status:
+            raise RunnerProfileError("runner profile status mismatch")
         try:
             current_path = str(Path(self.runner_path).resolve(strict=True))
             current_digest = self._digest(current_path)
@@ -624,13 +638,18 @@ class Orchestrator:
             return False
 
     def _signal_run(self, run: dict, signal_name: str) -> None:
+        """Use systemd when available, then fall back to the journaled POSIX target."""
         unit = run.get("unit")
-        if unit:
-            subprocess.run(
-                ["systemctl", "--user", "kill", "--kill-whom=all", "-s", signal_name, unit],
-                capture_output=True,
-            )
-            return
+        if unit and shutil.which("systemctl"):
+            try:
+                completed = subprocess.run(
+                    ["systemctl", "--user", "kill", "--kill-whom=all", "-s", signal_name, unit],
+                    capture_output=True,
+                )
+                if completed.returncode == 0:
+                    return
+            except OSError:
+                pass
         sig = getattr(signal_mod, signal_name)
         pgid, pid = run.get("pgid"), run.get("pid")
         try:
@@ -1033,7 +1052,15 @@ class Orchestrator:
                     "result_hash": result.stdout_hash,
                 }
             ],
-            "egress": result.egress or [{"destination": "none", "bytes": 0, "allowed": True}],
+            "egress": result.egress or [
+                {
+                    "destination": "none",
+                    "bytes": 0,
+                    "allowed": True,
+                    "enforcer": "bwrap --unshare-all",
+                    "enforced": True,
+                }
+            ],
             "resources": result.resources,
             "sandbox_class": getattr(self.runner, "sandbox_class", "unknown"),
         }
@@ -1143,15 +1170,24 @@ class Orchestrator:
             raise ValueError(f"spend cap exceeded: {minor} {currency} > {cap}")
 
         if gated_on_delivery:
-            last = self._last_exec.get(slot_id)
+            # Settlement may run in a fresh CLI process. Recover the latest
+            # execution result from its durable signed receipt instead of the
+            # process-local cache. When no execution exists, retain the
+            # established explicit `none` sentinel for pre-execution settles.
+            execution = self._last_receipt(slot, "task.execution")
+            result_hash = None
+            if execution:
+                calls = execution.get("body", {}).get("tool_calls", [])
+                for call in reversed(calls):
+                    if call.get("name") == "mandala.exec" and call.get("result_hash"):
+                        result_hash = call["result_hash"]
+                        break
             self._emit(
                 slot,
                 "delivery.attestation",
                 {
                     "request_hash": sha256_prefixed(f"request:{slot_id}".encode()),
-                    "response_hash": last.stdout_hash
-                    if last
-                    else sha256_prefixed(b"none"),
+                    "response_hash": result_hash or sha256_prefixed(b"none"),
                     "counterparty": {"id": self.gate_did},
                     "spec_ref": RECEIPT_SPEC,
                 },
