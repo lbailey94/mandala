@@ -9,6 +9,7 @@ from test_env import RUNNER_SELECTION_ENV, controlled_test_env
 class TestControlledTestEnvironment(unittest.TestCase):
     def test_polluted_runner_hints_are_cleared_but_path_and_python_imports_survive(self):
         polluted = {name: f"polluted-{name}" for name in RUNNER_SELECTION_ENV}
+        polluted.update({"WM_MANDALA_SANDBOX_CLASS": "bwrap", "WM_SANDBOX_CLASS": "bwrap"})
         polluted.update({"PATH": "/test/bin", "PYTHONPATH": "/test/python", "VIRTUAL_ENV": "/test/venv"})
         with patch.dict(os.environ, polluted, clear=True):
             clean = controlled_test_env()
