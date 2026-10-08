@@ -279,10 +279,24 @@ class SandboxRunner:
             raise RunnerProfileError("no reviewed runner profile matches executable; real payload execution is disabled", expected=PROFILE_ID, found=self.profile_id)
         for name, expected in (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)):
             path = shutil.which(name)
-            if not path or self._digest(path) != expected:
+            if not path:
                 raise RunnerProfileError(
                     f"runner dependency identity mismatch: {name}", code="runner_dependency_mismatch",
-                    expected=expected, found="missing" if not path else self._digest(path),
+                    expected=expected, found="missing",
+                    action=f"install the reviewed {name} executable and retry",
+                )
+            try:
+                dependency_digest = self._digest(path)
+            except OSError as exc:
+                raise RunnerProfileError(
+                    f"runner dependency identity unavailable: {name}: {exc}",
+                    code="runner_dependency_unavailable", expected=expected, found="unavailable",
+                    action=f"restore the reviewed {name} executable and retry",
+                ) from exc
+            if dependency_digest != expected:
+                raise RunnerProfileError(
+                    f"runner dependency identity mismatch: {name}", code="runner_dependency_mismatch",
+                    expected=expected, found=dependency_digest,
                     action=f"install the reviewed {name} executable and retry",
                 )
 
@@ -492,8 +506,6 @@ class Orchestrator:
                 expected=RECEIPT_SPEC, found=list(records.SUPPORTED_SPECS),
                 action="install the published receipt runtime that supports continuity-receipt/0.5",
             )
-        keys = __import__("continuity_receipt", fromlist=["keys"]).keys
-
         self.state_dir = Path(state_dir)
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.receipts_dir = self.state_dir / "receipts"

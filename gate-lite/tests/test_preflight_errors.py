@@ -45,6 +45,21 @@ class TestPreflightErrors(unittest.TestCase):
         self.assertEqual(caught.exception.code, "dependency_spec_unsupported")
         self.assertEqual(caught.exception.expected, "continuity-receipt/0.5")
 
+    def test_disappearing_runner_dependency_is_a_typed_refusal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "runner"
+            path.write_text("#!/bin/sh\nexit 0\n")
+            path.chmod(0o755)
+            runner = SandboxRunner(str(path))
+            runner.profile_id = "urn:mandala:runner-profile:bwrap-v1"
+            with patch("gate_lite.orchestrator.shutil.which", return_value="/missing/bwrap"):
+                with patch.object(runner, "_digest", side_effect=[runner.runner_digest, OSError("vanished")]):
+                    with self.assertRaises(PreflightError) as caught:
+                        runner._require_profile()
+        self.assertEqual(caught.exception.code, "runner_dependency_unavailable")
+        self.assertEqual(caught.exception.expected, "sha256:e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71")
+        self.assertEqual(caught.exception.found, "unavailable")
+
     def test_cli_construction_refusal_is_json_without_traceback(self):
         code = (
             "import importlib.metadata,sys; "

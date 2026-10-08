@@ -526,7 +526,6 @@ def main(argv=None) -> int:
         )
     try:
         runner = build_runner(runner_path, slice_mode)
-        orchestrator = Orchestrator(args.state, gate_id=args.gate_id, runner=runner)
     except PreflightError as exc:
         # Keep the JSON-RPC loop alive so tools/call returns a structured refusal.
         server = McpServer(None, args.tenant, startup_error=exc)
@@ -538,6 +537,14 @@ def main(argv=None) -> int:
             "refusing to start: no sandbox runner configured (pass --runner <path> "
             "[--slice], or set WM_GATELITE_RUNNER), or pass --demo to expose simulated execution"
         )
+    try:
+        orchestrator = Orchestrator(args.state, gate_id=args.gate_id, runner=runner)
+    except PreflightError as exc:
+        # Keep the JSON-RPC loop alive so tools/call returns a structured refusal.
+        server = McpServer(None, args.tenant, startup_error=exc)
+        if args.transport == "http":
+            return serve_http(server, args.host, args.port, args.token)
+        return serve_stdio(server)
     server = McpServer(orchestrator, args.tenant)
 
     if args.transport == "http":

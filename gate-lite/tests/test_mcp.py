@@ -437,6 +437,8 @@ class TestMcpSubprocess(unittest.TestCase):
             )
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn("refusing to start", proc.stderr)
+            self.assertFalse(Path(tmp, "gate.key").exists())
+            self.assertFalse(Path(tmp, "registry.db").exists())
 
     def test_slice_without_runner_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
