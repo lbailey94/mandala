@@ -14,8 +14,11 @@ python3 tools/qualify_bwrap_runner.py \
   --expected-bwrap-sha256 sha256:<independently-reviewed-bwrap-digest>
 ```
 
-The default wrapper path and digest are the rehearsal values recorded in
-`design/RUNNER_CLASS_CLOSURE_PLAN_2026-09-25.md`. The probe resolves and hashes
+The default wrapper path and digest are the in-repo portable wrapper
+(`runners/bwrap-v1/mandala-sandbox`, digest recorded in its
+`PROVENANCE.json`). Pass `--wrapper`/`--expected-wrapper-sha256` to probe any
+other reviewed identity; an operator-local rehearsal copy fails closed on
+digest mismatch. The probe resolves and hashes
 both executables, checks optional expected digests, captures the wrapper's
 exact Bubblewrap argument tokens through a temporary forwarding shim, and
 rechecks both identities after execution. Evidence is JSON on stdout; exit

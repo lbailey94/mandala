@@ -21,8 +21,13 @@ import tempfile
 from pathlib import Path
 
 SCHEMA = "mandala-bwrap-probe-v1"
-DEFAULT_WRAPPER = "/home/lucas/.local/bin/mandala-sandbox"
-DEFAULT_WRAPPER_SHA256 = "sha256:de273c62ae22147634164e84cc9b6f6ae83a7f25e05755b50bc7c1257f525641"
+# Default to the in-repo portable wrapper and its reviewed digest so a plain
+# `python3 tools/qualify_bwrap_runner.py` probes the candidate this repository
+# ships — not an operator-local rehearsal copy (which fails closed on digest
+# mismatch; pass --wrapper/--expected-wrapper-sha256 to probe another identity).
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_WRAPPER = str(REPO_ROOT / "runners" / "bwrap-v1" / "mandala-sandbox")
+DEFAULT_WRAPPER_SHA256 = "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e"
 
 FIXED_PROBE = r'''import json, os, pathlib, tempfile
 def mount_info(path):
