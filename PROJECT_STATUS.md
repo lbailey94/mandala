@@ -13,6 +13,16 @@ Continuity Receipt `0.5.1` is now the published version (PyPI + crates.io,
 still pins `0.4.0`. Rows retain their 2026-09-28 review dates except where
 updated in place below.
 
+**2026-10-09 update:** public `mandalaos-gate-lite` main now carries the
+reviewed 0.5 runtime (PR #12 merged as `6a377616`; independent opencode review
+ACCEPT at `3f58918`; hosted CI green; wall/OOM quota drill executed and passed
+same-host). A local private integration branch
+(`opencode/gate05-private-integration-20261009`) merges candidate `8e84b25`
+with private main and carries the curation repairs (imported-runtime guard,
+pre-spawn payload cleanup, explicit 0.4 vector pin); merged-tree qualification
+and review are recorded separately before any promotion. PR #1 remains the
+frozen candidate record; rows below keep their recorded dates.
+
 | Component | Working code | Public state | Direct evidence | Next gate |
 |---|---|---|---|---|
 | gate-lite main | private `mandala-os` main `5386f5f` (refusal fix `4301245`, POSIX-kill backport `2a52027`; configured runners are refused before token consumption or payload spawn); emits `continuity-receipt/0.4`; dependency pinned to published `0.4.0` | `mandalaos-gate-lite` HEAD `47eae84`; PR #3 merged as `bd8eee3`, PRs #6/#7 merged 2026-10-01; 0.3/0.4 evidence remains historical, and the public snapshot predates the refusal fix | 0.4 lane green (102 tests, clean venv, 2026-09-30 memo); `4301245` merged 2026-10-06; this truth pass ran no new main suite | curate `4301245` into the public snapshot; main stays the supported 0.4 lane pending reviewed candidate integration |

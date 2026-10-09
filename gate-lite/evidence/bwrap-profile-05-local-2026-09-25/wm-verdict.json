@@ -1,0 +1,20 @@
+{
+  "errors": [],
+  "insufficient_reasons": [],
+  "provisional_reasons": [],
+  "summary": {
+    "issuers": [
+      "did:key:z6MkvRr6d6VEYUaN1HEif6wPmtFBz42naEH1mhPFgHSCpeBG"
+    ],
+    "receipts": 4,
+    "settled": false,
+    "terminated": true,
+    "types": [
+      "session.pass.created",
+      "task.decision",
+      "task.execution",
+      "task.termination"
+    ]
+  },
+  "verdict": "TRUSTED"
+}

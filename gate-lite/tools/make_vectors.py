@@ -113,7 +113,7 @@ def add(chain: TaskChain, record_type: str, body: dict) -> dict:
 
 
 def minimal_chain(task_id=None) -> TaskChain:
-    chain = TaskChain(task_id)
+    chain = TaskChain(task_id, spec="continuity-receipt/0.4")
     add(chain, "session.pass.created", pass_body())
     add(chain, "task.decision", decision_body())
     add(chain, "task.execution", execution_body())
@@ -122,7 +122,7 @@ def minimal_chain(task_id=None) -> TaskChain:
 
 
 def full_chain(task_id=None) -> TaskChain:
-    chain = TaskChain(task_id)
+    chain = TaskChain(task_id, spec="continuity-receipt/0.4")
     add(chain, "session.pass.created", pass_body(spend_cap={"minor": 1000, "currency": "USD"}))
     add(chain, "task.decision", decision_body())
     add(chain, "task.execution", execution_body())
@@ -153,14 +153,14 @@ def main() -> int:
     write("03_tampered_body.json", tampered)
     rows.append(("03_tampered_body.json", "UNTRUSTED", "bad_signature", ""))
 
-    no_term = TaskChain()
+    no_term = TaskChain(spec="continuity-receipt/0.4")
     add(no_term, "session.pass.created", pass_body())
     add(no_term, "task.decision", decision_body())
     add(no_term, "task.execution", execution_body())
     write("04_missing_termination.json", no_term.bundle())
     rows.append(("04_missing_termination.json", "UNTRUSTED", "missing_termination", ""))
 
-    over_cap = TaskChain()
+    over_cap = TaskChain(spec="continuity-receipt/0.4")
     add(over_cap, "session.pass.created", pass_body(spend_cap={"minor": 100, "currency": "USD"}))
     add(over_cap, "task.decision", decision_body())
     add(over_cap, "task.execution", execution_body())
@@ -170,7 +170,7 @@ def main() -> int:
     write("05_cap_exceeded.json", over_cap.bundle())
     rows.append(("05_cap_exceeded.json", "UNTRUSTED", "cap_exceeded", ""))
 
-    early_settle = TaskChain()
+    early_settle = TaskChain(spec="continuity-receipt/0.4")
     add(early_settle, "session.pass.created", pass_body())
     add(early_settle, "task.decision", decision_body())
     add(early_settle, "task.execution", execution_body())
@@ -184,7 +184,7 @@ def main() -> int:
     redacted_value = ["quality-ok"]
     redacted_field = {"redacted": True, "commit": commit_field(salt, redacted_value)}
 
-    redacted_chain = TaskChain()
+    redacted_chain = TaskChain(spec="continuity-receipt/0.4")
     add(redacted_chain, "session.pass.created", pass_body(spend_cap={"minor": 1000, "currency": "USD"}))
     add(redacted_chain, "task.decision", decision_body())
     add(redacted_chain, "task.execution", execution_body())
@@ -200,7 +200,7 @@ def main() -> int:
     write("08_redacted_disclosed.json", disclosed)
     rows.append(("08_redacted_disclosed.json", "TRUSTED", None, ""))
 
-    erased = TaskChain()
+    erased = TaskChain(spec="continuity-receipt/0.4")
     erased_body = delivery_body(
         {"quality_flags": {"redacted": True, "commit": redacted_field["commit"], "erased": True}}
     )

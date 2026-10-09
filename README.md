@@ -45,6 +45,11 @@ Future-project entry criteria and deferred platform lanes are in
 candidate from the public snapshot. See `PROJECT_STATUS.md` for exact pins and
 qualification gates; older narrative below is kept as a dated record.
 
+**2026-10-09:** public `mandalaos-gate-lite` main carries the reviewed 0.5
+runtime (merge of PR #12, `6a377616`); a local private integration branch
+merges the candidate into `mandala-os` main with the curation repairs and
+awaits merged-tree qualification. See `PROJECT_STATUS.md` for details.
+
 | Component | Repo / artifact | Version | Evidence date | State |
 |---|---|---|---|---|
 | gate-lite | `mandala-os` (private); public snapshot `mandalaos-gate-lite` | private `main` `5386f5f` emits/pins `continuity-receipt/0.4` (`==0.4.0`); public snapshot HEAD `47eae84` (PRs #6/#7 merged), predates the refusal fix | 2026-09-30 (0.4 lane green: 102 tests in a clean venv); `4301245` "refuse unreviewed runner hints" merged 2026-10-06; the 86-test figure is the 2026-09-24 outsider run | 0.4 lane green on main; curate `4301245` into the public snapshot next; other-host tester remains separate |
