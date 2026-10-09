@@ -46,6 +46,22 @@ class TestPreflightErrors(unittest.TestCase):
         self.assertEqual(caught.exception.code, "dependency_spec_unsupported")
         self.assertEqual(caught.exception.expected, "continuity-receipt/0.5")
 
+    def test_imported_runtime_version_must_match_exact_distribution_before_state_creation(self):
+        import gate_lite.orchestrator as orchestrator
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp) / "state"
+            self.assertIn("continuity-receipt/0.5", orchestrator.records.SUPPORTED_SPECS)
+            with patch("importlib.metadata.version", return_value="0.5.0"):
+                with patch.object(orchestrator, "RECEIPT_RUNTIME_VERSION", "0.4.0"):
+                    with self.assertRaises(PreflightError) as caught:
+                        Orchestrator(state)
+            self.assertFalse(state.exists())
+            self.assertFalse((state / "gate.key").exists())
+        error = caught.exception.as_dict()
+        self.assertEqual(error["error"], "dependency_runtime_mismatch")
+        self.assertEqual(error["expected"], "0.5.0")
+        self.assertEqual(error["found"], "0.4.0")
+
     def test_disappearing_runner_dependency_is_a_typed_refusal(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "runner"

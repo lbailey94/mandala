@@ -1,0 +1,377 @@
+gate-lite outsider exercise — 0.5 candidate — run transcript
+============================================================
+Date: 2026-10-08 (run 05), host T4800-S, ~16:50Z-17:00Z
+Workspace: /tmp/opencode/mandala-outsider-05
+Token-free run: the flow halted before `pass`; no token or secret was ever
+issued. Commands are shown as run; absolute paths under the workspace are
+abbreviated as $W = /tmp/opencode/mandala-outsider-05 where noted, and where
+the prescription said `venv/bin/...` from src/gate-lite, the absolute path to
+the same venv interpreter was used (the relative form does not resolve from
+that directory).
+
+----------------------------------------------------------------------------
+[step 0] workspace + pin resolution
+----------------------------------------------------------------------------
+$ mkdir -p /tmp/opencode/mandala-outsider-05/{runner,src}
+$ git -C "/home/lucas/Desktop/front burner/MANDALA_OS" rev-parse codex/gate-lite-05-profile
+8ea8c7eb17d576efdbfa0d311b007dd7b95f8389
+
+$ git -C "/home/lucas/Desktop/front burner/MANDALA_OS" show -s --format='%H%n%cI%n%s' 8ea8c7eb17d576efdbfa0d311b007dd7b95f8389
+8ea8c7eb17d576efdbfa0d311b007dd7b95f8389
+2026-09-30T10:32:10-04:00
+chore(deps): bind gate-lite 0.5 candidate to published continuity-receipt 0.5.0
+
+----------------------------------------------------------------------------
+[step 1] qualified wrapper extraction + digest verification
+----------------------------------------------------------------------------
+$ git -C "/home/lucas/Desktop/front burner/MANDALA_OS/MANDALAOS_SOVEREIGN" show 9a0faf1:scripts/mandala-sandbox > /tmp/opencode/mandala-outsider-05/runner/mandala-sandbox
+$ chmod +x /tmp/opencode/mandala-outsider-05/runner/mandala-sandbox
+$ sha256sum /tmp/opencode/mandala-outsider-05/runner/mandala-sandbox
+f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e  /tmp/opencode/mandala-outsider-05/runner/mandala-sandbox
+   EXPECTED: f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e  -> MATCH
+
+$ git -C "/home/lucas/Desktop/front burner/MANDALA_OS/MANDALAOS_SOVEREIGN" show -s --format='%H%n%cI%n%s' 9a0faf1
+9a0faf19fbebfd6a4c803822ed23e8ba6cf055b6
+2026-09-25T18:31:18-04:00
+Support explicit writable workspace in sandbox envelope
+
+$ command -v bwrap; command -v jq
+/usr/bin/bwrap
+/usr/bin/jq
+
+$ sha256sum "$(command -v bwrap)" "$(command -v jq)"
+e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71  /usr/bin/bwrap
+59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566  /usr/bin/jq
+   EXPECTED bwrap: e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71  -> MATCH
+   EXPECTED jq:    59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566  -> MATCH
+
+$ bwrap --version; jq --version
+bubblewrap 0.9.0
+jq-1.7
+
+----------------------------------------------------------------------------
+[step 2] candidate export
+----------------------------------------------------------------------------
+$ git -C "/home/lucas/Desktop/front burner/MANDALA_OS" archive 8ea8c7eb17d576efdbfa0d311b007dd7b95f8389 | tar -x -C /tmp/opencode/mandala-outsider-05/src
+   (silent; extracted)
+$ ls /tmp/opencode/mandala-outsider-05/src
+CONSOLIDATION_LOG.md
+CURRENT_REALITY_2026-09-13.md
+design
+eval-endpoint
+feasibility
+gate-lite
+implementation
+MANDALA_NIXOS_FLAKE_SPEC.md
+MANDALA_NIXOS_SOVEREIGN_EDITION.md
+narrative
+NEXT_PROJECT_GATES.md
+notes
+patches
+PLATFORM_DIRECTION_2026-09-12.md
+PROJECT_STATUS.md
+publication
+README.md
+realization
+SANDBOX_LAYERS_2026-09-12.md
+security
+SESSION_HANDOFF_2026-09-13.md
+SESSION_HANDOFF_2026-09-14.md
+session-notes
+
+----------------------------------------------------------------------------
+[step 3] venv + prescribed dependencies
+----------------------------------------------------------------------------
+$ python3 -m venv venv
+$ venv/bin/pip install --quiet "continuity-receipt>=0.5.0,<0.6"
+$ venv/bin/pip show continuity-receipt | head -3
+Name: continuity-receipt
+Version: 0.5.1
+Summary: Continuity Receipt — open specification, test vectors, and reference verifier for verifiable records of governed AI-agent tasks
+
+$ venv/bin/pip install --quiet -e src/gate-lite
+$ venv/bin/pip list | grep -iE "gate|continuity"
+continuity-receipt 0.5.1
+gate-lite          0.0.1   /tmp/opencode/mandala-outsider-05/src/gate-lite
+
+$ venv/bin/pip freeze    (deps only)
+cffi==2.1.1
+continuity-receipt==0.5.1
+cryptography==50.0.2
+pycparser==3.1
+
+NOTE: the prescribed range >=0.5.0,<0.6 resolves to 0.5.1; the candidate
+requires exactly 0.5.0 (see failure below).
+
+----------------------------------------------------------------------------
+[step 4] vectors + test suite  (workdir: $W/src/gate-lite)
+----------------------------------------------------------------------------
+$ venv/bin/python tools/make_vectors.py
+wrote 11 vectors to /tmp/opencode/mandala-outsider-05/src/gate-lite/vectors
+
+$ WM_GATELITE_RUNNER=/tmp/opencode/mandala-outsider-05/runner/mandala-sandbox \
+      venv/bin/python -m unittest discover -s tests -v 2>&1 | tee tests.log
+   (full output: tests.log, 1099 lines; first line onward:)
+test_declared_but_unpermitted_destination_denied (test_acceptance.TestEgressDeny.test_declared_but_unpermitted_destination_denied) ... skipped 'runner profile is not qualified'
+test_net_without_declared_destinations_denied (test_acceptance.TestEgressDeny.test_net_without_declared_destinations_denied) ... skipped 'runner profile is not qualified'
+test_exec_refused_when_emitter_down (test_acceptance.TestFailClosedEmitter.test_exec_refused_when_emitter_down) ... ERROR
+...
+   Representative traceback (test_mcp.TestMcpSubprocess.test_stdio_refuses_without_runner_or_demo):
+----------------------------------------------------------------------
+Traceback (most recent call last):
+......
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/mcp_server.py", line 520, in main
+    orchestrator = Orchestrator(args.state, gate_id=args.gate_id, runner=runner)
+  File "/tmp/opencode/mandala-outsider-05/src/gate-lite/gate_lite/orchestrator.py", line 438, in __init__
+    raise RuntimeError(
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+   Representative failure (test_runner_profile.TestRunnerProfileFailClosed.test_imported_receipt_code_must_support_pinned_spec):
+RuntimeError: gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1
+
+During handling of the above exception, another exception occurred:
+
+AssertionError: "does not support.*continuity-receipt/0.5" does not match "gate-lite emits Continuity Receipt continuity-receipt/0.5; expected continuity-receipt==0.5.0, found 0.5.1"
+
+   Suite summary:
+----------------------------------------------------------------------
+Ran 108 tests in 1.925s
+
+FAILED (failures=6, errors=66, skipped=6)
+
+   Exit code (pipe masked it; identical re-run captured directly):
+$ WM_GATELITE_RUNNER=/tmp/opencode/mandala-outsider-05/runner/mandala-sandbox \
+      venv/bin/python -m unittest discover -s tests -v > tests-rerun.log 2>&1
+$ echo $?
+UNITTEST_EXIT=1
+$ tail -3 tests-rerun.log
+Ran 108 tests in 3.656s
+
+FAILED (failures=6, errors=66, skipped=6)
+   (Both logs are identical modulo test durations; 72 occurrences of
+    "RuntimeError: gate-lite emits" in tests.log.)
+
+>>> STEP 4 FAILED (exit 1). Per protocol: capture exact output and STOP.
+    Steps 5-6 (tenant-add / pass / exec / settle / terminate / receipt /
+    verifiers) were NOT run. No slot_id, no token, no task_id, no receipt,
+    no verdict.json / bundle-task.json were produced — fabricating them
+    would misstate the exercise.
+
+----------------------------------------------------------------------------
+[context] version gate location (read-only inspection)
+----------------------------------------------------------------------------
+$ grep -n "RECEIPT_PACKAGE_VERSION" gate_lite/orchestrator.py
+26:RECEIPT_SPEC = "continuity-receipt/0.5"
+27:RECEIPT_PACKAGE_VERSION = "0.5.0"
+437:        if receipt_version != RECEIPT_PACKAGE_VERSION:
+
+$ grep -n "Orchestrator(" gate_lite/ctl.py
+35:    return Orchestrator(args.state, gate_id=args.gate_id, runner=runner)
+   => build_orchestrator() is called for every ctl subcommand, so even
+      `tenant-add` cannot start in this environment.
+
+============================================================================
+CONTINUATION — same day, second session: pin continuity-receipt==0.5.0
+============================================================================
+
+----------------------------------------------------------------------------
+[step 1R] verify 0.5.0 availability on PyPI (no git source)
+----------------------------------------------------------------------------
+$ venv/bin/pip index versions continuity-receipt
+WARNING: pip index is currently an experimental command. It may be removed/changed in a future release without prior warning.
+continuity-receipt (0.5.1)
+Available versions: 0.5.1, 0.5.0, 0.4.1, 0.4.0, 0.3.3, 0.3.2, 0.3.1, 0.3.0, 0.2.0
+  INSTALLED: 0.5.1
+  LATEST:    0.5.1
+
+$ curl -s https://pypi.org/pypi/continuity-receipt/json | jq -r '.releases | keys[]'
+0.2.0
+0.3.0
+0.3.1
+0.3.2
+0.3.3
+0.4.0
+0.4.1
+0.5.0
+0.5.1
+   => 0.5.0 IS available. Proceeding with exact install.
+
+----------------------------------------------------------------------------
+[step 2R] install exact pin
+----------------------------------------------------------------------------
+$ venv/bin/pip install "continuity-receipt==0.5.0"
+   Uninstalling continuity-receipt-0.5.1:
+     Successfully uninstalled continuity-receipt-0.5.1
+Successfully installed continuity-receipt-0.5.0
+$ venv/bin/pip show continuity-receipt | head -2
+Name: continuity-receipt
+Version: 0.5.0
+
+----------------------------------------------------------------------------
+[step 3R] tests, pinned wrapper  (workdir: $W/src/gate-lite)
+----------------------------------------------------------------------------
+$ cp evidence/tests.log evidence/tests-0.5.1-prior-fail.log   # preserve run-1 log
+$ WM_GATELITE_RUNNER=/tmp/opencode/mandala-outsider-05/runner/mandala-sandbox \
+      venv/bin/python -m unittest discover -s tests -v 2>&1 | tee evidence/tests.log
+...
+----------------------------------------------------------------------
+Ran 108 tests in 15.774s
+
+FAILED (failures=5, skipped=6)
+UNITTEST_EXIT=1
+
+   FAIL lines (all 5 are runner-guard cases in test_ctl / test_mcp):
+FAIL: test_demo_flag_allows_stub_exec (test_ctl.TestCtlRunnerGuard.test_demo_flag_allows_stub_exec)
+FAIL: test_exec_refuses_without_runner_or_demo (test_ctl.TestCtlRunnerGuard.test_exec_refuses_without_runner_or_demo)
+FAIL: test_slice_without_runner_rejected (test_ctl.TestCtlRunnerGuard.test_slice_without_runner_rejected)
+FAIL: test_slice_without_runner_rejected (test_mcp.TestMcpSubprocess.test_slice_without_runner_rejected)
+FAIL: test_stdio_refuses_without_runner_or_demo (test_mcp.TestMcpSubprocess.test_stdio_refuses_without_runner_or_demo)
+
+   Example exact assertion (test_ctl):
+AssertionError: '{"error": "\'unknown slot slot-x\'"}\n'  contains 'requires a runner path'? NO
+   Example exact assertion (test_mcp):
+AssertionError: 0 == 0   (subprocess did not refuse; inherited WM_GATELITE_RUNNER)
+
+   Classification diagnostic: same suite with the env var unset:
+$ env -u WM_GATELITE_RUNNER venv/bin/python -m unittest discover -s tests -v
+----------------------------------------------------------------------
+Ran 108 tests in 18.679s
+
+OK (skipped=6)
+EXIT=0
+   => The 5 failures are induced by the prescribed test invocation exporting
+      WM_GATELITE_RUNNER (guard tests assume no runner configured); they are
+      NOT candidate defects and do NOT block the flow. 6 skips remain:
+      'runner profile is not qualified' — caused by hardcoded
+      HAS_QUALIFIED_RUNNER_PROFILE = False (tests/test_acceptance.py:39),
+      i.e. the real-runner acceptance cases stay disabled by test policy even
+      with the pinned qualified wrapper. The qualified path is exercised by
+      the CLI flow below instead.
+
+----------------------------------------------------------------------------
+[step 4R] outsider flow (token handled in-shell + mode-600 temp file; never
+          written to evidence)
+----------------------------------------------------------------------------
+$ export WM_GATELITE_RUNNER=/tmp/opencode/mandala-outsider-05/runner/mandala-sandbox
+$ CTL="$W/venv/bin/python gate_lite/ctl.py --state ./state"
+$ $CTL tenant-add --tenant dogfood --agent did:key:zOutsiderAgent05
+{
+  "tenant_id": "dogfood",
+  "agents": [
+    "did:key:zOutsiderAgent05"
+  ],
+  "aup_version": "2026-09-17.1",
+  "settlement_ref": null
+}
+
+$ PASS_JSON=$($CTL pass --tenant dogfood --agent did:key:zOutsiderAgent05 --minutes 30 --spend-minor 1000)
+   PASS #1 (lost — see note) token redacted: {"pass_id":"pass-0cfd37b39510","slot_id":"slot-9d9ea10afd11",...,"token":"<redacted>",...}
+   NOTE: pass #1 ran in a first shell invocation; this environment does not
+   persist shell variables between calls, so the token was unrecoverable
+   (it is returned exactly once, never stored in plaintext) and its slot was
+   never executed. Re-issued pass #2; the orphan slot/pass records remain in
+   ./state (session.pass.created bundle task 27b4-7aa4). No token value was
+   ever written anywhere.
+
+$ PASS_JSON=$($CTL pass --tenant dogfood --agent did:key:zOutsiderAgent05 --minutes 30 --spend-minor 1000)
+PASS (token redacted): {"pass_id":"pass-414f23443f99","slot_id":"slot-b02cfda75fb9","endpoint":"gate://gate-lite-1/slot-b02cfda75fb9","token":"<redacted>","quotas":{"cpu_ms":300000,"mem_mb":1024,"disk_mb":512,"wall_ms":1800000},"expires_at":"2026-10-08T17:26:10Z","receipt_id":"urn:uuid:01a11c71-9e6e-7083-95da-bff53a89caf1"}
+
+$ $CTL exec --tenant dogfood --slot slot-b02cfda75fb9 --payload-ref "echo hello from outsider 2026-10-08 r05" --token <redacted>
+{
+  "slot_id": "slot-b02cfda75fb9",
+  "exit": 0,
+  "stdout_hash": "sha256:7007f134aaa54946668c591b5855d47426c0aac0bfbf65ed41be84adf11e1538",
+  "receipt_ids": [
+    "urn:uuid:01a11c71-b18d-7af4-9e93-780da2dd1bc8",
+    "urn:uuid:01a11c71-b1a3-7c26-a80b-75acd008691c",
+    "urn:uuid:01a11c71-b1a4-7d4e-a5ae-22f55fefc869"
+  ],
+  "stderr_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
+EXEC_EXIT=0        # real payload ran through the pinned bwrap wrapper
+
+$ $CTL settle --tenant dogfood --slot slot-b02cfda75fb9 --rail invoice --rail-ref outsider-1008-05 --minor 0
+{
+  "spec": "continuity-receipt/0.5",
+  "receipt_id": "urn:uuid:01a11c71-c2f6-783d-933a-b7f7061b367c",
+  "task_id": "urn:uuid:01a11c71-9e6e-76f0-be0b-165051018244",
+  "issued_at": "2026-10-08T16:56:19Z",
+  "issuer": { "kind": "gate", "id": "did:key:z6MkvxCwVCeD3mtNSHwQGRMobik944CMtDbiTqT1SdesGyD4" },
+  "type": "settlement",
+  "seq": 5,
+  "prev": "sha256:24bbbe0c8683322c734f0f1abd30b9da0881270f35238dd485a104efa3c32124",
+  "body": { "rail": "invoice", "rail_ref": "outsider-1008-05",
+            "amount": { "minor": 0, "currency": "USD" },
+            "gated_on_delivery": true, "settled_at": "2026-10-08T16:56:19Z" },
+  "sig": { "alg": "ed25519", "key": "did:key:z6MkvxCwVCeD3mtNSHwQGRMobik944CMtDbiTqT1SdesGyD4", "value": "4W9D5xJK..." }
+}
+SETTLE_EXIT=0
+
+$ $CTL terminate --tenant dogfood --slot slot-b02cfda75fb9
+{
+  "slot_id": "slot-b02cfda75fb9",
+  "task_id": "urn:uuid:01a11c71-9e6e-76f0-be0b-165051018244",
+  "receipt_id": "urn:uuid:01a11c71-d936-7e4c-b82c-c3e94d895c4c"
+}
+TERMINATE_EXIT=0
+
+$ $CTL receipt --task-id urn:uuid:01a11c71-9e6e-76f0-be0b-165051018244 --verdict
+{
+  "verdict": "TRUSTED",
+  "errors": [],
+  "provisional_reasons": [],
+  "insufficient_reasons": [],
+  "summary": {
+    "receipts": 7,
+    "types": [ "session.pass.created", "task.decision", "task.execution",
+               "state.commitment", "delivery.attestation", "settlement",
+               "task.termination" ],
+    "issuers": [ "did:key:z6MkvxCwVCeD3mtNSHwQGRMobik944CMtDbiTqT1SdesGyD4" ],
+    "terminated": true, "settled": true,
+    "attestations": [ { "receipt_id": "urn:uuid:01a11c71-c2f5-78c4-acf0-c9563313bf7b",
+                        "counterparty": "did:key:z6MkvxCwVCeD3mtNSHwQGRMobik944CMtDbiTqT1SdesGyD4",
+                        "attestation": "absent" } ]
+  }
+}
+RECEIPT_EXIT=0
+   (saved to evidence/verdict.json; bundle copied to evidence/bundle-task.json)
+
+----------------------------------------------------------------------------
+[step 4bR] independent verifications (workdir: $W/src/gate-lite)
+----------------------------------------------------------------------------
+$ venv/bin/continuity-receipt-verify state/receipts/urn:uuid:01a11c71-9e6e-76f0-be0b-165051018244.json
+{ "verdict": "TRUSTED", "errors": [], ... "receipts": 7, "terminated": true, "settled": true, ... }
+CONSOLE_EXIT=0
+
+$ venv/bin/python -m continuity_receipt.verify state/receipts/urn:uuid:01a11c71-9e6e-76f0-be0b-165051018244.json
+<frozen runpy>:128: RuntimeWarning: 'continuity_receipt.verify' found in sys.modules after import of package 'continuity_receipt', but prior to execution of 'continuity_receipt.verify'; this may result in unpredictable behaviour
+{ "verdict": "TRUSTED", "errors": [], ... "receipts": 7, ... }
+MODULE_EXIT=0
+
+$ venv/bin/python -m continuity_receipt.verify vectors/02_happy_full.json
+<frozen runpy>:128: RuntimeWarning: ... (same benign warning)
+{ "verdict": "TRUSTED", "errors": [], ... "receipts": 6, ... }
+VECTOR_EXIT=0
+
+----------------------------------------------------------------------------
+[step 5R] bundle facts (evidence/bundle-task.json)
+----------------------------------------------------------------------------
+spec:            continuity-receipt/0.5
+bundle file:     sha256:c2b19578520cfd76132510f0a33f54dc5955afdf1197a86a50f37871e70ac329
+task_id:         urn:uuid:01a11c71-9e6e-76f0-be0b-165051018244
+task.execution:  receipt_id urn:uuid:01a11c71-b1a3-7c26-a80b-75acd008691c (seq 2)
+                 committed-chain digest (state.commitment.prev) =
+                 sha256:17734557cdea7c98cd0b7e3cd77c78ab614b748d6988dc15cff829bacb46a567
+sandbox_class:   bwrap
+runner_profile:
+  profile_id:        urn:mandala:runner-profile:bwrap-v1
+  executable_digest: sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e  -> MATCHES pinned wrapper
+  invocation_digest: sha256:092c0d00b9c5b2ae3a417b2cd1b8d29a9bee9f06766fbffbc44eb44562543b5b
+
+----------------------------------------------------------------------------
+[step 6R] evidence assembled
+----------------------------------------------------------------------------
+REPORT.md, transcript.txt (this file), tests.log (0.5.0 run), verdict.json,
+bundle-task.json, receipt-task-execution.json, tests-0.5.1-prior-fail.log.
+Token check: `grep -rniE "token[=: ]+[a-z0-9]{8,}"` -> no token values
+(only prose about token handling).

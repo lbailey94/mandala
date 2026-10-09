@@ -1,5 +1,7 @@
 # MandalaOS → WM v7: Landlock v0 as the first kernel-ring realization (2026-08-29)
 
+> **Historical (superseded):** records the state at 2026-08-29. Current status: [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md).
+
 The 2026-08-28 audit table marked "OS-level (eBPF/Qubes/seL4, SutraCode)" as
 deferred-by-design. Update: v7's Landlock v0 (crates/wm-mcp/src/landlock_sandbox.rs,
 commit aad623d) delivers the first kernel-enforced ring — write-class FS rights

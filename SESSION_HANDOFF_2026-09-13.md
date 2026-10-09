@@ -1,5 +1,7 @@
 # Session Handoff — 2026-09-13
 
+> **Historical (superseded):** session record at 2026-09-13. Current status: [`PROJECT_STATUS.md`](PROJECT_STATUS.md); newer records: [`session-notes/2026-09-25_wm_receipt_04_compat.md`](session-notes/2026-09-25_wm_receipt_04_compat.md) and [`notes/ADAPT_OR_RETIRE_DECISION_2026-09-30.md`](notes/ADAPT_OR_RETIRE_DECISION_2026-09-30.md).
+
 **Thread:** MandalaOS Sovereign Edition — VM dogfooding, WM governance fixes, telemetry design
 **Author:** opencode session `9a12e61d` (host) + VM session `32ff3e1a`
 **Audience:** next session / another agent / Lucas

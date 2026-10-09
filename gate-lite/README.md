@@ -82,7 +82,13 @@ The server refuses to start without a configured sandbox runner unless
 The exact reviewed wrapper and dependency hashes report `bwrap` /
 `locally_qualified`. Other configured identities report `unknown` / `unqualified`;
 `mandala.exec` refuses them before token consumption or payload spawn.
-`mandala.status` reports the resolved runner path and digest. Execution requires the
+`mandala.status` reports the resolved runner path and digest, plus an
+`adapter_id` when a wrapper adapter was selected. The adapter name may come
+from an executable name or configuration hint; it is not qualification
+evidence, and the mechanism class remains `unknown`. Enabling real execution
+requires evidence bound to the exact executable and dependency versions,
+mechanism-specific checks, and a reviewed mapping into the pinned receipt
+class vocabulary. Once such a profile is available, exec also requires the
 single-use pass token from `mandala.pass` (bound to agent + slot; durable
 replay rejection).
 
@@ -128,9 +134,11 @@ proves the issuer recorded the identity; it does not prove the issuer used it.
   `{"program": "curl", "args": [...], "net": true, "egress": ["host"]}`.
   Undeclared attempts run without network and are recorded as denied in
   `task.execution.egress`; `net: true` needs declared destinations. A granted
-  destination list records intent: `bwrap --share-net` grants the whole network,
-  with `enforced: false` for individual destinations. Denials use an isolated
-  network namespace and are marked `enforced: true`.
+  destination list records intent, not an allowlist: `bwrap --share-net`
+  grants the whole network, and entries carry `enforced: false` for individual
+  destinations. Denials use an isolated network namespace and are marked
+  `enforced: true`. Destination-level enforcement is a planned qualified
+  profile; see `../design/EGRESS_ENFORCEMENT_2026-09-30.md`.
 - The slot workspace is mounted writable at `/workspace` inside the sandbox
   (wrapper envelope `rw: true`), so payload artifacts land in
   `state/workspaces/<slot>/` and are captured by `mandala.snapshot`.
@@ -255,8 +263,11 @@ choice, not a scaling need. Earlier fixes from the same suite:
   TRUSTED offline; evidence + friction log in `evidence/outsider-2026-09-24/`.
   The signed sandbox label is a historical issuer claim, not proof that both
   mechanisms ran. The portable wrapper's observed path is Bubblewrap-only;
-  candidate runner classification has local evidence, while independent
-  other-host adoption remains open (see
+  the 2026-09-24 run does not qualify the current candidate's real-runner
+  profile. The exact reviewed bwrap wrapper has local evidence in the current
+  candidate, while independent other-host adoption remains open; configured
+  identities that are not the exact reviewed profile are refused before token
+  consumption or payload spawn (see
   `evidence/wm-probe-2026-09-25/REPORT.md` and
   `../design/RUNNER_CLASS_CLOSURE_PLAN_2026-09-25.md`).
 - Compatibility changes (2026-09-24, authorization contract): `mandala-ctl

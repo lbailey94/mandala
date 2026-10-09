@@ -105,8 +105,10 @@ class GatedRunner:
         pgid = None
         unit = None
         if self.live_pid:
-            # This real, isolated child is safe to signal in fallback tests;
-            # never journal the test process as the run target.
+            # Journal a real child process group, never the test process. This
+            # real, isolated child is safe to signal in fallback tests; a no-op
+            # unit name exercises both systemd success and the fallback used
+            # when systemctl is absent or refuses the request.
             self.child = subprocess.Popen(["sleep", "30"], start_new_session=True)
             pid = self.child.pid
             pgid = os.getpgid(pid)

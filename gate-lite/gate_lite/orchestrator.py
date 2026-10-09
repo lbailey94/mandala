@@ -125,10 +125,13 @@ def parse_payload(payload_ref: str) -> dict:
 
     Envelope: {"program": "curl", "args": [...], "net": true,
                "egress": ["example.com"]}. Egress is default-deny: network is
-    shared only when `net` is true AND destinations are declared. Declared
-    destinations are intent, not an allowlist: the current wrapper shares the
-    whole network, without individual destination enforcement. Unset-network
-    denials are enforced by the network namespace.
+    shared only when `net` is true AND destinations are declared. Undeclared
+    attempts run without network and are recorded as denied. The declared
+    destination list is recorded intent, not an allowlist: the current
+    wrapper profile grants whole-network access (`bwrap --share-net`) and does
+    not enforce individual destinations. Unset-network denials are enforced by
+    the network namespace (netns unshare). See
+    design/EGRESS_ENFORCEMENT_2026-09-30.md.
     """
     text = payload_ref.strip()
     if text.startswith("{"):
@@ -147,6 +150,9 @@ def parse_payload(payload_ref: str) -> dict:
         wants_net, declared = False, []
 
     allowed_net = wants_net and bool(declared)
+    # `enforced` is per entry: denials are enforced by the netns unshare.
+    # Granted egress is whole-network, so declared destinations are recorded
+    # intent and are NOT individually enforced.
     egress = [
         {
             "destination": dest,
@@ -214,14 +220,15 @@ class SandboxRunner:
     """Identity-check a host wrapper pending a qualified receipt profile.
 
     The configured binary is resolved and hashed, but real runs remain blocked
-    until the exact executable and its mechanisms map to a reviewed class in
-    the pinned receipt vocabulary. A digest identifies bytes; it proves no
-    containment behavior.
+    until evidence for the exact executable and its mechanisms is reviewed
+    against the pinned receipt vocabulary. An adapter hint selects how the
+    wrapper is invoked; it does not qualify the mechanism. A digest identifies
+    bytes; it proves no containment behavior.
     """
 
     sandbox_class = "unknown"
 
-    def __init__(self, runner_path: str):
+    def __init__(self, runner_path: str, sandbox_class: str | None = None):
         try:
             self.runner_path = str(Path(runner_path).expanduser().resolve(strict=True))
             if not Path(self.runner_path).is_file() or not os.access(self.runner_path, os.X_OK):
@@ -231,12 +238,41 @@ class SandboxRunner:
             raise
         except OSError as exc:
             raise RunnerProfileError(f"runner identity unavailable: {exc}") from exc
-        self.profile_id = PROFILE_ID if (
-            self.runner_digest == PROFILE_WRAPPER_SHA256 and self._dependencies_match()
-        ) else None
-        self.profile_status = "locally_qualified" if self.profile_id else "unqualified"
-        if self.profile_id:
+        adapter_hint = sandbox_class
+        if adapter_hint is None:
+            adapter_hint = os.environ.get("WM_MANDALA_SANDBOX_CLASS")
+        if adapter_hint is None:
+            adapter_hint = os.environ.get("WM_SANDBOX_CLASS")
+        if adapter_hint is None and (
+            "landrun" in Path(self.runner_path).name
+            or "landlock" in Path(self.runner_path).name
+        ):
+            adapter_hint = "landlock"
+
+        # Selection is useful for choosing a wrapper adapter, but neither a
+        # class string nor the wrapper's filename is qualification evidence.
+        self.adapter_id = adapter_hint
+        self.sandbox_class = "unknown"
+        self.profile_id = None
+        self.profile_status = "unqualified"
+
+        if self.runner_digest == PROFILE_WRAPPER_SHA256 and self._dependencies_match():
+            # Only the exact reviewed bytes qualify. A contradictory hint on
+            # those bytes (for example a Landlock hint on Bubblewrap-only
+            # bytes) is a typed refusal, never a silently misreported class.
+            if adapter_hint not in (None, "bwrap"):
+                raise RunnerProfileError(
+                    "runner class hint contradicts the reviewed bwrap wrapper; refusing",
+                    code="runner_class_hint_conflict",
+                    expected="bwrap-compatible selection or no hint",
+                    found=adapter_hint,
+                    action="remove the conflicting class hint or select the reviewed bwrap wrapper",
+                )
+            self.profile_id = PROFILE_ID
+            self.profile_status = "locally_qualified"
             self.sandbox_class = "bwrap"
+
+        self._observed_adapter_id = self.adapter_id
         self._observed_class = self.sandbox_class
         self._observed_profile_id = self.profile_id
         self._observed_profile_status = self.profile_status
@@ -264,6 +300,8 @@ class SandboxRunner:
     def _require_profile(self) -> None:
         if self.sandbox_class != self._observed_class:
             raise RunnerProfileError("runner profile class mismatch", expected=self._observed_class, found=self.sandbox_class)
+        if self.adapter_id != self._observed_adapter_id:
+            raise RunnerProfileError("runner adapter selection mismatch", expected=self._observed_adapter_id, found=self.adapter_id)
         if self.profile_id != self._observed_profile_id:
             raise RunnerProfileError("runner profile identity mismatch", expected=self._observed_profile_id, found=self.profile_id)
         if self.profile_status != self._observed_profile_status:
@@ -314,7 +352,7 @@ class SandboxRunner:
         }
 
     def _wall_seconds(self, slot: dict) -> int:
-        return max(int(slot["quotas"].get("wall_ms", 60000) / 1000), 1)
+        return max(int(slot.get("quotas", {}).get("wall_ms", 60000) / 1000), 1)
 
     def _popen(self, slot: dict, plan: dict):
         return subprocess.Popen(
@@ -367,6 +405,18 @@ class SandboxRunner:
         return self._result(plan, exit_code, stdout or b"", stderr or b"", killed_by=killed_by)
 
 
+class LandlockRunner(SandboxRunner):
+    """Adapter for invoking a runner intended to provide Landlock confinement.
+
+    The adapter name describes the selected runner contract; it does not
+    establish that the executable enforces Landlock or qualifies a receipt
+    sandbox class.
+    """
+
+    def __init__(self, runner_path: str, sandbox_class: str = "landlock"):
+        super().__init__(runner_path, sandbox_class=sandbox_class)
+
+
 class SliceRunner(SandboxRunner):
     """SandboxRunner under a systemd user service with cgroup quotas (G2).
 
@@ -377,8 +427,8 @@ class SliceRunner(SandboxRunner):
 
     sandbox_class = "unknown"
 
-    def __init__(self, runner_path: str, cpu_percent: int | None = None):
-        super().__init__(runner_path)
+    def __init__(self, runner_path: str, cpu_percent: int | None = None, sandbox_class: str | None = None):
+        super().__init__(runner_path, sandbox_class=sandbox_class)
         self.cpu_percent = cpu_percent
 
     def _popen(self, slot: dict, plan: dict):
@@ -461,10 +511,17 @@ class SliceRunner(SandboxRunner):
         return self._result(plan, exit_code, stdout or b"", stderr or b"", killed_by=killed_by, resources=resources)
 
 
-def build_runner(runner_path: str | None, slice_mode: bool = False):
+def build_runner(runner_path: str | None, slice_mode: bool = False, sandbox_class: str | None = None):
     if not runner_path:
         return None
-    return SliceRunner(runner_path) if slice_mode else SandboxRunner(runner_path)
+    cls = sandbox_class or os.environ.get("WM_MANDALA_SANDBOX_CLASS") or os.environ.get("WM_SANDBOX_CLASS")
+    if cls is None and ("landrun" in Path(runner_path).name or "landlock" in Path(runner_path).name):
+        cls = "landlock"
+    if slice_mode:
+        return SliceRunner(runner_path, sandbox_class=cls)
+    if cls in ("landlock", "landlock-v5"):
+        return LandlockRunner(runner_path, sandbox_class=cls)
+    return SandboxRunner(runner_path, sandbox_class=cls)
 
 
 class Orchestrator:
@@ -497,6 +554,14 @@ class Orchestrator:
                 f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}, found {receipt_version}",
                 expected=f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}", found=receipt_version,
                 action="install continuity-receipt==0.5.0",
+            )
+        if RECEIPT_RUNTIME_VERSION != receipt_version:
+            raise PreflightError(
+                "dependency_runtime_mismatch",
+                f"imported continuity-receipt version {RECEIPT_RUNTIME_VERSION} "
+                f"does not match installed distribution {receipt_version}",
+                expected=receipt_version, found=RECEIPT_RUNTIME_VERSION,
+                action="remove shadowed receipt modules and install continuity-receipt==0.5.0",
             )
         if RECEIPT_SPEC not in records.SUPPORTED_SPECS:
             raise PreflightError(
@@ -685,7 +750,12 @@ class Orchestrator:
             return False
 
     def _signal_run(self, run: dict, signal_name: str) -> None:
-        """Use systemd when available, then fall back to the journaled POSIX target."""
+        """Use systemd when available; fall back to the journaled POSIX group.
+
+        macOS has no `systemctl`, and containers can have a systemctl client
+        that cannot reach a user session (or raises on the call). In either
+        case the run's recorded process group remains the termination target.
+        """
         unit = run.get("unit")
         if unit and shutil.which("systemctl"):
             try:
@@ -1076,8 +1146,10 @@ class Orchestrator:
 
         run_slot = dict(slot)
         run_slot["workspace"] = str(self.workspaces_dir / slot_id)
-        runner_profile = self.runner.profile_for(run_slot, payload_ref) if isinstance(self.runner, SandboxRunner) else None
         try:
+            # Planning can reject malformed payloads before a process exists;
+            # use the same reservation/token cleanup as runner pre-start errors.
+            runner_profile = self.runner.profile_for(run_slot, payload_ref) if isinstance(self.runner, SandboxRunner) else None
             result = self.runner.run(run_slot, payload_ref, on_spawn=on_spawn)
         except Exception:
             # The runner failed before any process of record exists; release
@@ -1545,6 +1617,9 @@ class Orchestrator:
         digest = getattr(runner, "runner_digest", None)
         if digest:
             info["executable_sha256"] = digest
+        adapter_id = getattr(runner, "adapter_id", None)
+        if adapter_id:
+            info["adapter_id"] = adapter_id
         profile_id = getattr(runner, "profile_id", None)
         if profile_id:
             info["profile_id"] = profile_id
