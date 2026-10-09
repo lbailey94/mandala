@@ -186,6 +186,22 @@ else:
             self.assertEqual(evidence["probe_status"], "FAIL")
             self.assertTrue(evidence["failure"])
 
+    def test_default_targets_the_in_repo_portable_wrapper(self):
+        # Regression (2026-10-09): defaults pointed at an operator-local
+        # rehearsal copy, so a plain invocation failed closed on a host whose
+        # ~/.local/bin wrapper held different bytes. The default must resolve
+        # repo-relative to the portable wrapper this repository ships.
+        repo_root = TOOL_PATH.resolve().parents[1]
+        self.assertEqual(
+            qualify_bwrap_runner.DEFAULT_WRAPPER,
+            str(repo_root / "runners" / "bwrap-v1" / "mandala-sandbox"),
+        )
+        self.assertEqual(
+            qualify_bwrap_runner.DEFAULT_WRAPPER_SHA256,
+            "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e",
+        )
+        self.assertTrue(Path(qualify_bwrap_runner.DEFAULT_WRAPPER).is_file())
+
 
 if __name__ == "__main__":
     unittest.main()
