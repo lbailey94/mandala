@@ -111,9 +111,10 @@ emitter). Settlement (if any) references the pass, not the token.
   through `landrun-sandbox`.
 - Egress: default-deny; declared destinations logged; denials recorded in
   `task.execution.egress`. The declared list is recorded intent only: a
-  granted grant is whole-network (`bwrap --share-net`) and entries carry
-  `"enforced": false`. Destination-level enforcement is planned, not present;
-  see `design/EGRESS_ENFORCEMENT_2026-09-30.md`.
+  granted egress is whole-network (`bwrap --share-net`) and entries carry
+  `"enforced": false` under the baseline profile. The separate L2 candidate
+  uses a host-side proxy with no raw sandbox network and records enforced
+  outcomes; see `design/EGRESS_ENFORCEMENT_2026-09-30.md`.
 - Disclosed limitation in every tenant contract: containment class, not
   hypervisor isolation; cooperative tenants only.
 

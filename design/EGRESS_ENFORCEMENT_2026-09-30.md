@@ -1,12 +1,14 @@
 # Egress enforcement — current truth and the destination-allowlist path
 
-**Status:** design note and vocabulary correction, 2026-09-30. It changes no
-runtime containment beyond receipt vocabulary; no qualified destination
-enforcement exists yet. Companion correction: gate-lite receipts now carry a
-per-entry `"enforced"` flag and state the granted scope as whole-network
-(`gate-lite/gate_lite/orchestrator.py`, `gate-lite/README.md`).
+**Status:** this note first recorded the 2026-09-30 vocabulary correction.
+Private PR #2 adds an L2 candidate with a Unix-socket proxy, host-and-port
+checks, raw-network isolation, and receipt evidence. The candidate is local
+qualification work pending adversarial review; a green CI or local probe does
+not establish independent-host adoption. Gate-lite receipts retain the
+per-entry `"enforced"` flag and the older whole-network profile remains
+distinct from the L2 candidate.
 
-## What is true today (0.4 lane)
+## Baseline whole-network profile
 
 - Default deny: without `net: true` and declared destinations, the wrapper
   runs `bwrap --unshare-all` (no network); the denial is recorded in
@@ -16,8 +18,9 @@ per-entry `"enforced"` flag and state the granted scope as whole-network
   destinations are recorded intent — they are an audit list, not an
   allowlist — and now carry `"enforced": false` so no reader can mistake the
   entry for destination-level enforcement.
-- The wrapper envelope (`wm-sandbox-exec-v1`) only carries `net`; it never
-  receives the declared list, so nothing at the target could enforce it.
+- The wrapper envelope (`wm-sandbox-exec-v1`) carries the declared list for
+  L2, but the baseline wrapper uses only `net` and does not mediate individual
+  destinations.
 
 ## Why this matters
 
@@ -44,20 +47,32 @@ above is a truth fix independent of when enforcement lands.
    exactly what was enforced.
 2. **Next qualified profile:** option B on the bwrap lane — a per-slot
    filtering proxy with fail-closed behavior — because it is implementable
-   unprivileged inside the existing `--share-net` wrapper, and its
+   unprivileged with `--unshare-all` plus a Unix-socket bind, and its
    enforcement can be proven from the outside. Option A is a fallback for
    fixed endpoints; option C belongs to the microVM track.
 3. A profile may only claim `"enforced": true` with an enforcer id when the
    acceptance suite below passes on the host where it runs.
 
+## L2 candidate boundary
+
+The proxy checks the destination host and port in an HTTP `CONNECT` request,
+then relays the tunnel bytes. It does not inspect HTTP paths, methods, TLS
+content, or application behavior. It also does not pin or restrict the IP
+addresses returned for an allowed hostname. The L2 candidate therefore makes
+a destination claim only; it is not an application policy or DNS-to-IP
+firewall. Each allowed connection must have a matching start and terminal log
+record; an absent, malformed, or incomplete log forces a non-success runner
+result and an explicit incomplete slot hold.
+
 ## Acceptance criteria for a future qualified egress profile
 
 1. Allowed host reachable; an unlisted host fails, with the denial recorded.
-2. DNS cannot be used to reach unlisted destinations (rebinding/pinning
-   attempt fails).
+2. A broader DNS-to-IP-qualified profile must prevent unlisted resolved
+   destinations, including rebinding/pinning attempts. This L2 host-and-port
+   candidate does not close that requirement.
 3. Proxy/runtime failure denies egress rather than falling back to an open
    network, and the failure is recorded.
 4. The receipt records the enforcement mode truthfully (`"enforced": true`
    plus an enforcer identifier) and the qualified runner profile digest.
-5. The G3 denial cases still pass unchanged; the 0.4 lane remains the
-   default profile until a candidate is reviewed.
+5. The G3 denial cases still pass unchanged; the baseline remains the
+   default profile unless the exact L2 wrapper is selected.

@@ -1,13 +1,16 @@
 """Gate-lite orchestrator v0: pass → exec → settle → terminate with Continuity Receipts."""
 import hashlib
+import ipaddress
 import importlib.metadata
 import json
 import os
+import re
 import shutil
 import shlex
 import signal as signal_mod
 import subprocess
 import tarfile
+import tempfile
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -39,6 +42,15 @@ RECEIPT_SPEC = "continuity-receipt/0.5"
 RECEIPT_PACKAGE_VERSION = "0.5.0"
 PROFILE_ID = "urn:mandala:runner-profile:bwrap-v1"
 PROFILE_WRAPPER_SHA256 = "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e"
+# L2 egress profile: the bwrap-egress wrapper (proxy-only egress, no raw
+# network). Same bwrap/jq dependencies; a distinct wrapper digest and profile
+# id so receipts can bind the enforced-egress mechanism.
+PROFILE_ID_EGRESS = "urn:mandala:runner-profile:bwrap-egress-v1"
+PROFILE_WRAPPER_EGRESS_SHA256 = "sha256:0a0720955e135ec2a6b31a74fcdb1a9c8ecfb372177fb8f6d925d48379b17a43"
+PROFILE_EGRESS_SIDECAR_SHA256 = {
+    "mandala-egress-proxy.py": "sha256:73826dcc2390fa55b5e78cc1f5ceece99c52a73d20a2573240aaf39b7abc6227",
+    "mandala-fetch.py": "sha256:d1ce7db2a926d80174319582e047f87d1f65672d4f22661dfd71b13f404bfb33",
+}
 PROFILE_BWRAP_SHA256 = "sha256:e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71"
 PROFILE_JQ_SHA256 = "sha256:59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566"
 GATE_CLASS = "gate-lite"
@@ -126,11 +138,11 @@ def parse_payload(payload_ref: str) -> dict:
     Envelope: {"program": "curl", "args": [...], "net": true,
                "egress": ["example.com"]}. Egress is default-deny: network is
     shared only when `net` is true AND destinations are declared. Undeclared
-    attempts run without network and are recorded as denied. The declared
-    destination list is recorded intent, not an allowlist: the current
-    wrapper profile grants whole-network access (`bwrap --share-net`) and does
-    not enforce individual destinations. Unset-network denials are enforced by
-    the network namespace (netns unshare). See
+    attempts run without network and are recorded as denied. These entries
+    are the declared intent with their baseline enforcement; with the
+    egress-capable wrapper profile (`bwrap-egress`), the runner replaces them
+    with enforced outcomes from the proxy log
+    (`"enforcer": "unix-proxy-allowlist"`). See
     design/EGRESS_ENFORCEMENT_2026-09-30.md.
     """
     text = payload_ref.strip()
@@ -151,8 +163,9 @@ def parse_payload(payload_ref: str) -> dict:
 
     allowed_net = wants_net and bool(declared)
     # `enforced` is per entry: denials are enforced by the netns unshare.
-    # Granted egress is whole-network, so declared destinations are recorded
-    # intent and are NOT individually enforced.
+    # Granted egress is whole-network on the baseline wrapper, so declared
+    # destinations are recorded intent and are NOT individually enforced;
+    # the egress wrapper replaces these entries with proxy-log outcomes.
     egress = [
         {
             "destination": dest,
@@ -193,12 +206,200 @@ def _plan_envelope(plan: dict) -> str:
         "program": plan["program"],
         "args": plan["args"],
         "net": plan["net"],
+        "egress": list(plan.get("declared") or []),
     }
     workspace = plan.get("workspace")
     if workspace:
         envelope["workspace"] = workspace
         envelope["rw"] = bool(plan.get("rw", True))
     return json.dumps(envelope)
+
+
+def _egress_outcomes_from_log(plan: dict, log_path) -> list[dict] | None:
+    """Build enforced egress outcomes from the wrapper's proxy log.
+
+    Returns None only when no egress log was requested. Once a log path was
+    requested, missing, unreadable, or malformed evidence becomes an explicit
+    fail-closed outcome; callers must not fall back to declared intent.
+    Successful outcomes are keyed by normalized host *and port* so traffic to
+    multiple services on one host is not attributed to the first port seen.
+    """
+    path = Path(log_path)
+
+    def unavailable(reason: str) -> list[dict]:
+        return [
+            {
+                "destination": destination,
+                "bytes": 0,
+                "allowed": False,
+                "enforced": False,
+                "enforcer": "unix-proxy-allowlist",
+                "evidence_error": reason,
+            }
+            for destination in plan.get("declared") or []
+        ]
+
+    if not path.is_file():
+        return unavailable("proxy log missing")
+    records = []
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line:
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    return unavailable("proxy log contains a non-object JSONL record")
+                records.append(record)
+    except (OSError, UnicodeError, ValueError):
+        return unavailable("proxy log unreadable or malformed")
+
+    def normalize_host(host: str) -> str:
+        # Match the proxy allowlist's identity rules, including IDNA aliases.
+        host = host.strip().strip("[]").lower().rstrip(".")
+        try:
+            return ipaddress.ip_address(host).compressed.lower()
+        except ValueError:
+            host = host.encode("idna").decode("ascii")
+            if (not host or len(host) > 253
+                    or any(not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+                           for label in host.split("."))):
+                raise ValueError("invalid destination hostname")
+            return host
+
+    totals: dict[tuple[str, int], dict] = {}
+    denies: dict[tuple[str, int], dict] = {}
+    starts: dict[str, tuple[str, int]] = {}
+    completed: set[str] = set()
+    for record in records:
+        host = record.get("host")
+        port = record.get("port")
+        if (not isinstance(host, str) or not host.strip()
+                or not isinstance(port, int) or isinstance(port, bool)
+                or not 1 <= port <= 65535
+                or not isinstance(record.get("allowed"), bool)):
+            return unavailable("proxy log contains an invalid destination record")
+        try:
+            normalized_host = normalize_host(host)
+        except (UnicodeError, ValueError):
+            return unavailable("proxy log contains an invalid destination hostname")
+        key = (normalized_host, port)
+        event = record.get("event")
+        connection_id = record.get("connection_id")
+        if event in ("connect_start", "http_start"):
+            if (not record["allowed"] or not isinstance(connection_id, str)
+                    or not connection_id or connection_id in starts):
+                return unavailable("proxy log contains an invalid or duplicate connection start")
+            starts[connection_id] = key
+            continue
+        if event in ("connect_complete", "http_complete"):
+            if (not record["allowed"] or not isinstance(connection_id, str)
+                    or connection_id not in starts or connection_id in completed
+                    or starts[connection_id] != key):
+                return unavailable("proxy log contains an orphan or duplicate connection completion")
+            completed.add(connection_id)
+            out_bytes, in_bytes = record.get("bytes_out", 0), record.get("bytes_in", 0)
+            if (not isinstance(out_bytes, int) or isinstance(out_bytes, bool) or out_bytes < 0
+                    or not isinstance(in_bytes, int) or isinstance(in_bytes, bool) or in_bytes < 0):
+                return unavailable("proxy log contains invalid byte counts")
+            bucket = totals.setdefault(key, {"bytes_out": 0, "bytes_in": 0})
+            bucket["bytes_out"] += out_bytes
+            bucket["bytes_in"] += in_bytes
+        elif not record["allowed"] and event in ("connect", "http"):
+            denies.setdefault(key, {"reason": record.get("reason") or "denied"})
+        else:
+            return unavailable("proxy log contains an unsupported or incomplete event")
+
+    if set(starts) != completed:
+        return unavailable("proxy log contains a connection without a terminal outcome")
+
+    def parse_destination(destination: str) -> tuple[str, int | None]:
+        destination = destination.strip()
+        if destination.startswith("["):
+            host, marker, rest = destination[1:].partition("]")
+            if not marker:
+                raise ValueError("invalid bracketed destination")
+            if ipaddress.ip_address(host).version != 6:
+                raise ValueError("bracketed destination must be IPv6")
+            if rest.startswith(":") and rest[1:].isdigit():
+                port = int(rest[1:])
+                if not 1 <= port <= 65535:
+                    raise ValueError("invalid destination port")
+                return normalize_host(host), port
+            if not rest:
+                return normalize_host(host), None
+            raise ValueError("invalid bracketed destination")
+        try:
+            return ipaddress.ip_address(destination).compressed.lower(), None
+        except ValueError:
+            pass
+        host, marker, port_text = destination.rpartition(":")
+        if marker and port_text.isdigit() and host:
+            port = int(port_text)
+            if not 1 <= port <= 65535:
+                raise ValueError("invalid destination port")
+            return normalize_host(host), port
+        return normalize_host(destination), None
+
+    def format_destination(host: str, port: int) -> str:
+        return f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
+
+    entries: list[dict] = []
+    try:
+        declared_keys = {parse_destination(declared) for declared in plan.get("declared") or []}
+    except (UnicodeError, ValueError):
+        return unavailable("declared allowlist contains an invalid destination")
+    if any(key not in declared_keys and (key[0], None) not in declared_keys for key in totals):
+        return unavailable("proxy log contains allowed traffic outside the declared allowlist")
+    for declared in plan.get("declared") or []:
+        host, port = parse_destination(declared)
+        matched_totals = [
+            (record_key, total) for record_key, total in totals.items()
+            if record_key[0] == host and (port is None or record_key[1] == port)
+        ]
+        matched_denies = [
+            (record_key, deny) for record_key, deny in denies.items()
+            if record_key[0] == host and (port is None or record_key[1] == port)
+        ]
+        if matched_totals:
+            bytes_out = sum(total["bytes_out"] for _, total in matched_totals)
+            bytes_in = sum(total["bytes_in"] for _, total in matched_totals)
+            entries.append({
+                "destination": declared,
+                "bytes": bytes_out + bytes_in,
+                "bytes_out": bytes_out,
+                "bytes_in": bytes_in,
+                "allowed": True,
+                "enforced": True,
+                "enforcer": "unix-proxy-allowlist",
+            })
+        elif matched_denies:
+            entries.append({
+                "destination": declared,
+                "bytes": 0,
+                "allowed": False,
+                "enforced": True,
+                "enforcer": "unix-proxy-allowlist",
+                "denied_reason": matched_denies[0][1]["reason"],
+            })
+        else:
+            entries.append({
+                "destination": declared,
+                "bytes": 0,
+                "allowed": True,
+                "enforced": True,
+                "enforcer": "unix-proxy-allowlist",
+            })
+    for key, deny in denies.items():
+        if key not in declared_keys and (key[0], None) not in declared_keys:
+            entries.append({
+                "destination": format_destination(key[0], key[1]),
+                "bytes": 0,
+                "allowed": False,
+                "enforced": True,
+                "enforcer": "unix-proxy-allowlist",
+                "denied_reason": deny["reason"],
+            })
+    return entries
 
 
 class StubRunner:
@@ -256,7 +457,11 @@ class SandboxRunner:
         self.profile_id = None
         self.profile_status = "unqualified"
 
-        if self.runner_digest == PROFILE_WRAPPER_SHA256 and self._dependencies_match():
+        reviewed_profiles = {
+            PROFILE_WRAPPER_SHA256: PROFILE_ID,
+            PROFILE_WRAPPER_EGRESS_SHA256: PROFILE_ID_EGRESS,
+        }
+        if self.runner_digest in reviewed_profiles and self._dependencies_match():
             # Only the exact reviewed bytes qualify. A contradictory hint on
             # those bytes (for example a Landlock hint on Bubblewrap-only
             # bytes) is a typed refusal, never a silently misreported class.
@@ -268,7 +473,7 @@ class SandboxRunner:
                     found=adapter_hint,
                     action="remove the conflicting class hint or select the reviewed bwrap wrapper",
                 )
-            self.profile_id = PROFILE_ID
+            self.profile_id = reviewed_profiles[self.runner_digest]
             self.profile_status = "locally_qualified"
             self.sandbox_class = "bwrap"
 
@@ -295,7 +500,25 @@ class SandboxRunner:
                     return False
             except OSError:
                 return False
+        if self.runner_digest == PROFILE_WRAPPER_EGRESS_SHA256:
+            if not self._egress_sidecars_match():
+                return False
         return True
+
+    def _egress_sidecar_digests(self) -> dict[str, str] | None:
+        sidecars = {}
+        root = Path(self.runner_path).parent
+        for name in PROFILE_EGRESS_SIDECAR_SHA256:
+            path = root / name
+            try:
+                sidecars[name] = self._digest(str(path.resolve(strict=True)))
+            except OSError:
+                return None
+        return sidecars
+
+    def _egress_sidecars_match(self) -> bool:
+        observed = self._egress_sidecar_digests()
+        return observed == PROFILE_EGRESS_SIDECAR_SHA256
 
     def _require_profile(self) -> None:
         if self.sandbox_class != self._observed_class:
@@ -313,8 +536,10 @@ class SandboxRunner:
             raise RunnerProfileError(f"runner identity unavailable: {exc}", expected=self.runner_path, found="unavailable") from exc
         if current_path != self.runner_path or current_digest != self.runner_digest:
             raise RunnerProfileError("runner identity changed after inspection", expected=self.runner_digest, found=current_digest)
-        if self.profile_id != PROFILE_ID:
-            raise RunnerProfileError("no reviewed runner profile matches executable; real payload execution is disabled", expected=PROFILE_ID, found=self.profile_id)
+        if self.profile_id == PROFILE_ID_EGRESS and not self._egress_sidecars_match():
+            raise RunnerProfileError("runner sidecar identity mismatch", expected=PROFILE_EGRESS_SIDECAR_SHA256, found=self._egress_sidecar_digests())
+        if self.profile_id not in (PROFILE_ID, PROFILE_ID_EGRESS):
+            raise RunnerProfileError("no reviewed runner profile matches executable; real payload execution is disabled", expected=[PROFILE_ID, PROFILE_ID_EGRESS], found=self.profile_id)
         for name, expected in (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)):
             path = shutil.which(name)
             if not path:
@@ -345,22 +570,32 @@ class SandboxRunner:
         plan = parse_payload(payload_ref)
         if slot.get("workspace"):
             plan["workspace"] = slot["workspace"]
+        invocation = self._argv(plan)[1:]
+        if self.profile_id == PROFILE_ID_EGRESS:
+            # Keep the Continuity Receipt runner_profile wire shape stable:
+            # sidecar identity is committed by the invocation digest rather
+            # than added as an unrecognized profile field.
+            invocation = {
+                "argv": invocation,
+                "sidecar_digests": self._egress_sidecar_digests(),
+            }
         return {
-            "profile_id": PROFILE_ID,
+            "profile_id": self.profile_id,
             "executable_digest": self.runner_digest,
-            "invocation_digest": sha256_prefixed(canonical_bytes(self._argv(plan)[1:])),
+            "invocation_digest": sha256_prefixed(canonical_bytes(invocation)),
         }
 
     def _wall_seconds(self, slot: dict) -> int:
         return max(int(slot.get("quotas", {}).get("wall_ms", 60000) / 1000), 1)
 
-    def _popen(self, slot: dict, plan: dict):
+    def _popen(self, slot: dict, plan: dict, env: dict | None = None):
         return subprocess.Popen(
             self._argv(plan),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=False,
             start_new_session=True,
+            env=env,
         )
 
     def _terminate(self, proc) -> None:
@@ -373,22 +608,46 @@ class SandboxRunner:
         return None
 
     def _result(self, plan: dict, exit_code: int, stdout: bytes, stderr: bytes,
-                killed_by: str | None = None, resources: dict | None = None) -> ExecResult:
+                killed_by: str | None = None, resources: dict | None = None,
+                egress: list | None = None) -> ExecResult:
         return ExecResult(
             exit_code=exit_code,
             stdout_hash=sha256_prefixed(stdout),
             resources=resources or {"cpu_ms": 0, "mem_peak_mb": 0, "disk_peak_mb": 0},
-            egress=[dict(entry) for entry in plan["egress"]],
+            egress=egress if egress is not None else [dict(entry) for entry in plan["egress"]],
             stderr_hash=sha256_prefixed(stderr),
             killed_by=killed_by,
         )
+
+    def _egress_log_env(self, plan: dict) -> tuple[dict | None, Path | None]:
+        """Prepare the proxy-log environment for enforced-egress runs.
+
+        Only the L2 profile produces proxy evidence. Baseline whole-network
+        grants keep their declared-intent entries and never require a log.
+        """
+        if (self.profile_id != PROFILE_ID_EGRESS
+                or not plan.get("net") or not plan.get("declared")):
+            return None, None
+        log_dir = Path(tempfile.mkdtemp(prefix="mandala-egress-log-"))
+        env = {**os.environ, "MANDALA_EGRESS_LOG": str(log_dir / "egress.jsonl")}
+        return env, log_dir
+
+    @staticmethod
+    def _egress_log_result(plan: dict, log_dir: Path | None) -> list | None:
+        if log_dir is None:
+            return None
+        try:
+            return _egress_outcomes_from_log(plan, log_dir / "egress.jsonl")
+        finally:
+            shutil.rmtree(log_dir, ignore_errors=True)
 
     def run(self, slot: dict, payload_ref: str, on_spawn=None) -> ExecResult:
         self._require_profile()
         plan = parse_payload(payload_ref)
         if slot.get("workspace"):
             plan["workspace"] = slot["workspace"]
-        proc = self._popen(slot, plan)
+        env, log_dir = self._egress_log_env(plan)
+        proc = self._popen(slot, plan, env=env)
         if on_spawn:
             on_spawn(proc.pid, os.getpgid(proc.pid), getattr(proc, "unit", None))
         timed_out = False
@@ -402,7 +661,11 @@ class SandboxRunner:
         if timed_out and killed_by is None:
             killed_by = "wall"
         exit_code = 137 if killed_by else proc.returncode
-        return self._result(plan, exit_code, stdout or b"", stderr or b"", killed_by=killed_by)
+        egress = self._egress_log_result(plan, log_dir)
+        if any(entry.get("evidence_error") for entry in (egress or [])):
+            exit_code = 125
+        return self._result(plan, exit_code, stdout or b"", stderr or b"",
+                            killed_by=killed_by, egress=egress)
 
 
 class LandlockRunner(SandboxRunner):
@@ -431,10 +694,15 @@ class SliceRunner(SandboxRunner):
         super().__init__(runner_path, sandbox_class=sandbox_class)
         self.cpu_percent = cpu_percent
 
-    def _popen(self, slot: dict, plan: dict):
+    def _popen(self, slot: dict, plan: dict, env: dict | None = None):
         unit = f"mandala-{slot['slot_id']}-{uuid.uuid4().hex[:6]}"
         quotas = slot["quotas"]
         cpu = self.cpu_percent or CPU_QUOTA_PERCENT.get(slot.get("slot_class", "small"), 100)
+        proxy_log_env = []
+        if self.profile_id == PROFILE_ID_EGRESS and env and "MANDALA_EGRESS_LOG" in env:
+            # A transient service gets the manager's environment, not that of
+            # its systemd-run client. Forward only this per-run evidence path.
+            proxy_log_env = [f"--setenv=MANDALA_EGRESS_LOG={env['MANDALA_EGRESS_LOG']}"]
         argv = [
             "systemd-run",
             "--user",
@@ -453,6 +721,7 @@ class SliceRunner(SandboxRunner):
             f"RuntimeMaxSec={self._wall_seconds(slot)}s",
             "-p",
             "TimeoutStopSec=5s",
+            *proxy_log_env,
             *self._argv(plan),
         ]
         proc = subprocess.Popen(
@@ -461,6 +730,7 @@ class SliceRunner(SandboxRunner):
             stderr=subprocess.PIPE,
             text=False,
             start_new_session=True,
+            env=env,
         )
         proc.unit = unit
         return proc
@@ -490,10 +760,12 @@ class SliceRunner(SandboxRunner):
         return None
 
     def run(self, slot: dict, payload_ref: str, on_spawn=None) -> ExecResult:
+        self._require_profile()
         plan = parse_payload(payload_ref)
         if slot.get("workspace"):
             plan["workspace"] = slot["workspace"]
-        proc = self._popen(slot, plan)
+        env, log_dir = self._egress_log_env(plan)
+        proc = self._popen(slot, plan, env=env)
         if on_spawn:
             on_spawn(proc.pid, os.getpgid(proc.pid), getattr(proc, "unit", None))
         try:
@@ -508,7 +780,11 @@ class SliceRunner(SandboxRunner):
             "mem_peak_mb": getattr(proc, "mem_peak_mb", 0),
             "disk_peak_mb": 0,
         }
-        return self._result(plan, exit_code, stdout or b"", stderr or b"", killed_by=killed_by, resources=resources)
+        egress = self._egress_log_result(plan, log_dir)
+        if any(entry.get("evidence_error") for entry in (egress or [])):
+            exit_code = 125
+        return self._result(plan, exit_code, stdout or b"", stderr or b"",
+                            killed_by=killed_by, resources=resources, egress=egress)
 
 
 def build_runner(runner_path: str | None, slice_mode: bool = False, sandbox_class: str | None = None):
@@ -1163,6 +1439,9 @@ class Orchestrator:
         self._last_exec[slot_id] = result
         self._run_path(slot_id).unlink(missing_ok=True)
 
+        egress_evidence_incomplete = any(
+            entry.get("evidence_error") for entry in (result.egress or [])
+        )
         execution_body = {
             "tool_calls": [
                 {
@@ -1182,6 +1461,8 @@ class Orchestrator:
             ],
             "resources": result.resources,
             "sandbox_class": getattr(self.runner, "sandbox_class", "unknown"),
+            "exit_code": result.exit_code,
+            "egress_evidence_complete": not egress_evidence_incomplete,
         }
         if runner_profile is not None:
             execution_body["runner_profile"] = runner_profile
@@ -1227,7 +1508,11 @@ class Orchestrator:
         termination = None
         final_state = "terminated"
         fresh_slot = self.registry.get_slot(slot_id) or slot
-        if kill_request is not None:
+        if egress_evidence_incomplete:
+            response["egress_evidence_incomplete"] = True
+            response["reason"] = "egress_evidence_incomplete"
+            final_state = "receipt_incomplete"
+        elif kill_request is not None:
             latency_ms = max(int(time.time() * 1000) - int(kill_request.get("requested_at_ms", 0)), 0)
             termination = self._emit(
                 slot,
@@ -1264,7 +1549,9 @@ class Orchestrator:
                 slot_id, (STARTING_STATE,), {"state": final_state}
             )
         else:
-            self.registry.cas_slot(slot_id, (STARTING_STATE,), {"state": "active"})
+            self.registry.cas_slot(slot_id, (STARTING_STATE,), {"state": (
+                "receipt_incomplete" if egress_evidence_incomplete else "active"
+            )})
 
         if cache_key:
             self.registry.remember(

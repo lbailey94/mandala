@@ -150,7 +150,10 @@ class TestPreflightErrors(unittest.TestCase):
             retry = call("mandala.exec", args)
             self.assertEqual(refusal["error"], "runner_profile_refused")
             self.assertEqual(retry["error"], "runner_profile_refused")
-            self.assertEqual(refusal["expected"], "urn:mandala:runner-profile:bwrap-v1")
+            self.assertEqual(refusal["expected"], [
+                "urn:mandala:runner-profile:bwrap-v1",
+                "urn:mandala:runner-profile:bwrap-egress-v1",
+            ])
             self.assertTrue(refusal["action"])
             self.assertFalse(marker.exists())
             self.assertEqual(list(orch.runs_dir.iterdir()), [])

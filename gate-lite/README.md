@@ -137,8 +137,31 @@ proves the issuer recorded the identity; it does not prove the issuer used it.
   destination list records intent, not an allowlist: `bwrap --share-net`
   grants the whole network, and entries carry `enforced: false` for individual
   destinations. Denials use an isolated network namespace and are marked
-  `enforced: true`. Destination-level enforcement is a planned qualified
-  profile; see `../design/EGRESS_ENFORCEMENT_2026-09-30.md`.
+  `enforced: true`. Destination-level enforcement uses the separate L2
+  candidate described below; see `../design/EGRESS_ENFORCEMENT_2026-09-30.md`.
+- **Enforced egress (L2 candidate):** with the `tools/mandala-sandbox-egress`
+  wrapper the sandbox keeps no raw network at all; the only egress channel is
+  the allowlist proxy's Unix socket (`tools/mandala-egress-proxy.py`, bound at
+  `/run/mandala-egress.sock`) and the helper (`/run/mandala-fetch.py`). The
+  proxy resolves names on the host and refuses everything not on the declared
+  allowlist; the runner replaces the declared-intent entries with enforced
+  outcomes from the proxy log (`"enforcer": "unix-proxy-allowlist"`, per-entry
+  `bytes_out`/`bytes_in`, and denied attempts recorded). Non-proxy tools
+  simply have no network. The signed `runner_profile` binds the egress wrapper
+  digest plus proxy/helper sidecar digests through its invocation digest
+  (along with the allowlist) under
+  `urn:mandala:runner-profile:bwrap-egress-v1`. Acceptance probe:
+  `python3 tools/egress_l2_probe.py` (local, qualified-host only).
+  This candidate checks the host and port in an HTTP `CONNECT` request and
+  then passes bytes through to that endpoint. It does not filter paths,
+  methods, TLS content, or application behavior, and it does not pin DNS
+  answers to IP addresses. Treat the allowlist as a destination boundary, not
+  an application policy. Missing, malformed, or incomplete proxy evidence
+  produces a failed execution outcome and an explicit `receipt_incomplete`
+  slot hold.
+  The wrapper directly rejects `net: true` without an allowlist before
+  spawning a payload. The gate normalizes that request to an offline run,
+  preserving the baseline default-deny behavior and recording the denial.
 - The slot workspace is mounted writable at `/workspace` inside the sandbox
   (wrapper envelope `rw: true`), so payload artifacts land in
   `state/workspaces/<slot>/` and are captured by `mandala.snapshot`.

@@ -1,0 +1,2 @@
+mandala-egress-proxy listening on <proxy-socket> (1 allowlist entries)
+mandala-sandbox-egress: egress via <proxy-socket> (log <probe-log>)
