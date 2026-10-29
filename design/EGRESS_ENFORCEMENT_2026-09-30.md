@@ -8,7 +8,7 @@ not establish independent-host adoption. Gate-lite receipts retain the
 per-entry `"enforced"` flag and the older whole-network profile remains
 distinct from the L2 candidate.
 
-## What is true today (0.4 lane)
+## Baseline whole-network profile
 
 - Default deny: without `net: true` and declared destinations, the wrapper
   runs `bwrap --unshare-all` (no network); the denial is recorded in
@@ -18,8 +18,9 @@ distinct from the L2 candidate.
   destinations are recorded intent — they are an audit list, not an
   allowlist — and now carry `"enforced": false` so no reader can mistake the
   entry for destination-level enforcement.
-- The wrapper envelope (`wm-sandbox-exec-v1`) only carries `net`; it never
-  receives the declared list, so nothing at the target could enforce it.
+- The wrapper envelope (`wm-sandbox-exec-v1`) carries the declared list for
+  L2, but the baseline wrapper uses only `net` and does not mediate individual
+  destinations.
 
 ## Why this matters
 
@@ -46,7 +47,7 @@ above is a truth fix independent of when enforcement lands.
    exactly what was enforced.
 2. **Next qualified profile:** option B on the bwrap lane — a per-slot
    filtering proxy with fail-closed behavior — because it is implementable
-   unprivileged inside the existing `--share-net` wrapper, and its
+   unprivileged with `--unshare-all` plus a Unix-socket bind, and its
    enforcement can be proven from the outside. Option A is a fallback for
    fixed endpoints; option C belongs to the microVM track.
 3. A profile may only claim `"enforced": true` with an enforcer id when the
@@ -66,11 +67,12 @@ result and an explicit incomplete slot hold.
 ## Acceptance criteria for a future qualified egress profile
 
 1. Allowed host reachable; an unlisted host fails, with the denial recorded.
-2. DNS cannot be used to reach unlisted destinations (rebinding/pinning
-   attempt fails).
+2. A broader DNS-to-IP-qualified profile must prevent unlisted resolved
+   destinations, including rebinding/pinning attempts. This L2 host-and-port
+   candidate does not close that requirement.
 3. Proxy/runtime failure denies egress rather than falling back to an open
    network, and the failure is recorded.
 4. The receipt records the enforcement mode truthfully (`"enforced": true`
    plus an enforcer identifier) and the qualified runner profile digest.
-5. The G3 denial cases still pass unchanged; the 0.4 lane remains the
-   default profile until a candidate is reviewed.
+5. The G3 denial cases still pass unchanged; the baseline remains the
+   default profile unless the exact L2 wrapper is selected.

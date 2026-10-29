@@ -4,6 +4,7 @@ import ipaddress
 import importlib.metadata
 import json
 import os
+import re
 import shutil
 import shlex
 import signal as signal_mod
@@ -252,6 +253,19 @@ def _egress_outcomes_from_log(plan: dict, log_path) -> list[dict] | None:
     except (OSError, UnicodeError, ValueError):
         return unavailable("proxy log unreadable or malformed")
 
+    def normalize_host(host: str) -> str:
+        # Match the proxy allowlist's identity rules, including IDNA aliases.
+        host = host.strip().strip("[]").lower().rstrip(".")
+        try:
+            return ipaddress.ip_address(host).compressed.lower()
+        except ValueError:
+            host = host.encode("idna").decode("ascii")
+            if (not host or len(host) > 253
+                    or any(not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+                           for label in host.split("."))):
+                raise ValueError("invalid destination hostname")
+            return host
+
     totals: dict[tuple[str, int], dict] = {}
     denies: dict[tuple[str, int], dict] = {}
     starts: dict[str, tuple[str, int]] = {}
@@ -264,11 +278,10 @@ def _egress_outcomes_from_log(plan: dict, log_path) -> list[dict] | None:
                 or not 1 <= port <= 65535
                 or not isinstance(record.get("allowed"), bool)):
             return unavailable("proxy log contains an invalid destination record")
-        normalized_host = host.strip().strip("[]").lower().rstrip(".")
         try:
-            normalized_host = ipaddress.ip_address(normalized_host).compressed.lower()
-        except ValueError:
-            pass
+            normalized_host = normalize_host(host)
+        except (UnicodeError, ValueError):
+            return unavailable("proxy log contains an invalid destination hostname")
         key = (normalized_host, port)
         event = record.get("event")
         connection_id = record.get("connection_id")
@@ -300,42 +313,45 @@ def _egress_outcomes_from_log(plan: dict, log_path) -> list[dict] | None:
         return unavailable("proxy log contains a connection without a terminal outcome")
 
     def parse_destination(destination: str) -> tuple[str, int | None]:
+        destination = destination.strip()
         if destination.startswith("["):
             host, marker, rest = destination[1:].partition("]")
             if not marker:
-                return destination.lower(), None
+                raise ValueError("invalid bracketed destination")
+            if ipaddress.ip_address(host).version != 6:
+                raise ValueError("bracketed destination must be IPv6")
             if rest.startswith(":") and rest[1:].isdigit():
                 port = int(rest[1:])
-                try:
-                    host = ipaddress.ip_address(host).compressed.lower()
-                except ValueError:
-                    host = host.lower().rstrip(".")
-                return host, port
+                if not 1 <= port <= 65535:
+                    raise ValueError("invalid destination port")
+                return normalize_host(host), port
             if not rest:
-                try:
-                    host = ipaddress.ip_address(host).compressed.lower()
-                except ValueError:
-                    host = host.lower().rstrip(".")
-                return host, None
-            return destination.lower(), None
+                return normalize_host(host), None
+            raise ValueError("invalid bracketed destination")
         try:
             return ipaddress.ip_address(destination).compressed.lower(), None
         except ValueError:
             pass
         host, marker, port_text = destination.rpartition(":")
         if marker and port_text.isdigit() and host:
-            return host.lower().rstrip("."), int(port_text)
-        return destination.lower().rstrip("."), None
+            port = int(port_text)
+            if not 1 <= port <= 65535:
+                raise ValueError("invalid destination port")
+            return normalize_host(host), port
+        return normalize_host(destination), None
 
     def format_destination(host: str, port: int) -> str:
         return f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
 
     entries: list[dict] = []
-    declared_keys: set[tuple[str, int | None]] = set()
+    try:
+        declared_keys = {parse_destination(declared) for declared in plan.get("declared") or []}
+    except (UnicodeError, ValueError):
+        return unavailable("declared allowlist contains an invalid destination")
+    if any(key not in declared_keys and (key[0], None) not in declared_keys for key in totals):
+        return unavailable("proxy log contains allowed traffic outside the declared allowlist")
     for declared in plan.get("declared") or []:
         host, port = parse_destination(declared)
-        key = (host, port)
-        declared_keys.add(key)
         matched_totals = [
             (record_key, total) for record_key, total in totals.items()
             if record_key[0] == host and (port is None or record_key[1] == port)
@@ -603,14 +619,14 @@ class SandboxRunner:
             killed_by=killed_by,
         )
 
-    @staticmethod
-    def _egress_log_env(plan: dict) -> tuple[dict | None, Path | None]:
+    def _egress_log_env(self, plan: dict) -> tuple[dict | None, Path | None]:
         """Prepare the proxy-log environment for enforced-egress runs.
 
-        Only a run that requests network with declared destinations can have
-        enforced outcomes; everything else keeps the declared-intent entries.
+        Only the L2 profile produces proxy evidence. Baseline whole-network
+        grants keep their declared-intent entries and never require a log.
         """
-        if not plan.get("net") or not plan.get("declared"):
+        if (self.profile_id != PROFILE_ID_EGRESS
+                or not plan.get("net") or not plan.get("declared")):
             return None, None
         log_dir = Path(tempfile.mkdtemp(prefix="mandala-egress-log-"))
         env = {**os.environ, "MANDALA_EGRESS_LOG": str(log_dir / "egress.jsonl")}
@@ -682,6 +698,11 @@ class SliceRunner(SandboxRunner):
         unit = f"mandala-{slot['slot_id']}-{uuid.uuid4().hex[:6]}"
         quotas = slot["quotas"]
         cpu = self.cpu_percent or CPU_QUOTA_PERCENT.get(slot.get("slot_class", "small"), 100)
+        proxy_log_env = []
+        if self.profile_id == PROFILE_ID_EGRESS and env and "MANDALA_EGRESS_LOG" in env:
+            # A transient service gets the manager's environment, not that of
+            # its systemd-run client. Forward only this per-run evidence path.
+            proxy_log_env = [f"--setenv=MANDALA_EGRESS_LOG={env['MANDALA_EGRESS_LOG']}"]
         argv = [
             "systemd-run",
             "--user",
@@ -700,6 +721,7 @@ class SliceRunner(SandboxRunner):
             f"RuntimeMaxSec={self._wall_seconds(slot)}s",
             "-p",
             "TimeoutStopSec=5s",
+            *proxy_log_env,
             *self._argv(plan),
         ]
         proc = subprocess.Popen(
@@ -738,6 +760,7 @@ class SliceRunner(SandboxRunner):
         return None
 
     def run(self, slot: dict, payload_ref: str, on_spawn=None) -> ExecResult:
+        self._require_profile()
         plan = parse_payload(payload_ref)
         if slot.get("workspace"):
             plan["workspace"] = slot["workspace"]

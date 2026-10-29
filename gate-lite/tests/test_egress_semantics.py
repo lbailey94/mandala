@@ -13,6 +13,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from continuity_receipt import keys
 
@@ -21,7 +22,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from gate_lite.orchestrator import (  # noqa: E402
     ExecResult,
     Orchestrator,
+    PROFILE_ID,
+    PROFILE_ID_EGRESS,
     SandboxRunner,
+    SliceRunner,
     _egress_outcomes_from_log,
     parse_payload,
 )
@@ -127,6 +131,46 @@ class TestEgressSemantics(unittest.TestCase):
         self.assertTrue(outcomes[1]["allowed"])
         self.assertEqual(outcomes[1]["bytes"], 12)
 
+    def test_idna_aliases_attribute_allowed_bytes_to_declared_destination(self):
+        for declared_host, observed_host in (
+                ("xn--bcher-kva.example", "bücher.example"),
+                ("bücher.example", "xn--bcher-kva.example")):
+            with self.subTest(declared=declared_host, observed=observed_host):
+                plan = {"declared": [declared_host + ":443"]}
+                records = [
+                    {"event": "connect_start", "connection_id": "idna",
+                     "host": observed_host, "port": 443, "allowed": True},
+                    {"event": "connect_complete", "connection_id": "idna",
+                     "host": observed_host, "port": 443, "allowed": True,
+                     "bytes_out": 52, "bytes_in": 112},
+                ]
+                with tempfile.TemporaryDirectory() as tmp:
+                    path = Path(tmp) / "egress.jsonl"
+                    path.write_text("\n".join(json.dumps(record) for record in records) + "\n")
+                    outcomes = _egress_outcomes_from_log(plan, path)
+                self.assertEqual(outcomes[0]["bytes"], 164)
+                self.assertTrue(outcomes[0]["allowed"])
+                self.assertTrue(outcomes[0]["enforced"])
+
+    def test_allowed_traffic_outside_declared_host_or_port_fails_closed(self):
+        plan = {"declared": ["example.org:443"]}
+        for host, port in (("unlisted.example", 443), ("example.org", 80)):
+            with self.subTest(host=host, port=port):
+                records = [
+                    {"event": "connect_start", "connection_id": "unexpected",
+                     "host": host, "port": port, "allowed": True},
+                    {"event": "connect_complete", "connection_id": "unexpected",
+                     "host": host, "port": port, "allowed": True,
+                     "bytes_out": 5, "bytes_in": 7},
+                ]
+                with tempfile.TemporaryDirectory() as tmp:
+                    path = Path(tmp) / "egress.jsonl"
+                    path.write_text("\n".join(json.dumps(record) for record in records) + "\n")
+                    outcomes = _egress_outcomes_from_log(plan, path)
+                self.assertFalse(outcomes[0]["allowed"])
+                self.assertFalse(outcomes[0]["enforced"])
+                self.assertIn("outside the declared allowlist", outcomes[0]["evidence_error"])
+
     def test_missing_or_malformed_requested_log_is_explicitly_unavailable(self):
         plan = {"declared": ["example.org:443"]}
         with tempfile.TemporaryDirectory() as tmp:
@@ -181,6 +225,7 @@ class TestEgressSemantics(unittest.TestCase):
                 return b"completed", b""
 
         runner = object.__new__(SandboxRunner)
+        runner.profile_id = PROFILE_ID_EGRESS
         runner._require_profile = lambda: None
         runner._popen = lambda *args, **kwargs: FakeProcess()
         runner._wall_seconds = lambda slot: 1
@@ -204,6 +249,7 @@ class TestEgressSemantics(unittest.TestCase):
                 return b"completed", b""
 
         runner = object.__new__(SandboxRunner)
+        runner.profile_id = PROFILE_ID_EGRESS
         runner._require_profile = lambda: None
 
         def fake_popen(_slot, _plan, env=None):
@@ -221,6 +267,76 @@ class TestEgressSemantics(unittest.TestCase):
         self.assertEqual(result.exit_code, 125)
         self.assertFalse(result.egress[0]["allowed"])
         self.assertIn("non-object", result.egress[0]["evidence_error"])
+
+    def test_runner_profiles_keep_baseline_intent_and_use_l2_proxy_outcomes(self):
+        class FakeProcess:
+            returncode = 0
+
+            @staticmethod
+            def communicate(timeout=None):
+                return b"completed", b""
+
+        payload = json.dumps({"program": "echo", "args": ["ok"], "net": True,
+                              "egress": ["example.org:443"]})
+        records = [
+            {"event": "connect_start", "connection_id": "complete",
+             "host": "example.org", "port": 443, "allowed": True},
+            {"event": "connect_complete", "connection_id": "complete",
+             "host": "example.org", "port": 443, "allowed": True,
+             "bytes_out": 5, "bytes_in": 7},
+        ]
+        for runner_class in (SandboxRunner, SliceRunner):
+            for profile_id in (PROFILE_ID, PROFILE_ID_EGRESS):
+                with self.subTest(runner=runner_class.__name__, profile=profile_id):
+                    runner = object.__new__(runner_class)
+                    runner.profile_id = profile_id
+                    runner._require_profile = lambda: None
+                    runner._wall_seconds = lambda slot: 1
+                    runner._inspect_kill = lambda slot, proc: None
+
+                    def fake_popen(_slot, _plan, env=None):
+                        if profile_id == PROFILE_ID:
+                            self.assertIsNone(env)
+                        else:
+                            Path(env["MANDALA_EGRESS_LOG"]).write_text(
+                                "\n".join(json.dumps(record) for record in records) + "\n",
+                                encoding="utf-8",
+                            )
+                        return FakeProcess()
+
+                    runner._popen = fake_popen
+                    result = runner.run({"quotas": {"wall_ms": 1000}}, payload)
+                    self.assertEqual(result.exit_code, 0)
+                    self.assertTrue(result.egress[0]["allowed"])
+                    self.assertEqual(result.egress[0]["enforced"], profile_id == PROFILE_ID_EGRESS)
+                    if profile_id == PROFILE_ID:
+                        self.assertIn("whole network", result.egress[0]["enforcer"])
+                        self.assertIsNone(result.egress[0]["bytes"])
+                    else:
+                        self.assertEqual(result.egress[0]["enforcer"], "unix-proxy-allowlist")
+                        self.assertEqual(result.egress[0]["bytes"], 12)
+
+    def test_slice_transient_service_receives_only_l2_proxy_log_override(self):
+        plan = parse_payload(json.dumps({"program": "echo", "args": ["ok"],
+                                        "net": True, "egress": ["example.org:443"]}))
+        for profile_id in (PROFILE_ID, PROFILE_ID_EGRESS):
+            with self.subTest(profile=profile_id):
+                runner = object.__new__(SliceRunner)
+                runner.profile_id = profile_id
+                runner.runner_path = "/reviewed/wrapper"
+                runner.cpu_percent = None
+                env = {"MANDALA_EGRESS_LOG": "/tmp/owned-proxy-log.jsonl",
+                       "UNRELATED_PRIVATE_VALUE": "do-not-forward"}
+                with patch("gate_lite.orchestrator.subprocess.Popen") as popen:
+                    runner._popen({"slot_id": "fixture", "quotas": {}}, plan, env=env)
+                argv = popen.call_args.args[0]
+                forwarded = [argument for argument in argv if argument.startswith("--setenv=")]
+                self.assertEqual(forwarded, (
+                    ["--setenv=MANDALA_EGRESS_LOG=/tmp/owned-proxy-log.jsonl"]
+                    if profile_id == PROFILE_ID_EGRESS else []
+                ))
+                if forwarded:
+                    self.assertLess(argv.index(forwarded[0]), argv.index("/reviewed/wrapper"))
 
     def test_orchestrator_holds_slot_when_runner_reports_incomplete_egress(self):
         class IncompleteRunner:

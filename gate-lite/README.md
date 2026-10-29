@@ -137,8 +137,8 @@ proves the issuer recorded the identity; it does not prove the issuer used it.
   destination list records intent, not an allowlist: `bwrap --share-net`
   grants the whole network, and entries carry `enforced: false` for individual
   destinations. Denials use an isolated network namespace and are marked
-  `enforced: true`. Destination-level enforcement is a planned qualified
-  profile; see `../design/EGRESS_ENFORCEMENT_2026-09-30.md`.
+  `enforced: true`. Destination-level enforcement uses the separate L2
+  candidate described below; see `../design/EGRESS_ENFORCEMENT_2026-09-30.md`.
 - **Enforced egress (L2 candidate):** with the `tools/mandala-sandbox-egress`
   wrapper the sandbox keeps no raw network at all; the only egress channel is
   the allowlist proxy's Unix socket (`tools/mandala-egress-proxy.py`, bound at
@@ -159,6 +159,9 @@ proves the issuer recorded the identity; it does not prove the issuer used it.
   an application policy. Missing, malformed, or incomplete proxy evidence
   produces a failed execution outcome and an explicit `receipt_incomplete`
   slot hold.
+  The wrapper directly rejects `net: true` without an allowlist before
+  spawning a payload. The gate normalizes that request to an offline run,
+  preserving the baseline default-deny behavior and recording the denial.
 - The slot workspace is mounted writable at `/workspace` inside the sandbox
   (wrapper envelope `rw: true`), so payload artifacts land in
   `state/workspaces/<slot>/` and are captured by `mandala.snapshot`.

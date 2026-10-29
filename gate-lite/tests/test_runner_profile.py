@@ -9,6 +9,7 @@ from gate_lite.orchestrator import (
     Orchestrator,
     RunnerProfileError,
     SandboxRunner,
+    SliceRunner,
     StubRunner,
 )
 from gate_lite import orchestrator as profile_module
@@ -34,6 +35,17 @@ class TestRunnerProfileFailClosed(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaisesRegex(RunnerProfileError, "identity unavailable"):
                 SandboxRunner(str(Path(tmp) / "missing"))
+
+    def test_unqualified_slice_refuses_before_systemd_spawn(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "runner"
+            path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            path.chmod(0o700)
+            runner = SliceRunner(str(path))
+            with patch.object(runner, "_popen") as popen:
+                with self.assertRaisesRegex(RunnerProfileError, "no reviewed runner profile"):
+                    runner.run({}, "echo should-not-run")
+            popen.assert_not_called()
 
     def test_matching_wrapper_still_requires_pinned_bwrap_and_jq(self):
         with tempfile.TemporaryDirectory() as tmp:
