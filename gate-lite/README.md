@@ -162,6 +162,11 @@ proves the issuer recorded the identity; it does not prove the issuer used it.
   The wrapper directly rejects `net: true` without an allowlist before
   spawning a payload. The gate normalizes that request to an offline run,
   preserving the baseline default-deny behavior and recording the denial.
+- JSON execution envelopes require a nonempty string `program`, string arrays
+  for `args` and `egress`, and a JSON boolean for `net`. NUL characters,
+  empty destination entries, and duplicate object members are rejected before
+  runner spawn. In particular, `"net": "false"` is invalid; it cannot be
+  coerced into a network grant. Omitted `net` still defaults to `false`.
 - The slot workspace is mounted writable at `/workspace` inside the sandbox
   (wrapper envelope `rw: true`), so payload artifacts land in
   `state/workspaces/<slot>/` and are captured by `mandala.snapshot`.

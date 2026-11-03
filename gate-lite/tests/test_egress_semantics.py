@@ -32,6 +32,47 @@ from gate_lite.orchestrator import (  # noqa: E402
 
 
 class TestEgressSemantics(unittest.TestCase):
+    def test_string_false_cannot_become_a_network_grant(self):
+        payload = json.dumps({"program": "curl", "net": "false", "egress": ["example.org"]})
+        for runner_class in (SandboxRunner, SliceRunner):
+            with self.subTest(runner=runner_class.__name__):
+                runner = object.__new__(runner_class)
+                runner._require_profile = lambda: None
+                with patch.object(runner, "_popen") as spawn:
+                    with self.assertRaisesRegex(ValueError, "'net' must be a boolean"):
+                        runner.run({}, payload)
+                    spawn.assert_not_called()
+
+    def test_envelope_rejects_ambiguous_types_and_nul_before_planning(self):
+        invalid_members = (
+            {"program": 1}, {"program": ""}, {"program": "echo\x00ignored"},
+            {"args": "hello"}, {"args": None}, {"args": [1]}, {"args": ["\x00"]},
+            {"net": 0}, {"net": 1}, {"net": "true"}, {"net": None},
+            {"egress": "example.org"}, {"egress": None}, {"egress": [1]},
+            {"egress": [""]}, {"egress": ["example.org\x00ignored"]},
+        )
+        for members in invalid_members:
+            with self.subTest(members=members):
+                with self.assertRaises(ValueError):
+                    parse_payload(json.dumps({"program": "echo", **members}))
+
+    def test_duplicate_envelope_members_cannot_change_network_authority(self):
+        with self.assertRaisesRegex(ValueError, "duplicate payload envelope member: net"):
+            parse_payload('{"program":"curl","net":false,"net":true,"egress":["example.org"]}')
+
+    def test_valid_envelope_preserves_literal_arguments_and_boolean_authority(self):
+        for net in (False, True):
+            with self.subTest(net=net):
+                plan = parse_payload(json.dumps({
+                    "program": "echo", "args": ["", "false", "雪", "a b"],
+                    "net": net, "egress": ["example.org:443"],
+                }))
+                self.assertEqual(plan["args"], ["", "false", "雪", "a b"])
+                self.assertIs(plan["net"], net)
+                self.assertEqual(plan["declared"], ["example.org:443"])
+        self.assertEqual(parse_payload('{"program":"echo"}')["args"], [])
+        self.assertFalse(parse_payload('{"program":"echo"}')["net"])
+
     def test_granted_egress_records_unenforced_destinations(self):
         plan = parse_payload(
             json.dumps(
