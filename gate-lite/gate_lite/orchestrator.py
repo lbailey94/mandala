@@ -48,7 +48,7 @@ PROFILE_WRAPPER_SHA256 = "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0
 PROFILE_ID_EGRESS = "urn:mandala:runner-profile:bwrap-egress-v1"
 PROFILE_WRAPPER_EGRESS_SHA256 = "sha256:0a0720955e135ec2a6b31a74fcdb1a9c8ecfb372177fb8f6d925d48379b17a43"
 PROFILE_EGRESS_SIDECAR_SHA256 = {
-    "mandala-egress-proxy.py": "sha256:73826dcc2390fa55b5e78cc1f5ceece99c52a73d20a2573240aaf39b7abc6227",
+    "mandala-egress-proxy.py": "sha256:63400f0d98fc07ff29f5ef218ae6de4d72bed8e040e12bc21785e9af3dbf9d00",
     "mandala-fetch.py": "sha256:d1ce7db2a926d80174319582e047f87d1f65672d4f22661dfd71b13f404bfb33",
 }
 PROFILE_BWRAP_SHA256 = "sha256:e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71"
