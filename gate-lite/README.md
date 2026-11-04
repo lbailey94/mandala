@@ -154,8 +154,13 @@ proves the issuer recorded the identity; it does not prove the issuer used it.
   `python3 tools/egress_l2_probe.py` (local, qualified-host only).
   This candidate checks the host and port in an HTTP `CONNECT` request and
   then passes bytes through to that endpoint. It does not filter paths,
-  methods, TLS content, or application behavior, and it does not pin DNS
-  answers to IP addresses. Treat the allowlist as a destination boundary, not
+  methods, TLS content, or application behavior. This candidate pins each DNS
+  name's first successful resolution for the proxy invocation, accepts only
+  global unicast answers for names, and connects only to those numeric IPs.
+  Mixed/private/loopback DNS answers refuse; an exact declared IP literal may
+  explicitly grant a local/private destination. This is local synthetic and
+  loopback-test evidence, not a newly qualified hosted runner profile.
+  Treat the allowlist as a destination boundary, not
   an application policy. Missing, malformed, or incomplete proxy evidence
   produces a failed execution outcome and an explicit `receipt_incomplete`
   slot hold.

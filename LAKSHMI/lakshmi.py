@@ -39,6 +39,7 @@ import signal
 import sys
 import time
 import urllib.request
+from wm_mcp import call_tool
 from collections import deque
 from datetime import datetime, timezone
 
@@ -163,33 +164,8 @@ def read_battery_watts() -> tuple[str | None, float | None]:
     return None, None
 
 
-def call_wm_tool(
-    endpoint: str, tool: str, arguments: dict | None = None, timeout: float = 4.0
-) -> dict | None:
-    payload = json.dumps(
-        {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": tool, "arguments": arguments or {}},
-        }
-    ).encode()
-    request = urllib.request.Request(
-        endpoint.rstrip("/") + "/mcp",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            outer = json.loads(response.read().decode())
-        if "error" in outer:
-            message = (outer.get("error") or {}).get("message", "json-rpc error")
-            return {"_error": message}
-        return json.loads(outer["result"]["content"][0]["text"])
-    except Exception as exc:
-        return {"_error": str(exc)}
-
+def call_wm_tool(endpoint: str, tool: str, arguments: dict | None = None, timeout: float = 4.0) -> dict:
+    return call_tool(endpoint, tool, arguments or {}, timeout)
 
 # ── Edge galaxy emission (telemetry windows → WM) ─────────────────────
 #

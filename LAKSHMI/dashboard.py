@@ -25,10 +25,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
 import urllib.request
+from wm_mcp import call_tool
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -40,31 +42,7 @@ BRIDGE_METRICS = ("sandbox_unconfined", "sandbox_degraded", "tetragon_shadow")
 
 
 def wm_tool(base: str, tool: str, arguments: dict, timeout: float) -> dict:
-    """Call one WM MCP tool; errors come back as ``{"_error": ...}``."""
-    payload = json.dumps(
-        {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": tool, "arguments": arguments},
-        }
-    ).encode()
-    request = urllib.request.Request(
-        base.rstrip("/") + "/mcp",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            outer = json.loads(response.read().decode())
-        if "error" in outer:
-            message = (outer.get("error") or {}).get("message", "json-rpc error")
-            return {"_error": message}
-        return json.loads(outer["result"]["content"][0]["text"])
-    except Exception as exc:  # noqa: BLE001 — disclose, never crash the API
-        return {"_error": str(exc)}
-
+    return call_tool(base, tool, arguments, timeout)
 
 def wm_alive(base: str, timeout: float = 1.5) -> bool:
     try:
@@ -576,7 +554,26 @@ def build_api(state_dir: str, wm: str, galaxy_wm: str, galaxy: str, wm_timeout: 
 
         def do_GET(self) -> None:  # noqa: N802 — http.server API
             parsed = urlparse(self.path)
-            query = parse_qs(parsed.query)
+            query = parse_qs(parsed.query, keep_blank_values=True)
+            if parsed.path.startswith("/api/"):
+                try:
+                    for name in ("hours", "limit"):
+                        if name not in query:
+                            continue
+                        if len(query[name]) != 1:
+                            raise ValueError(f"{name} must occur once")
+                        raw = query[name][0]
+                        if name == "hours":
+                            value = float(raw)
+                            if not math.isfinite(value) or not 0 < value <= 8760:
+                                raise ValueError("hours must be finite and in (0, 8760]")
+                        else:
+                            value = int(raw)
+                            if not 1 <= value <= 1000:
+                                raise ValueError("limit must be an integer in [1, 1000]")
+                except (ValueError, OverflowError) as error:
+                    self._json({"error": str(error)}, 400)
+                    return
             if parsed.path in ("/", "/index.html"):
                 page = os.path.join(os.path.dirname(os.path.abspath(__file__)), PAGE_NAME)
                 self._file(page, "text/html; charset=utf-8")

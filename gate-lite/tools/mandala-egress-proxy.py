@@ -77,6 +77,8 @@ class Allowlist:
     def __init__(self, entries):
         self.hosts = set()
         self.host_ports = set()
+        self._pinned = {}
+        self._resolve_lock = threading.Lock()
         for entry in entries:
             entry = entry.strip()
             if not entry:
@@ -124,6 +126,53 @@ class Allowlist:
     def allows(self, host: str, port: int) -> bool:
         host = _normalize_host(host)
         return host in self.hosts or (host, port) in self.host_ports
+
+    def pinned_addresses(self, host: str, port: int):
+        """Freeze each name on first use for this proxy invocation.
+
+        DNS names may resolve only to global unicast destinations. Non-global
+        destinations require the exact IP literal in the invocation allowlist;
+        declaring a hostname never grants access to local/private addresses.
+        """
+        host = _normalize_host(host)
+        if not self.allows(host, port):
+            raise ValueError("destination not in allowlist")
+        try:
+            return (ipaddress.ip_address(host),)
+        except ValueError:
+            pass
+        with self._resolve_lock:
+            if host not in self._pinned:
+                addresses = set()
+                for family, _kind, _proto, _canon, sockaddr in socket.getaddrinfo(
+                        host, None, type=socket.SOCK_STREAM):
+                    if family not in (socket.AF_INET, socket.AF_INET6):
+                        continue
+                    address = ipaddress.ip_address(sockaddr[0])
+                    effective = address.ipv4_mapped if isinstance(address, ipaddress.IPv6Address) else None
+                    if not (effective or address).is_global or address.is_multicast:
+                        raise ValueError("DNS destination is not global unicast; declare an exact IP literal")
+                    addresses.add(address)
+                if not addresses:
+                    raise ValueError("DNS returned no usable destination addresses")
+                self._pinned[host] = tuple(sorted(addresses, key=lambda address: (address.version, int(address))))
+            return self._pinned[host]
+
+    def connect(self, host: str, port: int, timeout: float):
+        # Connect only to numeric addresses from the frozen set, never re-open
+        # by hostname after the authority check (DNS rebinding/TOCTOU).
+        last_error = None
+        for address in self.pinned_addresses(host, port):
+            family = socket.AF_INET6 if address.version == 6 else socket.AF_INET
+            upstream = socket.socket(family, socket.SOCK_STREAM)
+            upstream.settimeout(timeout)
+            try:
+                upstream.connect((str(address), port))
+                return upstream
+            except OSError as error:
+                last_error = error
+                upstream.close()
+        raise last_error or OSError("no pinned destination connected")
 
 
 class ThreadingUnixServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
@@ -237,12 +286,14 @@ class Handler(socketserver.BaseRequestHandler):
                      "allowed": False, "reason": "not-in-allowlist"})
             self._reply(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n")
             return
+        if not self._check_address_policy(host, port, cfg, "connect"):
+            return
         connection_id = uuid.uuid4().hex
         cfg.log({"event": "connect_start", "connection_id": connection_id,
                  "host": host, "port": port, "allowed": True})
         try:
-            upstream = socket.create_connection((host, port), timeout=cfg.timeout)
-        except OSError as exc:
+            upstream = cfg.allow.connect(host, port, cfg.timeout)
+        except (OSError, ValueError) as exc:
             cfg.log({"event": "connect_complete", "connection_id": connection_id,
                      "host": host, "port": port, "allowed": True,
                      "bytes_out": 0, "bytes_in": 0,
@@ -257,6 +308,16 @@ class Handler(socketserver.BaseRequestHandler):
         cfg.log({"event": "connect_complete", "connection_id": connection_id,
                  "host": host, "port": port, "allowed": True,
                  "bytes_out": bytes_out, "bytes_in": bytes_in})
+
+    def _check_address_policy(self, host, port, cfg, event):
+        try:
+            cfg.allow.pinned_addresses(host, port)
+        except (OSError, ValueError) as error:
+            cfg.log({"event": event, "host": host, "port": port,
+                     "allowed": False, "reason": f"address-policy: {error}"})
+            self._reply(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n")
+            return False
+        return True
 
     def _relay(self, upstream, cfg) -> tuple[int, int]:
         upstream.settimeout(cfg.timeout)
@@ -317,6 +378,8 @@ class Handler(socketserver.BaseRequestHandler):
             return
         if "transfer-encoding" in headers:
             raise ValueError("Transfer-Encoding is unsupported")
+        if not self._check_address_policy(host, port, cfg, "http"):
+            return
         body = rest
         length_text = headers.get("content-length", "0")
         if not length_text.isdigit():
@@ -345,7 +408,7 @@ class Handler(socketserver.BaseRequestHandler):
         upstream = None
         bytes_out = bytes_in = 0
         try:
-            upstream = socket.create_connection((host, port), timeout=cfg.timeout)
+            upstream = cfg.allow.connect(host, port, cfg.timeout)
             upstream.sendall(payload)
             bytes_out = len(payload)
             bytes_in = 0
@@ -355,7 +418,7 @@ class Handler(socketserver.BaseRequestHandler):
                     break
                 self.request.sendall(data)
                 bytes_in += len(data)
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             cfg.log({"event": "http_complete", "connection_id": connection_id,
                      "host": host, "port": port,
                      "allowed": True, "bytes_out": bytes_out, "bytes_in": bytes_in,
