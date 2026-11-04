@@ -1,104 +1,55 @@
-# Mandala: Governed Agent Execution & Kernel Confinement
+# Mandala: governed agent execution and local observability
 
-Mandala is an open-source systems security framework providing deterministic kernel sandboxing, policy-governed execution envelopes, and offline-verifiable task continuity receipts for autonomous AI agents.
+Mandala combines gate-lite execution profiles, Sovereign Linux/NixOS wrappers,
+and the Lakshmi telemetry monitor. These are separately exercised components;
+this repository is not a production or complete-system security qualification.
 
-Designed for production agentic workloads, Mandala ensures that autonomous agents operate within strictly bounded operating system capabilities, emit tamper-evident execution receipts, and enforce zero ambient authority.
+## Profiles and boundaries
 
----
+| Component/profile | What it does | Authority and limits |
+|---|---|---|
+| Gate-lite baseline `bwrap-v1` | Validates task envelopes and launches a declared wrapper | `net:false` creates a network namespace; `net:true` shares the host network. Individual destination declarations are not enforced in this profile. |
+| Gate-lite `bwrap-egress-v1` | Keeps the child network namespace isolated and mediates HTTP/CONNECT via a host proxy | Allowlisted DNS names are resolved once on first use for the invocation and pinned to global unicast IPs; mixed/private/loopback answers refuse. An explicitly declared IP literal may grant a private/local destination. HTTP paths, TLS content, UDP and application behavior are not an application firewall. |
+| Sovereign wrapper | Explicit filesystem workspace bindings and optional network sharing | Argument tests establish argv construction/refusal. Kernel/workload isolation and a current VM boot require their own exact-identity exercise. Nix still deliberately pins the older Gen2 release. |
+| Lakshmi | Reads local mirrors and MCP telemetry, discloses stale/feed-down states | Actuation is notify-only. It does not block, throttle or kill workloads. Metrics include disclosed proxies; a healthy HTTP endpoint does not establish MCP compatibility. |
+| Continuity receipts | Signs declared task/lifecycle bytes for offline consumer checks | Signatures bind bytes, not truth, completeness, physical execution, payment finality or SCITT registration. Independent witness custody and consumer policy are separate. |
 
-## Architecture Overview
+The receipt producer uses the pinned `continuity-receipt==0.5.0` dependency.
+The separate [curated public snapshot](https://github.com/lbailey94/mandalaos-gate-lite)
+has its own review/release scope; it is not a mirror of this combined tree.
 
-```
-                                  +--------------------------------------+
-                                  |       Autonomous Agent Process       |
-                                  +-------------------+------------------+
-                                                      |
-                                                      v
-                                  +--------------------------------------+
-                                  |       Gate-Lite Policy Governor      |
-                                  |   (Envelope Authority & Preflight)   |
-                                  +-------------------+------------------+
-                                                      |
-                         +----------------------------+----------------------------+
-                         |                                                         |
-                         v                                                         v
-    +------------------------------------------+              +------------------------------------------+
-    |           MANDALAOS_SOVEREIGN            |              |                 LAKSHMI                  |
-    |  - Linux Landlock LSM Confinement        |              |  - Actuation Hysteresis Engine           |
-    |  - Bubblewrap Unprivileged Namespaces    |              |  - Telemetry Digestor & Health Mon       |
-    |  - Tetragon eBPF Kernel Event Auditing   |              |  - Systemd Service Supervision           |
-    +--------------------+---------------------+              +--------------------+---------------------+
-                         |                                                         |
-                         +----------------------------+----------------------------+
-                                                      |
-                                                      v
-                                  +--------------------------------------+
-                                  |       Signed Continuity Receipt      |
-                                  |    (IETF SCITT & RFC 3339 Bounded)   |
-                                  +--------------------------------------+
+## Run local controls
+
+Use Python 3.11+, Bubblewrap/jq for wrapper argv controls, and the declared
+Python dependency in an isolated environment. No live workload or VM boot is
+implied by these commands:
+
+```sh
+python3 -m pip install -e ./gate-lite
+(cd gate-lite && python3 -m unittest discover -s tests -v)
+(cd LAKSHMI && python3 -m unittest discover -p 'test_*.py' -v)
+python3 -m unittest discover -s MANDALAOS_SOVEREIGN/tests -p 'test_*.py' -v
 ```
 
-Mandala unifies three foundational subsystems:
+The CI lane targets current main and pull requests. Native runner/VM
+qualification and another operator repeating a receipt/denial exercise remain
+separate gates, with executable hashes and raw outputs retained.
 
-### 1. `gate-lite/` — Execution Governor & Continuity Receipts
-* **Policy Enforcement**: Validates execution envelopes, capability allowances, and token authority before any workload runner is spawned.
-* **Deterministic Provenance**: Emits offline-verifiable [continuity receipts](https://github.com/lbailey94/continuity-receipt) documenting task lifecycle transitions (authority, execution, delivery, settlement, termination).
-* **Network & Egress Controls**: Enforces loopback-restricted and proxy-mediated egress semantics.
+## Layout
 
-### 2. `MANDALAOS_SOVEREIGN/` — Kernel Confinement & Telemetry
-* **Linux Landlock LSM**: Unprivileged, in-kernel filesystem and network access restrictions. Restricts read/write access to designated workspace directories.
-* **Namespace Isolation**: Bubblewrap-based unprivileged sandbox envelope with explicit read-only mounts.
-* **eBPF Observation**: Integrated Tetragon sensor policies auditing security-critical kernel events without intrusive tracing overhead.
-* **NixOS Flake Substrate**: Reproducible system definitions and VM configurations for sovereign execution.
+- `gate-lite/`: orchestrator, runners, receipts and protocol tests.
+- `MANDALAOS_SOVEREIGN/`: NixOS definitions, wrappers and historical VM evidence.
+- `LAKSHMI/`: telemetry mirror, dashboard, shared MCP reader and notify router.
+- `eval-endpoint/`: standalone verifier example and tests.
+- `design/` and `publication/`: contracts and dated exercise protocols.
 
-### 3. `LAKSHMI/` — Actuation Supervision & Metrics
-* **Actuation Hysteresis**: Prevents oscillatory or runaway state changes across automated system actuations.
-* **Telemetry Digestor**: Aggregates node health, memory pressure, and execution metrics into structured state reports.
-* **Systemd Integration**: Provides reliable daemon timers and unit definitions for background monitoring.
-
----
-
-## Core Security & Confinement Principles
-
-1. **Deterministic Kernel Sandboxing**: Confinement is enforced at the Linux kernel level (Landlock LSM, cgroups, namespaces), avoiding brittle user-space wrappers.
-2. **Cryptographic Provenance**: Every task execution produces verifiable, detached signatures linking authority envelopes to final state commitments.
-3. **Zero Ambient Authority**: Processes possess only the explicit file descriptors, capabilities, and network endpoints granted in their execution pass.
-4. **Offline Verifiability**: All receipt assertions, cryptographic hashes, and lifecycle state proofs can be validated without cloud dependencies.
-
----
-
-## Directory Structure
-
-* [`gate-lite/`](gate-lite/) — Task orchestrator, execution runner profiles, receipt generator, and test vectors.
-* [`MANDALAOS_SOVEREIGN/`](MANDALAOS_SOVEREIGN/) — NixOS flake definitions, Landlock isolation modules, Tetragon policies, and sandbox scripts.
-* [`LAKSHMI/`](LAKSHMI/) — Actuation governor, telemetry sampler, bridge reporting, and systemd units.
-* [`eval-endpoint/`](eval-endpoint/) — Standalone verification service endpoint and test suite.
-* [`design/`](design/) — Formal interface contracts (Actuator Contract, Egress Enforcement, Orchestrator Contract).
-* [`publication/`](publication/) — Verification playbooks, review errata, and outsider exercise protocols.
-
----
-
-## Quickstart
-
-### Running Gate-Lite Tests
-```bash
-cd gate-lite
-python3 -m unittest discover tests/
-```
-
-### Qualifying the Sandbox Envelope
-```bash
-python3 gate-lite/tools/qualify_bwrap_runner.py
-```
-
-### Inspecting Sovereign Kernel Isolation
-```bash
-cd MANDALAOS_SOVEREIGN
-pytest tests/test_sandbox_argv.py
-```
-
----
+Dashboard API query inputs accept finite `hours` in `(0,8760]` and integer
+`limit` in `[1,1000]`; invalid or repeated values return HTTP 400. A missing
+telemetry service remains a disclosed feed error, not a fabricated zero.
 
 ## License
 
-Dual-licensed under either the [Apache License, Version 2.0](LICENSE-APACHE) or the [MIT License](LICENSE-MIT).
+The repository's existing dual-license declaration is supplied by
+[MIT](LICENSE-MIT) and [Apache 2.0](LICENSE-APACHE), with provenance recorded in
+[LICENSE_PROVENANCE.md](LICENSE_PROVENANCE.md). Retained third-party notices and
+historical evidence keep their original attribution and scope.

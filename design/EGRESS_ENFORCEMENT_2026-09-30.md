@@ -57,19 +57,23 @@ above is a truth fix independent of when enforcement lands.
 
 The proxy checks the destination host and port in an HTTP `CONNECT` request,
 then relays the tunnel bytes. It does not inspect HTTP paths, methods, TLS
-content, or application behavior. It also does not pin or restrict the IP
-addresses returned for an allowed hostname. The L2 candidate therefore makes
-a destination claim only; it is not an application policy or DNS-to-IP
-firewall. Each allowed connection must have a matching start and terminal log
+content, or application behavior. The current local candidate resolves an
+allowed name once on first use for the invocation, rejects any non-global
+unicast DNS answer, and connects only to the frozen numeric set. Non-global
+destinations require an exact declared IP literal. It makes a bounded
+destination claim, not an application policy. DNS resolver availability and
+an exact-host native-runner exercise remain separate qualification inputs.
+Each allowed connection must have a matching start and terminal log
 record; an absent, malformed, or incomplete log forces a non-success runner
 result and an explicit incomplete slot hold.
 
 ## Acceptance criteria for a future qualified egress profile
 
 1. Allowed host reachable; an unlisted host fails, with the denial recorded.
-2. A broader DNS-to-IP-qualified profile must prevent unlisted resolved
-   destinations, including rebinding/pinning attempts. This L2 host-and-port
-   candidate does not close that requirement.
+2. DNS-to-IP controls must prevent unlisted resolved destinations, including
+   rebinding and mixed/private answers. Mocked resolver/numeric-socket controls
+   now cover that logic; a new native acceptance run and outside-host rerun
+   are still required before calling the revised profile qualified.
 3. Proxy/runtime failure denies egress rather than falling back to an open
    network, and the failure is recorded.
 4. The receipt records the enforcement mode truthfully (`"enforced": true`

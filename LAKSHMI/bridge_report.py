@@ -25,6 +25,7 @@ import json
 import sys
 import time
 import urllib.request
+from wm_mcp import call_tool
 from datetime import datetime, timedelta, timezone
 
 DEFAULT_ENDPOINT = "http://127.0.0.1:18790"
@@ -42,32 +43,7 @@ INPUT_METRICS = {
 
 
 def mcp_call(endpoint: str, tool: str, arguments: dict, timeout: float = 15.0) -> dict:
-    payload = json.dumps(
-        {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": tool, "arguments": arguments},
-        }
-    ).encode()
-    request = urllib.request.Request(
-        endpoint.rstrip("/") + "/mcp",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            outer = json.loads(response.read().decode())
-    except Exception as exc:
-        return {"_error": str(exc)}
-    if "error" in outer:
-        return {"_error": (outer.get("error") or {}).get("message", "json-rpc error")}
-    try:
-        return json.loads(outer["result"]["content"][0]["text"])
-    except Exception as exc:
-        return {"_error": f"unparseable reply: {exc}"}
-
+    return call_tool(endpoint, tool, arguments, timeout)
 
 def parse_ts(value) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
