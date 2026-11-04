@@ -43,6 +43,11 @@ separate gates, with executable hashes and raw outputs retained.
 - `eval-endpoint/`: standalone verifier example and tests.
 - `design/` and `publication/`: contracts and dated exercise protocols.
 
+The [4 November local qualification](design/LOCAL_QUALIFICATION_20261104.md)
+records a real same-host egress flow and 12 native acceptance controls,
+including bounded systemd quota drills, with exact executable identities.
+Another-administered-host qualification and a current VM boot remain open.
+
 Dashboard API query inputs accept finite `hours` in `(0,8760]` and integer
 `limit` in `[1,1000]`; invalid or repeated values return HTTP 400. A missing
 telemetry service remains a disclosed feed error, not a fabricated zero.

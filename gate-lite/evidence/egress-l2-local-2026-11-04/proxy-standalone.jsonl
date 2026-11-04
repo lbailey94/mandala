@@ -1,0 +1,3 @@
+{"allowed": true, "connection_id": "5adf577771844c90bb9fbcc9eacac3e6", "event": "connect_start", "host": "127.0.0.1", "port": 46623, "ts": 1793804810.187288}
+{"allowed": true, "bytes_in": 126, "bytes_out": 87, "connection_id": "5adf577771844c90bb9fbcc9eacac3e6", "event": "connect_complete", "host": "127.0.0.1", "port": 46623, "ts": 1793804810.1882064}
+{"allowed": false, "event": "connect", "host": "example.org", "port": 80, "reason": "not-in-allowlist", "ts": 1793804810.2441208}

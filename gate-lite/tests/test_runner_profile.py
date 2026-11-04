@@ -1,4 +1,5 @@
 """Fail-closed tests for the exact local 0.5 Bubblewrap candidate profile."""
+import hashlib
 import os
 import tempfile
 import unittest
@@ -13,6 +14,20 @@ from gate_lite.orchestrator import (
     StubRunner,
 )
 from gate_lite import orchestrator as profile_module
+
+
+class TestShippedProfileIdentity(unittest.TestCase):
+    def test_reviewed_profiles_match_shipped_wrapper_and_sidecar_bytes(self):
+        root = Path(__file__).resolve().parents[1]
+        expected_files = {
+            root / "runners/bwrap-v1/mandala-sandbox": profile_module.PROFILE_WRAPPER_SHA256,
+            root / "tools/mandala-sandbox-egress": profile_module.PROFILE_WRAPPER_EGRESS_SHA256,
+            **{root / "tools" / name: digest
+               for name, digest in profile_module.PROFILE_EGRESS_SIDECAR_SHA256.items()},
+        }
+        for path, expected in expected_files.items():
+            with self.subTest(path=str(path.relative_to(root))):
+                self.assertEqual("sha256:" + hashlib.sha256(path.read_bytes()).hexdigest(), expected)
 
 
 class TestRunnerProfileFailClosed(unittest.TestCase):
