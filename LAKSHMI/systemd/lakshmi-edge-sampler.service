@@ -1,0 +1,21 @@
+[Unit]
+Description=Lakshmi edge-galaxy soak sampler — 7-dim Harmony Vector emitting to the 72h soak store
+Documentation=file://%h/Desktop/MANDALA_OS/LAKSHMI/README.md
+After=network-online.target
+Wants=network-online.target edge-galaxy.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Desktop/MANDALA_OS/LAKSHMI
+# Dedicated soak producer (2026-09-14): the fleet sampler keeps emitting to the
+# production telemetry galaxy (18790); this instance feeds the edge-galaxy
+# store (18798) for the 72-hour gate. Separate state dir + spool so the two
+# samplers never share the dashboard mirror or replay each other's windows.
+# dharma stays on the fleet (read-only dharma.status; the MandalaOS VM MCP
+# 28795 is down). Retire both edge units when the writer is promoted.
+ExecStart=/usr/bin/python3 %h/Desktop/MANDALA_OS/LAKSHMI/lakshmi.py --interval 5 --window 60 --emit --emit-every 60 --emit-url http://127.0.0.1:18798 --dharma-mcp http://127.0.0.1:18790 --state-dir %h/.local/share/lakshmi-edge --emit-spool %h/.local/share/lakshmi-edge/telemetry_spool.jsonl
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

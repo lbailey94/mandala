@@ -1,0 +1,96 @@
+Warning: Permanently added '[127.0.0.1]:2222' (ED25519) to the list of known hosts.
+wm 9.2.8
+active
+active
+{
+  "enabled": true,
+  "outcome": "enforced",
+  "detail": "write-class FS rights confined to the store root + /dev/null (Landlock ABI v8); declared grants: /dev/null (WriteFile) (no_new_privs=true)",
+  "store_root": "/home/mandala/.local/share/whitemagic",
+  "requested_at": "2026-09-25T03:56:08Z"
+}=== WhiteMagic Doctor ===
+
+[OK]   LMDB store: /home/mandala/.local/share/whitemagic/lmdb
+[OK]   Galaxies with data: 7, total memories: 592
+  codex=2
+  sessions=2
+  substrate=312
+  karma=27
+  associations=4
+  embeddings=242
+  telemetry=3
+[OK]   Tantivy index: /home/mandala/.local/share/whitemagic/lmdb/tantivy
+[OK]   Index consistency: LMDB=316 Tantivy=316 (no drift)
+[OK]   Index health: 0 successful operations, 0 failures
+[OK]   Resource budgets (Yama): writes 105/min, spawns 8/min, network 26/min
+       config: writes 120/default/min, spawns 10/default/min, network 30/default/min; health 0.88 (cpu 0.14, mem 0.10)
+       bulk ops: memory.batch_delete (confirm-gated) | maintenance envs: WM_RESOURCE_MAX_WRITES_PER_MIN, WM_DISPATCH_TOOL_RPM, WM_DISPATCH_GLOBAL_RPM | caps: request 1048576B, params 65536B
+       doc: docs/BULK_OPERATIONS.md
+[OK]   Brain-wave state: Delta (dormant)
+       Idle: 0.0s
+       Total events: 0
+[OK]   Subsystem flags:
+       memory_read:  false
+       memory_write: false
+       search:       false
+       karma:        false
+       dharma:       false
+       citta:        false
+       dream:        false
+[OK]   Citta coherence: 1.000 (COHERENT)
+       Valence: 0.000
+       Heartbeats: 0
+[OK]   Dream cycle: 0 completed, 0 consolidated, 0 skipped
+[OK]   Tool surface: 311 registry entries → 307 full-profile routes → 307 active-profile routes (full) → handshake-time MCP tools; +1 meta-router
+[INFO] Karma chain: ledger not enabled in this server (optional governance subsystem)
+[INFO] Conformal calibration: /home/mandala/.local/share/whitemagic/conformal_store.json
+       Classifier: not fitted, samples: 0
+       Regressor:  not fitted, samples: 0
+       APS:        not fitted
+       [INFO] No calibration fitted yet — calibrate via conformal.fit_classifier / conformal.fit_regressor
+[INFO] Conformal coverage: no samples recorded yet
+       Run conformal.monitor (coverage) / simulation.calibrate (Brier) to build history
+[INFO] Brier score: no samples recorded yet
+       Run conformal.monitor (coverage) / simulation.calibrate (Brier) to build history
+[INFO] No store seal (run 'wm seal' to write an HMAC integrity manifest)
+
+[OK]   Write budget: 0 B today (0% of 30-day avg)
+       Busiest day: 2026-09-13 (924.0 KB)
+       Store size: LMDB 1.7 MB + Tantivy 51.1 KB across 1 tracked day(s)
+       Ledger: /home/mandala/.local/share/whitemagic/write_budget.json
+
+[OK]   Profile contract: full surface, 307 tools (verified 2026-09-25T03:56:09Z)
+       Surface pin: 2d010f45c12711b3 (307 tools, built 9.2.8)
+       Destructive on surface (confirm-gated): memory.delete, memory.batch_delete, memory.consolidate, memory.deduplicate, galaxy.transfer, galaxy.restore, galaxy.purge, galaxy.cold_rotate, karma.clear, system.flush, transaction.rollback, telemetry.prune
+
+[OK]   Landlock: enforced — write-class FS rights confined to /home/mandala/.local/share/whitemagic (verified 2026-09-25T03:56:08Z)
+
+[OK]   Subprocess sandbox: runner /nix/store/sjblg4q15d2l2acn6x6al8panqiq36n5-mandala-sandbox/bin/mandala-sandbox (source: env) — Sandbox::Subprocess tools wrap spawns
+
+[INFO] Yama bridge: no collector feed at /home/mandala/.local/share/yama-collector/sent.jsonl (collector not running — observation records land only during instrumented runs)
+
+[INFO] Gateway contract: none on file (no wm-gateway start since the feature landed)
+
+[OK]   whitemagic wm: pid 729 — 0 established (all LAN/loopback), 0 non-loopback listener(s)
+[OK]   whitemagic wm: pid 1021 — 0 established (all LAN/loopback), 0 non-loopback listener(s)
+[OK]   whitemagic wm: pid 1040 — 4 established (all LAN/loopback), 0 non-loopback listener(s)
+[OK] Network posture: 4 established socket(s) observed, 0 non-LAN egress violation(s) — local-only asserted by observation, not assumed from config
+       scope: WhiteMagic processes + fleet transport (syncthing); the egress lesson (defaults are privacy decisions) verified live
+
+[OK]   Recall route: hybrid fusion — backend 'http' (http:http://10.0.2.2:18899/v1/embeddings:bge-small:384, dim 384) answered a real probe in 12386 ms; stored vectors: 242, content-hash cache: 20
+
+[OK]   Firebreak: armed — 31 forbidden / 13 dangerous / 8 caution patterns, 12 scope-registry entries (Jan-11 guardrail promotion)
+
+[INFO] At-rest: plaintext pass-through (WM_AT_REST_MODE=off) — records are NOT encrypted;
+       at-rest protection is filesystem permissions only. Enable keyfile/passphrase mode with the WM_AT_REST_* knobs (AGENTS.md).
+
+[OK]   Episodic derived index: 1 record(s), term sidecar populated.
+
+[OK] Write-audit journal: 12 entries (actor labeled: 0/12), 0 undeclared-mutation entries
+       [INFO] no entries name an actor (expected on pre-S11b stores; new stores at 0% mean dispatches run without identity)
+       top actors: unknown actor×12
+       compartments: undeclared×12
+       destructive dispatches: 0 (unconfirmed: 0)
+
+=== Doctor Summary ===
+All systems healthy.

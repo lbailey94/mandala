@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mandala — living state</title>
+<style>
+  :root { --bg:#12141a; --panel:#1a1d26; --ink:#e8eaf0; --dim:#8b91a5; --line:#2a2f3d;
+          --good:#5fd38a; --warn:#e8c15a; --bad:#e06060; --vib:.35; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:14px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  body.calm { --bg:#f4f1ea; --panel:#ffffff; --ink:#2c3e50; --dim:#7a8699; --line:#e0ded6; }
+  body { --aura1:transparent; --aura2:transparent; --aura3:transparent; --aura-op:0; }
+  body.calm { --aura-op:.35; }
+  body.lila { --aura-op:.55; }
+  body[data-mood="calm"] { --aura1:#8fe8d4; --aura2:#b9a7ff; --aura3:#a8d8ff; }
+  body[data-mood="attention"] { --aura1:#ffd58a; --aura2:#ffb3c1; --aura3:#ffe9a8; }
+  body[data-mood="breach"], body[data-mood="stale"] { --aura1:#ff8fa3; --aura2:#ff7a7a; --aura3:#ffc2a1; }
+  body::before { content:""; position:fixed; inset:-30%; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(42% 42% at 30% 32%, var(--aura1) 0%, transparent 70%),
+      radial-gradient(46% 46% at 70% 34%, var(--aura2) 0%, transparent 70%),
+      radial-gradient(52% 52% at 52% 76%, var(--aura3) 0%, transparent 72%);
+    filter:blur(48px) saturate(1.25); opacity:var(--aura-op);
+    animation:drift 140s linear infinite; }
+  body.lila .panel { background:color-mix(in srgb, var(--panel) 62%, transparent);
+                     backdrop-filter:blur(10px); }
+  .sheen { opacity:0; }
+  body.calm .sheen { mix-blend-mode:multiply; opacity:calc(.05 + .35 * var(--vib)); }
+  body.lila .sheen { mix-blend-mode:screen; opacity:calc(.04 + .28 * var(--vib)); }
+  body.lila .bindu-disc { filter:drop-shadow(0 0 calc(4px + 20px * var(--vib)) color-mix(in srgb, var(--warn) 45%, transparent)); }
+  body.lila .needle { filter:drop-shadow(0 0 calc(1px + 6px * var(--vib)) rgba(255,255,255,.5)); }
+  body.lila .tip { filter:drop-shadow(0 0 calc(1px + 8px * var(--vib)) rgba(255,255,255,.6)); }
+  body.lila .ring.in-below .zone.below { opacity:.5; }
+  body.lila .ring.in-band .zone.band { opacity:.55; }
+  body.lila .ring.in-sufficient .zone.clear { opacity:.4; }
+  body.ambient { --vib:.15; }
+  .vib-slider { width:86px; vertical-align:middle; accent-color:var(--warn); }
+  .mote { stroke:var(--panel); stroke-width:.5; }
+  .mote-trail { opacity:.35; stroke-linecap:round; }
+  body.ambient::before { animation:none; opacity:.22; }
+  @keyframes drift { from { transform:rotate(0deg) scale(1); } to { transform:rotate(360deg) scale(1.07); } }
+  @media (prefers-reduced-motion: reduce) { body::before { animation:none; } }
+  header { display:flex; align-items:baseline; gap:14px; padding:14px 18px;
+           border-bottom:1px solid var(--line); }
+  header h1 { font-size:15px; margin:0; letter-spacing:.08em; }
+  header .spacer { flex:1; }
+  .pill { border:1px solid var(--line); border-radius:999px; padding:2px 10px;
+          color:var(--dim); font-size:12px; }
+  .pill .dot { display:inline-block; width:8px; height:8px; border-radius:50%;
+               background:var(--dim); margin-right:6px; vertical-align:middle; }
+  .pill.ok .dot { background:var(--good); } .pill.warn .dot { background:var(--warn); }
+  .pill.bad .dot { background:var(--bad); }
+  .pill a { color:inherit; text-decoration:none; }
+  button.toggle, label.toggle { border:1px solid var(--line); border-radius:999px;
+          background:none; color:var(--dim); font:12px inherit; padding:2px 10px; cursor:pointer; }
+  main { display:grid; grid-template-columns:minmax(360px, 1fr) minmax(300px, 430px);
+         gap:16px; padding:16px 18px; max-width:1180px; margin:0 auto; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+           padding:16px; }
+  .mandala-wrap { display:flex; align-items:center; justify-content:center; }
+  svg#mandala { width:100%; max-width:560px; height:auto; display:block; }
+  svg#mandala text { font-family:inherit; }
+  svg#mandala.beat { animation:beat .42s cubic-bezier(.2,0,0,1); }
+  @keyframes beat { 0% { opacity:.82; } 100% { opacity:1; } }
+  .stale svg#mandala { opacity:.45; }
+  .stale .mandala-wrap { background:
+      repeating-linear-gradient(45deg, transparent 0 10px,
+        color-mix(in srgb, var(--bad) 8%, transparent) 10px 12px); border-radius:10px; }
+  .track { stroke:var(--line); opacity:.9; }
+  .zone.clear { stroke:var(--good); opacity:.10; }
+  .zone.band { stroke:var(--warn); opacity:.12; }
+  .zone.below { stroke:var(--bad); opacity:.10; }
+  .zone.unknown { stroke:var(--dim); opacity:.18; }
+  .ring.in-sufficient .zone.clear { opacity:.26; }
+  .ring.in-band .zone.band { opacity:.45; }
+  .ring.in-below .zone.below { opacity:.42; }
+  .notch { fill:var(--bg); opacity:.55; }
+  .bindu-disc { fill:var(--panel); stroke:var(--line); }
+  .needle { stroke-width:3; stroke-linecap:round; }
+  .tip { stroke:var(--panel); stroke-width:1; }
+  .ring { cursor:pointer; }
+  .ring:hover .track, .ring.sel .track { stroke:var(--ink); opacity:1; }
+  .ring.observing .glow, .ring.confirmed .glow { opacity:.22; }
+  .bindu-score { font-size:20px; font-weight:600; fill:var(--ink); }
+  .bindu-label { font-size:6.5px; letter-spacing:.18em; fill:var(--dim); }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; color:var(--dim); font-size:11px;
+            margin-top:10px; justify-content:center; }
+  .swatch { display:inline-block; width:22px; height:8px; border-radius:2px;
+            vertical-align:middle; margin-right:5px; }
+  .swatch.sufficient { background:color-mix(in srgb, var(--good) 55%, transparent); }
+  .swatch.band { background:repeating-linear-gradient(90deg,
+      color-mix(in srgb, var(--warn) 60%, transparent) 0 5px, transparent 5px 8px); }
+  .swatch.below { background:repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--bad) 65%, transparent) 0 3px, transparent 3px 5px); }
+  .swatch.unknown { background:repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--dim) 45%, transparent) 0 3px, transparent 3px 5px); }
+  h2 { margin:0 0 10px; font-size:12px; letter-spacing:.08em; color:var(--dim);
+       text-transform:uppercase; }
+  .row { display:grid; grid-template-columns:12px 1fr 46px 86px; gap:8px;
+         align-items:center; padding:5px 4px; border-bottom:1px dashed var(--line);
+         cursor:pointer; font-size:12.5px; }
+  .row:last-child { border-bottom:none; }
+  .row .chip { width:8px; height:8px; border-radius:50%; }
+  .row .val { text-align:right; }
+  .row .zone { color:var(--dim); font-size:11px; text-align:right; white-space:nowrap; }
+  .row:hover, .row.sel { background:color-mix(in srgb, var(--ink) 5%, transparent); }
+  .row .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .policy-mark { display:inline-block; width:5px; height:5px; border-radius:50%;
+                 background:var(--warn); margin-left:5px; vertical-align:middle; }
+  .detail { margin-top:12px; border-top:1px solid var(--line); padding-top:10px;
+            font-size:12px; color:var(--dim); min-height:120px; }
+  .detail b { color:var(--ink); font-weight:600; }
+  .detail .explain { margin:6px 0; color:var(--ink); }
+  .detail .rec { margin-top:6px; }
+  .empty { color:var(--dim); }
+  body.ambient header .spacer ~ * { display:none; }
+  body.ambient main { grid-template-columns:1fr; max-width:none; padding:0; }
+  body.ambient .panel { background:none; border:none; }
+  body.ambient #side, body.ambient .legend { display:none; }
+  body.ambient svg#mandala { max-width:min(76vh, 76vw); }
+  body.ambient .mandala-wrap { height:calc(100vh - 60px); }
+</style>
+</head>
+<body>
+<header>
+  <h1>MANDALA</h1>
+  <span class="pill" id="state-pill"><span class="dot"></span>waiting</span>
+  <span class="pill" id="fresh-pill">age –</span>
+  <span class="spacer"></span>
+  <label class="toggle" title="canvas vibrancy (signal stays exact)">vib
+    <input type="range" class="vib-slider" id="vib" min="0" max="100" step="5" value="35"></label>
+  <button class="toggle" id="theme-toggle">calm</button>
+  <label class="toggle"><input type="checkbox" id="ambient-toggle"> ambient</label>
+  <span class="pill"><a href="/">dashboard</a></span>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="mandala-wrap" id="mandala-wrap">
+      <svg id="mandala" viewBox="0 0 320 320" role="img" aria-label="Living Mandala"></svg>
+    </div>
+    <div class="legend">
+      <span><span class="swatch sufficient"></span>sufficient</span>
+      <span><span class="swatch band"></span>holding</span>
+      <span><span class="swatch below"></span>below floor</span>
+      <span><span class="swatch unknown"></span>unknown</span>
+    </div>
+    <div class="legend" id="mote-legend">motes — top processes: speed &amp; size = CPU share, hue = guna</div>
+  </section>
+  <section class="panel" id="side">
+    <h2>Dimensions</h2>
+    <div id="rows"></div>
+    <div class="detail" id="detail">select a ring for its explanation and latest decision record.</div>
+  </section>
+</main>
+
+<script>
+const DIMS = ["fairness","responsiveness","throughput","stability","energy","dharma","karma_debt"];
+const HUES = { fairness:"#a8cfe8", responsiveness:"#95e1d3", throughput:"#f6c9a8",
+               stability:"#c9b6e4", energy:"#e8c15a", dharma:"#8fb7ff", karma_debt:"#d98bb6" };
+const GUNAS = { sattvic:"#95e1d3", rajasic:"#e8c15a", tamasic:"#8b91a5" };
+const POLICY_OF = { responsiveness:"responsiveness.below.v1", stability:"stability.below.v1",
+                    energy:"energy.over_budget.v1" };
+const BANDS = { responsiveness:{enter:.30, exit:.50}, stability:{enter:.80, exit:.95},
+                energy:{enter:.90, exit:.97} };
+const FLOORS = { fairness:.50, responsiveness:.30, throughput:.50, stability:.80,
+                 energy:.90, dharma:.50, karma_debt:.50 };
+const FLOOR_DEFAULT = .50;
+const CX = 160, CY = 160, R_OUT = 140, RING_W = 13, GAP = 3, BINDU_R = 26;
+const MARK_ANGLE = Math.PI / 2;
+const NS = "http://www.w3.org/2000/svg";
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const el = (id) => document.getElementById(id);
+const svg = el("mandala");
+const state = { data:null, selected:null, lastTs:null, obs:null, obsAt:0, ambient:false, timer:null, motes:null, motesGroup:null };
+
+function hexToHsl(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > .5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
+  }
+  return { h:h * 360, l:l * 100 };
+}
+function identityColor(hex, chroma) {
+  const { h, l } = hexToHsl(hex);
+  return `hsl(${h.toFixed(0)} ${Math.round(chroma * 72)}% ${l.toFixed(0)}%)`;
+}
+function hslOf(hex, chroma, lightness) {
+  const { h } = hexToHsl(hex);
+  return `hsl(${h.toFixed(0)} ${Math.round(Math.max(0, Math.min(1, chroma)) * 78)}% ${lightness}%)`;
+}
+function ringGradient(defs, id, stops, x1, y1, x2, y2) {
+  const g = document.createElementNS(NS, "linearGradient");
+  g.setAttribute("id", id);
+  g.setAttribute("gradientUnits", "userSpaceOnUse");
+  g.setAttribute("x1", x1.toFixed(1)); g.setAttribute("y1", y1.toFixed(1));
+  g.setAttribute("x2", x2.toFixed(1)); g.setAttribute("y2", y2.toFixed(1));
+  for (const [offset, color] of stops) {
+    const s = document.createElementNS(NS, "stop");
+    s.setAttribute("offset", String(offset)); s.setAttribute("stop-color", color);
+    g.appendChild(s);
+  }
+  defs.appendChild(g);
+  return `url(#${id})`;
+}
+function chromaFor(source) {
+  if (!source) return 0;
+  if (/rapl|battery/.test(source)) return .75;
+  if (/stub|cold|neutral/.test(source)) return .25;
+  return .45;
+}
+function freshnessOpacity(age) {
+  if (age === null || age === undefined) return .25;
+  if (age < 6) return 1;
+  if (age < 30) return .75;
+  if (age < 90) return .45;
+  return .25;
+}
+function zoneOf(dim, v) {
+  if (v === null || v === undefined) return "unknown";
+  const band = BANDS[dim];
+  if (band) {
+    if (v < band.enter) return "below";
+    if (v > band.exit) return "sufficient";
+    return "band";
+  }
+  return v >= (FLOORS[dim] ?? FLOOR_DEFAULT) ? "sufficient" : "below";
+}
+function zoneWord(zone) {
+  return { sufficient:"sufficient", band:"holding", below:"below", unknown:"unknown" }[zone];
+}
+function ringRadii(i) {
+  const outer = R_OUT - i * (RING_W + GAP);
+  return { outer, inner: outer - RING_W };
+}
+function zoneCircle(cls, rMid, width, dash) {
+  const c = document.createElementNS(NS, "circle");
+  c.setAttribute("class", cls);
+  c.setAttribute("cx", CX); c.setAttribute("cy", CY);
+  c.setAttribute("r", rMid.toFixed(2));
+  c.setAttribute("fill", "none");
+  c.setAttribute("stroke-width", width.toFixed(2));
+  if (dash) c.setAttribute("stroke-dasharray", dash);
+  return c;
+}
+function line(x0, y0, x1, y1, cls, stroke, width, opacity) {
+  const l = document.createElementNS(NS, "line");
+  l.setAttribute("class", cls);
+  l.setAttribute("x1", x0.toFixed(1)); l.setAttribute("y1", y0.toFixed(1));
+  l.setAttribute("x2", x1.toFixed(1)); l.setAttribute("y2", y1.toFixed(1));
+  if (stroke) l.setAttribute("stroke", stroke);
+  if (width) l.setAttribute("stroke-width", width);
+  if (opacity !== undefined) l.setAttribute("opacity", opacity);
+  return l;
+}
+function paintRing(group, i, dim, d, band, v, op, unknown, policyState, defs) {
+  const { outer, inner } = ringRadii(i);
+  group.appendChild(zoneCircle("track", (outer + inner) / 2, RING_W));
+  if (unknown) {
+    group.appendChild(zoneCircle("zone unknown", (outer + inner) / 2, RING_W, "3 3"));
+    return;
+  }
+  group.classList.add("in-" + zoneOf(dim, v));
+  const chroma = chromaFor(d.source);
+  const sheen = zoneCircle("sheen", (outer + inner) / 2, RING_W);
+  sheen.setAttribute("stroke", ringGradient(defs, `sheen-${i}`,
+    [[0, hslOf(HUES[dim], chroma * .9, 36)],
+     [.5, hslOf(HUES[dim], Math.min(1, chroma * 1.3), 74)],
+     [1, hslOf(HUES[dim], chroma * .85, 52)]],
+    CX - R_OUT, CY - R_OUT, CX + R_OUT, CY + R_OUT));
+  group.appendChild(sheen);
+  if (band) {
+    const rEnter = inner + band.enter * RING_W;
+    const rExit = inner + band.exit * RING_W;
+    group.appendChild(zoneCircle("zone below", (inner + rEnter) / 2, Math.max(1, rEnter - inner), "2 3"));
+    group.appendChild(zoneCircle("zone band", (rEnter + rExit) / 2, Math.max(1, rExit - rEnter), "4 3"));
+    group.appendChild(zoneCircle("zone clear", (rExit + outer) / 2, Math.max(1, outer - rExit)));
+  } else {
+    const rFloor = inner + (FLOORS[dim] ?? FLOOR_DEFAULT) * RING_W;
+    group.appendChild(zoneCircle("zone below", (inner + rFloor) / 2, Math.max(1, rFloor - inner), "2 3"));
+    group.appendChild(zoneCircle("zone clear", (rFloor + outer) / 2, Math.max(1, outer - rFloor)));
+  }
+  const vv = Math.max(0, Math.min(1, v));
+  const rv = inner + vv * RING_W;
+  const cos = Math.cos(MARK_ANGLE), sin = Math.sin(MARK_ANGLE);
+  const x0 = CX + (inner + .5) * cos, y0 = CY + (inner + .5) * sin;
+  const x1 = CX + rv * cos, y1 = CY + rv * sin;
+  const color = ringGradient(defs, `needle-${i}`,
+    [[0, hslOf(HUES[dim], chroma, 48)],
+     [1, hslOf(HUES[dim], Math.min(1, chroma * .6), 84)]],
+    x0, y0, x1, y1);
+  if (policyState && policyState !== "clear") {
+    group.appendChild(line(x0, y0, x1, y1, "glow", identityColor(HUES[dim], chroma), 7, .0));
+  }
+  group.appendChild(line(x0, y0, x1, y1, "needle", color, 3, op));
+  const tip = document.createElementNS(NS, "circle");
+  tip.setAttribute("class", "tip");
+  tip.setAttribute("cx", x1.toFixed(1));
+  tip.setAttribute("cy", y1.toFixed(1));
+  tip.setAttribute("r", "3.2");
+  tip.setAttribute("fill", hslOf(HUES[dim], Math.min(1, chroma * .7), 80));
+  tip.setAttribute("opacity", op);
+  group.appendChild(tip);
+}
+function paintBindu(harmony, guna) {
+  const disc = document.createElementNS(NS, "circle");
+  disc.setAttribute("class", "bindu-disc");
+  disc.setAttribute("cx", CX); disc.setAttribute("cy", CY); disc.setAttribute("r", BINDU_R);
+  svg.appendChild(disc);
+  const total = (guna.sattvic || 0) + (guna.rajasic || 0) + (guna.tamasic || 0);
+  if (total > 0) {
+    const parts = [["sattvic", "#95e1d3"], ["rajasic", "#e8c15a"], ["tamasic", "#8b91a5"]];
+    let a0 = -Math.PI / 2;
+    for (const [key, color] of parts) {
+      const frac = (guna[key] || 0) / total;
+      if (frac <= 0) continue;
+      const a1 = a0 + frac * Math.PI * 2;
+      const large = a1 - a0 > Math.PI ? 1 : 0;
+      const rr = BINDU_R - 4;
+      const x0 = CX + rr * Math.cos(a0), y0 = CY + rr * Math.sin(a0);
+      const x1 = CX + rr * Math.cos(a1), y1 = CY + rr * Math.sin(a1);
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("d", `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${rr} ${rr} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`);
+      p.setAttribute("stroke", color); p.setAttribute("stroke-width", "3");
+      p.setAttribute("fill", "none"); p.setAttribute("opacity", ".7");
+      svg.appendChild(p);
+      a0 = a1;
+    }
+  }
+  const score = document.createElementNS(NS, "text");
+  score.setAttribute("x", CX); score.setAttribute("y", CY + 2);
+  score.setAttribute("text-anchor", "middle"); score.setAttribute("class", "bindu-score");
+  score.textContent = harmony === null || harmony === undefined ? "–" : Number(harmony).toFixed(2);
+  svg.appendChild(score);
+  const label = document.createElementNS(NS, "text");
+  label.setAttribute("x", CX); label.setAttribute("y", CY + 12);
+  label.setAttribute("text-anchor", "middle"); label.setAttribute("class", "bindu-label");
+  label.textContent = "HARMONY";
+  svg.appendChild(label);
+}
+function paintNotch() {
+  const r = document.createElementNS(NS, "rect");
+  r.setAttribute("class", "notch");
+  r.setAttribute("x", CX - .75); r.setAttribute("y", "8");
+  r.setAttribute("width", "1.5"); r.setAttribute("height", String(CY - BINDU_R - 6));
+  svg.appendChild(r);
+}
+function paintMotes(snap, rec) {
+  const procs = (snap.top_processes || rec.top || []).slice(0, 10);
+  const group = document.createElementNS(NS, "g");
+  group.setAttribute("class", "motes");
+  group.setAttribute("opacity", state.ambient ? ".3" : (0.25 + 0.75 * (vib / 100)).toFixed(2));
+  svg.appendChild(group);
+  state.motesGroup = group;
+  state.motes = procs.map((p, i) => {
+    const share = Math.max(0, Math.min(1, Number(p.cpu_share ?? p.share ?? 0)));
+    const hue = GUNAS[p.guna] || GUNAS.tamasic;
+    const trail = document.createElementNS(NS, "line");
+    trail.setAttribute("class", "mote-trail");
+    trail.setAttribute("stroke", hue);
+    trail.setAttribute("stroke-width", (1 + share * 4).toFixed(1));
+    const el = document.createElementNS(NS, "circle");
+    el.setAttribute("class", "mote");
+    el.setAttribute("r", (1.4 + share * 6).toFixed(1));
+    el.setAttribute("fill", hue);
+    const t = document.createElementNS(NS, "title");
+    t.textContent = `${p.comm || "?"} · ${Math.round(share * 100)}% · ${p.guna || "?"}`;
+    el.appendChild(t);
+    group.appendChild(trail); group.appendChild(el);
+    return { el, trail, radius: R_OUT + 4 + (i % 3) * 4,
+             angle: (i / Math.max(1, procs.length)) * Math.PI * 2,
+             speed: 0.12 + share * 2.2 };
+  });
+  if (!reduceMotion && !state.ambient) startMotes(); else drawMotes(0);
+}
+function drawMotes(dt) {
+  if (!state.motes) return;
+  for (const m of state.motes) {
+    m.angle = (m.angle + m.speed * dt) % (Math.PI * 2);
+    const x = CX + m.radius * Math.cos(m.angle), y = CY + m.radius * Math.sin(m.angle);
+    m.el.setAttribute("cx", x.toFixed(1)); m.el.setAttribute("cy", y.toFixed(1));
+    const ta = m.angle - 0.18;
+    m.trail.setAttribute("x1", (CX + m.radius * Math.cos(ta)).toFixed(1));
+    m.trail.setAttribute("y1", (CY + m.radius * Math.sin(ta)).toFixed(1));
+    m.trail.setAttribute("x2", x.toFixed(1)); m.trail.setAttribute("y2", y.toFixed(1));
+  }
+}
+let moteRaf = null, moteLast = 0;
+function startMotes() {
+  if (moteRaf) return;
+  moteLast = performance.now();
+  const step = (now) => {
+    const dt = Math.min(0.1, (now - moteLast) / 1000);
+    moteLast = now;
+    if (!document.hidden && !state.ambient && !reduceMotion) {
+      drawMotes(dt);
+      moteRaf = requestAnimationFrame(step);
+    } else {
+      moteRaf = null;
+    }
+  };
+  moteRaf = requestAnimationFrame(step);
+}
+function paintMandala(data) {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const defs = document.createElementNS(NS, "defs");
+  svg.appendChild(defs);
+  const snap = data.snapshot || {};
+  const dims = snap.dims || {};
+  const rec = data.record || {};
+  const policies = (data.meta && data.meta.policies) || [];
+  const op = freshnessOpacity(data.age_seconds);
+  const stale = Boolean(data.stale);
+  const unknownAll = !snap.dims || Object.keys(dims).length === 0;
+
+  DIMS.forEach((dim, i) => {
+    const group = document.createElementNS(NS, "g");
+    group.setAttribute("class", "ring" + (state.selected === dim ? " sel" : ""));
+    group.setAttribute("data-dim", dim);
+    const d = dims[dim] || null;
+    const policy = policies.find((p) => p.policy_id === POLICY_OF[dim]);
+    const band = BANDS[dim] || null;
+    const v = d && typeof d.score === "number" ? d.score : null;
+    if (policy && policy.state !== "clear") group.classList.add(policy.state);
+    paintRing(group, i, dim, d || {source:"?"}, band, v, op, unknownAll || v === null, policy && policy.state, defs);
+    const t = document.createElementNS(NS, "title");
+    t.textContent = `${dim} ${v === null ? "–" : v.toFixed(2)}${policy ? " · " + policy.state : ""} · ` +
+      `${d ? d.source : "?"} · ${d ? d.note : "no reading"}`;
+    group.appendChild(t);
+    group.addEventListener("click", () => select(dim));
+    svg.appendChild(group);
+  });
+  paintNotch();
+  paintBindu(snap.harmony_score, snap.guna || rec.guna || {});
+
+  const pill = el("state-pill");
+  const breach = policies.find((p) => p.state === "confirmed");
+  const observing = policies.find((p) => p.state === "observing");
+  const zones = DIMS.map((dim) => zoneOf(dim, dims[dim] && dims[dim].score));
+  const anyBelow = zones.includes("below");
+  const anyBand = zones.includes("band");
+  document.body.dataset.mood = stale ? "stale" : breach ? "breach"
+    : (observing || anyBand || anyBelow) ? "attention" : "calm";
+  pill.className = "pill " +
+    ((stale || breach) ? "bad" : (observing || anyBand || anyBelow) ? "warn" : "ok");
+  pill.innerHTML = `<span class="dot"></span>` +
+    (stale ? "mirror stale" : breach ? "holding · confirmed" : observing ? "holding"
+      : anyBand ? "holding" : anyBelow ? "attention" : "calm");
+  el("fresh-pill").textContent = "age " + (data.age_seconds === null || data.age_seconds === undefined
+    ? "unknown" : Math.round(data.age_seconds) + "s");
+  el("fresh-pill").className = "pill " + (stale ? "bad" : data.age_seconds > 30 ? "warn" : "ok");
+  el("mandala-wrap").parentElement.classList.toggle("stale", stale);
+  renderRows(dims, policies);
+  paintMotes(snap, rec);
+  updateBeat(rec);
+  if (state.selected) renderDetail();
+}
+function renderRows(dims, policies) {
+  el("rows").innerHTML = DIMS.map((dim) => {
+    const d = dims[dim] || null;
+    const v = d && typeof d.score === "number" ? d.score : null;
+    const policy = policies.find((p) => p.policy_id === POLICY_OF[dim]);
+    const zone = zoneOf(dim, v);
+    const cls = state.selected === dim ? "row sel" : "row";
+    const dot = identityColor(HUES[dim], chromaFor(d ? d.source : ""));
+    return `<div class="${cls}" data-dim="${dim}">` +
+      `<span class="chip" style="background:${dot}"></span>` +
+      `<span class="name">${dim}${policy ? `<span class="policy-mark" style="background:${
+        policy.state === "confirmed" ? "var(--bad)" : policy.state === "observing" ? "var(--warn)" : "var(--line)"}" title="${policy.policy_id} · ${policy.state}"></span>` : ""}</span>` +
+      `<span class="val">${v === null ? "–" : v.toFixed(2)}</span>` +
+      `<span class="zone">${zoneWord(zone)}</span></div>`;
+  }).join("");
+  for (const row of el("rows").children) {
+    row.addEventListener("click", () => select(row.getAttribute("data-dim")));
+    row.addEventListener("mouseenter", () => highlight(row.getAttribute("data-dim"), true));
+    row.addEventListener("mouseleave", () => highlight(row.getAttribute("data-dim"), false));
+  }
+}
+function highlight(dim, on) {
+  for (const g of svg.querySelectorAll("g.ring")) {
+    if (g.getAttribute("data-dim") === dim) g.classList.toggle("sel", on || state.selected === dim);
+  }
+}
+function select(dim) {
+  state.selected = state.selected === dim ? null : dim;
+  paintMandala(state.data || {});
+  if (state.selected) {
+    renderDetail();
+    if (!state.obs || Date.now() - state.obsAt > 30000) refreshObservations();
+  }
+}
+async function refreshObservations() {
+  try {
+    const r = await fetch("/api/observations?limit=100", {cache:"no-store"});
+    state.obs = (await r.json()).observations || [];
+    state.obsAt = Date.now();
+    if (state.selected) renderDetail();
+  } catch (e) { state.obs = null; }
+}
+function renderDetail() {
+  const dim = state.selected;
+  if (!dim || !state.data) return;
+  const d = (state.data.snapshot.dims || {})[dim] || null;
+  const policies = (state.data.meta && state.data.meta.policies) || [];
+  const policy = policies.find((p) => p.policy_id === POLICY_OF[dim]);
+  const v = d && typeof d.score === "number" ? d.score : null;
+  const zone = zoneOf(dim, v);
+  const lines = [`<b>${dim}</b> ${v === null ? "–" : v.toFixed(2)} · ${zoneWord(zone)}` +
+                 `${d ? ` · source ${d.source}` : ""}`];
+  if (d && d.note) lines.push(`<div class="empty">${d.note}</div>`);
+  if (policy && policy.explain) lines.push(`<div class="explain">${policy.explain}</div>`);
+  const pid = POLICY_OF[dim];
+  const rec = (state.obs || []).filter((o) => o.policy_id === pid).slice(-1)[0];
+  lines.push(rec
+    ? `<div class="rec">latest record <b>${(rec.ts || "").replace("T"," ").slice(0,19)}</b> · ` +
+      `${rec.state} · value ${rec.value} · dwell ${rec.dwell_windows}</div>`
+    : `<div class="rec empty">${pid ? "no decision record in the current window" : "no policy on this dimension"}</div>`);
+  el("detail").innerHTML = lines.join("");
+}
+function updateBeat(record) {
+  if (!record || !record.ts) return;
+  if (state.lastTs && record.ts !== state.lastTs && !reduceMotion && !state.ambient) {
+    svg.classList.remove("beat"); void svg.offsetWidth; svg.classList.add("beat");
+  }
+  state.lastTs = record.ts;
+}
+async function refresh() {
+  try {
+    const r = await fetch("/api/live", {cache:"no-store"});
+    state.data = await r.json();
+    paintMandala(state.data);
+  } catch (e) {
+    el("state-pill").className = "pill bad";
+    el("state-pill").innerHTML = `<span class="dot"></span>mirror unavailable`;
+  }
+}
+function intervalMs() { return state.ambient ? 30000 : 2000; }
+function schedule() {
+  clearTimeout(state.timer);
+  state.timer = setTimeout(async () => {
+    if (!document.hidden) await refresh();
+    if (state.selected && Date.now() - state.obsAt > 30000) refreshObservations();
+    schedule();
+  }, intervalMs());
+}
+function applyAmbient(on) {
+  state.ambient = on;
+  document.body.classList.toggle("ambient", on);
+  if (on) {
+    svg.classList.remove("beat");
+    if (state.motesGroup) state.motesGroup.setAttribute("opacity", ".3");
+  } else {
+    startMotes();
+    if (state.motesGroup) {
+      state.motesGroup.setAttribute("opacity", (0.25 + 0.75 * (vib / 100)).toFixed(2));
+    }
+  }
+  schedule();
+}
+el("ambient-toggle").checked = new URLSearchParams(location.search).get("ambient") === "1" ||
+  localStorage.getItem("mandala-ambient") === "1";
+el("ambient-toggle").addEventListener("change", (e) => {
+  localStorage.setItem("mandala-ambient", e.target.checked ? "1" : "0");
+  applyAmbient(e.target.checked);
+});
+const THEMES = ["slate", "calm", "lila"];
+let theme = new URLSearchParams(location.search).get("theme") ||
+  localStorage.getItem("mandala-theme") || "slate";
+if (!THEMES.includes(theme)) theme = "slate";
+function applyTheme() {
+  document.body.classList.toggle("calm", theme === "calm");
+  document.body.classList.toggle("lila", theme === "lila");
+  el("theme-toggle").textContent = theme;
+}
+el("theme-toggle").title = "cycle theme: slate / calm / lila";
+el("theme-toggle").addEventListener("click", () => {
+  theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+  localStorage.setItem("mandala-theme", theme);
+  applyTheme();
+});
+const rootStyle = document.documentElement.style;
+let vib = Number(new URLSearchParams(location.search).get("vib") ?? localStorage.getItem("mandala-vib") ?? 35);
+if (!(vib >= 0 && vib <= 100)) vib = 35;
+function applyVib() {
+  rootStyle.setProperty("--vib", (vib / 100).toFixed(2));
+  el("vib").title = "canvas vibrancy " + vib + " — signal encoding unchanged";
+  if (state.motesGroup) {
+    state.motesGroup.setAttribute("opacity",
+      state.ambient ? ".3" : (0.25 + 0.75 * (vib / 100)).toFixed(2));
+  }
+}
+el("vib").value = String(vib);
+el("vib").addEventListener("input", (e) => {
+  vib = Number(e.target.value);
+  localStorage.setItem("mandala-vib", String(vib));
+  applyVib();
+});
+applyVib();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+applyTheme();
+applyAmbient(el("ambient-toggle").checked);
+refresh().then(schedule);
+</script>
+</body>
+</html>

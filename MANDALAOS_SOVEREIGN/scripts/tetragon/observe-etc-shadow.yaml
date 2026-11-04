@@ -1,0 +1,20 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "observe-etc-shadow"
+spec:
+  # Observe-only: no action on the selector. Every open attempt against
+  # /etc/shadow is reported (kprobe on security_file_open, file arg).
+  # Feasibility: in-guest PASS 2026-09-13 (CURRENT_REALITY §4).
+  kprobes:
+  - call: "security_file_open"
+    syscall: false
+    args:
+    - index: 0
+      type: "file"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "Postfix"
+        values:
+        - "/etc/shadow"

@@ -1,0 +1,4 @@
+{"process_kprobe":{"process":{"exec_id":"aGVsbG8=","pid":4242,"binary":"/usr/bin/cat","arguments":"cat /etc/shadow"},"parent":{"pid":4100,"binary":"/usr/bin/bash"},"function_name":"security_file_open","args":[{"file_arg":{"path":"/etc/shadow","permission":"MAY_READ"}}],"action":"KPROBE_ACTION_POST"}}
+{"process_exec":{"process":{"exec_id":"d29ybGQ=","pid":4301,"binary":"/usr/bin/ls","arguments":"ls -la"}}}
+{"process_kprobe":{"process":{"exec_id":"cGluZw==","pid":4302,"binary":"/usr/bin/cat","arguments":"cat /etc/passwd"},"function_name":"security_file_open","args":[{"file_arg":{"path":"/etc/passwd","permission":"MAY_READ"}}],"action":"KPROBE_ACTION_POST"}}
+{"process_kprobe":{"process":{"exec_id":"cG9uZw==","pid":4303,"binary":"/usr/bin/unix_chkpwd","arguments":"unix_chkpwd"},"function_name":"security_file_open","args":[{"file_arg":{"path":"/etc/shadow","permission":"MAY_READ"}}],"action":"KPROBE_ACTION_POST"}}

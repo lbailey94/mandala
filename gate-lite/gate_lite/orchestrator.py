@@ -1,0 +1,1941 @@
+"""Gate-lite orchestrator v0: pass → exec → settle → terminate with Continuity Receipts."""
+import hashlib
+import ipaddress
+import importlib.metadata
+import json
+import os
+import re
+import shutil
+import shlex
+import signal as signal_mod
+import subprocess
+import tarfile
+import tempfile
+import time
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+
+from .errors import PreflightError
+
+try:
+    from continuity_receipt import __version__ as RECEIPT_RUNTIME_VERSION, records
+    from continuity_receipt.bundle import TaskChain
+    from continuity_receipt.canon import canonical_bytes, sha256_prefixed
+    from continuity_receipt import keys
+    from .tokens import issue_pass, verify_pass
+    RECEIPT_IMPORT_ERROR = None
+except ModuleNotFoundError as exc:
+    if exc.name != "continuity_receipt" and not (exc.name or "").startswith("continuity_receipt."):
+        raise
+    RECEIPT_RUNTIME_VERSION = "missing"
+    records = TaskChain = canonical_bytes = sha256_prefixed = keys = None
+    issue_pass = verify_pass = None
+    RECEIPT_IMPORT_ERROR = exc
+
+from .models import SLOT_CLASSES, Slot, Tenant, now_epoch
+from .registry import Registry
+
+POLICY_VERSION = "2026-09-17.1"
+RECEIPT_SPEC = "continuity-receipt/0.5"
+RECEIPT_PACKAGE_VERSION = "0.5.0"
+PROFILE_ID = "urn:mandala:runner-profile:bwrap-v1"
+PROFILE_WRAPPER_SHA256 = "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e"
+# L2 egress profile: the bwrap-egress wrapper (proxy-only egress, no raw
+# network). Same bwrap/jq dependencies; a distinct wrapper digest and profile
+# id so receipts can bind the enforced-egress mechanism.
+PROFILE_ID_EGRESS = "urn:mandala:runner-profile:bwrap-egress-v1"
+PROFILE_WRAPPER_EGRESS_SHA256 = "sha256:0a0720955e135ec2a6b31a74fcdb1a9c8ecfb372177fb8f6d925d48379b17a43"
+PROFILE_EGRESS_SIDECAR_SHA256 = {
+    "mandala-egress-proxy.py": "sha256:73826dcc2390fa55b5e78cc1f5ceece99c52a73d20a2573240aaf39b7abc6227",
+    "mandala-fetch.py": "sha256:d1ce7db2a926d80174319582e047f87d1f65672d4f22661dfd71b13f404bfb33",
+}
+PROFILE_BWRAP_SHA256 = "sha256:e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71"
+PROFILE_JQ_SHA256 = "sha256:59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566"
+GATE_CLASS = "gate-lite"
+BLOCKED_STATES = ("terminated", "expired", "denied", "frozen", "receipt_incomplete")
+CPU_QUOTA_PERCENT = {"small": 100, "medium": 200}
+TERMINAL_STATES = ("terminated", "expired", "denied", "receipt_incomplete")
+# Lifecycle transitions that are in flight (issue #1): a start may not be
+# sealed and a seal may not be started while one of these is held. `starting`
+# is written by the atomic start CAS before any receipt or side effect;
+# `terminating` reserves a terminal transition so a concurrent start cannot
+# slip between the read and the seal.
+STARTING_STATE = "starting"
+TERMINATING_STATE = "terminating"
+PRE_START_STATES = ("placed", "active")
+# States an idle seal may start from. `frozen` is a static non-terminal state
+# (snapshot attestation), not an in-flight transition, so it stays sealable.
+IDLE_SEALABLE_STATES = ("placed", "active", "frozen")
+
+
+class EmitterError(RuntimeError):
+    """Receipt emitter unavailable — the gate fails closed (no unrecorded work)."""
+
+
+class RunnerProfileError(PreflightError):
+    """Real execution is unavailable until its runner has a reviewed profile."""
+
+    def __init__(self, message: str, *, code="runner_profile_refused", expected=None, found=None, action=None):
+        super().__init__(code, message, expected=expected, found=found,
+                         action=action or "configure a runner matching the reviewed profile")
+
+
+class PassError(PermissionError):
+    """Pass/token authorization failure. `code` is the stable machine code
+    (token_required, token_invalid, pass_expired, token_subject_mismatch,
+    token_slot_mismatch, pass_replayed, agent_not_registered)."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
+def rfc3339(epoch: int) -> str:
+    return datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def tree_hash(root: Path) -> str:
+    """Deterministic hash over file names + contents under `root`."""
+    digest = hashlib.sha256()
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            digest.update(str(path.relative_to(root)).encode("utf-8"))
+            digest.update(b"\x00")
+            digest.update(hashlib.sha256(path.read_bytes()).digest())
+    return "sha256:" + digest.hexdigest()
+
+
+def _safe_extract(tar: tarfile.TarFile, target: Path) -> None:
+    target = target.resolve()
+    for member in tar.getmembers():
+        member_path = (target / member.name).resolve()
+        if member_path != target and not str(member_path).startswith(str(target) + os.sep):
+            raise ValueError(f"unsafe path in snapshot archive: {member.name}")
+        if member.issym() or member.islnk() or member.isdev():
+            raise ValueError(f"unsupported entry in snapshot archive: {member.name}")
+    try:
+        tar.extractall(target, filter="data")
+    except TypeError:
+        tar.extractall(target)
+
+
+@dataclass
+class ExecResult:
+    exit_code: int
+    stdout_hash: str
+    artifacts: list = field(default_factory=list)
+    resources: dict = field(default_factory=dict)
+    egress: list = field(default_factory=list)
+    stderr_hash: str | None = None
+    killed_by: str | None = None
+
+
+def parse_payload(payload_ref: str) -> dict:
+    """Payload is a plain command or a declared-execution envelope.
+
+    Envelope: {"program": "curl", "args": [...], "net": true,
+               "egress": ["example.com"]}. Egress is default-deny: network is
+    shared only when `net` is true AND destinations are declared. Undeclared
+    attempts run without network and are recorded as denied. These entries
+    are the declared intent with their baseline enforcement; with the
+    egress-capable wrapper profile (`bwrap-egress`), the runner replaces them
+    with enforced outcomes from the proxy log
+    (`"enforcer": "unix-proxy-allowlist"`). See
+    design/EGRESS_ENFORCEMENT_2026-09-30.md.
+    """
+    text = payload_ref.strip()
+    if text.startswith("{"):
+        def unique_members(pairs):
+            result = {}
+            for name, value in pairs:
+                if name in result:
+                    raise ValueError(f"duplicate payload envelope member: {name}")
+                result[name] = value
+            return result
+
+        data = json.loads(text, object_pairs_hook=unique_members)
+        program = data.get("program")
+        if not isinstance(program, str) or not program or "\x00" in program:
+            raise ValueError("payload envelope needs a non-empty string 'program' without NUL")
+        args = data.get("args", [])
+        declared = data.get("egress", [])
+        for name, values in (("args", args), ("egress", declared)):
+            if (not isinstance(values, list)
+                    or any(not isinstance(value, str) or "\x00" in value
+                           or (name == "egress" and not value) for value in values)):
+                raise ValueError(f"payload envelope '{name}' must be an array of strings without NUL")
+        wants_net = data.get("net", False)
+        if not isinstance(wants_net, bool):
+            raise ValueError("payload envelope 'net' must be a boolean")
+    else:
+        parts = shlex.split(text)
+        if not parts:
+            raise ValueError("empty payload")
+        program, args = parts[0], parts[1:]
+        wants_net, declared = False, []
+
+    allowed_net = wants_net and bool(declared)
+    # `enforced` is per entry: denials are enforced by the netns unshare.
+    # Granted egress is whole-network on the baseline wrapper, so declared
+    # destinations are recorded intent and are NOT individually enforced;
+    # the egress wrapper replaces these entries with proxy-log outcomes.
+    egress = [
+        {
+            "destination": dest,
+            "bytes": None if allowed_net else 0,
+            "allowed": allowed_net,
+            "enforcer": (
+                "bwrap --share-net (whole network; destinations not individually enforced)"
+                if allowed_net else "bwrap --unshare-net"
+            ),
+            "enforced": not allowed_net,
+        }
+        for dest in declared
+    ]
+    if wants_net and not declared:
+        egress = [
+            {
+                "destination": "undeclared",
+                "bytes": 0,
+                "allowed": False,
+                "enforcer": "bwrap --unshare-net",
+                "enforced": True,
+                "denied_reason": "net requested without declared destinations",
+            }
+        ]
+    return {
+        "program": program,
+        "args": args,
+        "net": allowed_net,
+        "requested_net": wants_net,
+        "declared": declared,
+        "egress": egress,
+    }
+
+
+def _plan_envelope(plan: dict) -> str:
+    envelope = {
+        "schema": "wm-sandbox-exec-v1",
+        "program": plan["program"],
+        "args": plan["args"],
+        "net": plan["net"],
+        "egress": list(plan.get("declared") or []),
+    }
+    workspace = plan.get("workspace")
+    if workspace:
+        envelope["workspace"] = workspace
+        envelope["rw"] = bool(plan.get("rw", True))
+    return json.dumps(envelope)
+
+
+def _egress_outcomes_from_log(plan: dict, log_path) -> list[dict] | None:
+    """Build enforced egress outcomes from the wrapper's proxy log.
+
+    Returns None only when no egress log was requested. Once a log path was
+    requested, missing, unreadable, or malformed evidence becomes an explicit
+    fail-closed outcome; callers must not fall back to declared intent.
+    Successful outcomes are keyed by normalized host *and port* so traffic to
+    multiple services on one host is not attributed to the first port seen.
+    """
+    path = Path(log_path)
+
+    def unavailable(reason: str) -> list[dict]:
+        return [
+            {
+                "destination": destination,
+                "bytes": 0,
+                "allowed": False,
+                "enforced": False,
+                "enforcer": "unix-proxy-allowlist",
+                "evidence_error": reason,
+            }
+            for destination in plan.get("declared") or []
+        ]
+
+    if not path.is_file():
+        return unavailable("proxy log missing")
+    records = []
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line:
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    return unavailable("proxy log contains a non-object JSONL record")
+                records.append(record)
+    except (OSError, UnicodeError, ValueError):
+        return unavailable("proxy log unreadable or malformed")
+
+    def normalize_host(host: str) -> str:
+        # Match the proxy allowlist's identity rules, including IDNA aliases.
+        host = host.strip().strip("[]").lower().rstrip(".")
+        try:
+            return ipaddress.ip_address(host).compressed.lower()
+        except ValueError:
+            host = host.encode("idna").decode("ascii")
+            if (not host or len(host) > 253
+                    or any(not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+                           for label in host.split("."))):
+                raise ValueError("invalid destination hostname")
+            return host
+
+    totals: dict[tuple[str, int], dict] = {}
+    denies: dict[tuple[str, int], dict] = {}
+    starts: dict[str, tuple[str, int]] = {}
+    completed: set[str] = set()
+    for record in records:
+        host = record.get("host")
+        port = record.get("port")
+        if (not isinstance(host, str) or not host.strip()
+                or not isinstance(port, int) or isinstance(port, bool)
+                or not 1 <= port <= 65535
+                or not isinstance(record.get("allowed"), bool)):
+            return unavailable("proxy log contains an invalid destination record")
+        try:
+            normalized_host = normalize_host(host)
+        except (UnicodeError, ValueError):
+            return unavailable("proxy log contains an invalid destination hostname")
+        key = (normalized_host, port)
+        event = record.get("event")
+        connection_id = record.get("connection_id")
+        if event in ("connect_start", "http_start"):
+            if (not record["allowed"] or not isinstance(connection_id, str)
+                    or not connection_id or connection_id in starts):
+                return unavailable("proxy log contains an invalid or duplicate connection start")
+            starts[connection_id] = key
+            continue
+        if event in ("connect_complete", "http_complete"):
+            if (not record["allowed"] or not isinstance(connection_id, str)
+                    or connection_id not in starts or connection_id in completed
+                    or starts[connection_id] != key):
+                return unavailable("proxy log contains an orphan or duplicate connection completion")
+            completed.add(connection_id)
+            out_bytes, in_bytes = record.get("bytes_out", 0), record.get("bytes_in", 0)
+            if (not isinstance(out_bytes, int) or isinstance(out_bytes, bool) or out_bytes < 0
+                    or not isinstance(in_bytes, int) or isinstance(in_bytes, bool) or in_bytes < 0):
+                return unavailable("proxy log contains invalid byte counts")
+            bucket = totals.setdefault(key, {"bytes_out": 0, "bytes_in": 0})
+            bucket["bytes_out"] += out_bytes
+            bucket["bytes_in"] += in_bytes
+        elif not record["allowed"] and event in ("connect", "http"):
+            denies.setdefault(key, {"reason": record.get("reason") or "denied"})
+        else:
+            return unavailable("proxy log contains an unsupported or incomplete event")
+
+    if set(starts) != completed:
+        return unavailable("proxy log contains a connection without a terminal outcome")
+
+    def parse_destination(destination: str) -> tuple[str, int | None]:
+        destination = destination.strip()
+        if destination.startswith("["):
+            host, marker, rest = destination[1:].partition("]")
+            if not marker:
+                raise ValueError("invalid bracketed destination")
+            if ipaddress.ip_address(host).version != 6:
+                raise ValueError("bracketed destination must be IPv6")
+            if rest.startswith(":") and rest[1:].isdigit():
+                port = int(rest[1:])
+                if not 1 <= port <= 65535:
+                    raise ValueError("invalid destination port")
+                return normalize_host(host), port
+            if not rest:
+                return normalize_host(host), None
+            raise ValueError("invalid bracketed destination")
+        try:
+            return ipaddress.ip_address(destination).compressed.lower(), None
+        except ValueError:
+            pass
+        host, marker, port_text = destination.rpartition(":")
+        if marker and port_text.isdigit() and host:
+            port = int(port_text)
+            if not 1 <= port <= 65535:
+                raise ValueError("invalid destination port")
+            return normalize_host(host), port
+        return normalize_host(destination), None
+
+    def format_destination(host: str, port: int) -> str:
+        return f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
+
+    entries: list[dict] = []
+    try:
+        declared_keys = {parse_destination(declared) for declared in plan.get("declared") or []}
+    except (UnicodeError, ValueError):
+        return unavailable("declared allowlist contains an invalid destination")
+    if any(key not in declared_keys and (key[0], None) not in declared_keys for key in totals):
+        return unavailable("proxy log contains allowed traffic outside the declared allowlist")
+    for declared in plan.get("declared") or []:
+        host, port = parse_destination(declared)
+        matched_totals = [
+            (record_key, total) for record_key, total in totals.items()
+            if record_key[0] == host and (port is None or record_key[1] == port)
+        ]
+        matched_denies = [
+            (record_key, deny) for record_key, deny in denies.items()
+            if record_key[0] == host and (port is None or record_key[1] == port)
+        ]
+        if matched_totals:
+            bytes_out = sum(total["bytes_out"] for _, total in matched_totals)
+            bytes_in = sum(total["bytes_in"] for _, total in matched_totals)
+            entries.append({
+                "destination": declared,
+                "bytes": bytes_out + bytes_in,
+                "bytes_out": bytes_out,
+                "bytes_in": bytes_in,
+                "allowed": True,
+                "enforced": True,
+                "enforcer": "unix-proxy-allowlist",
+            })
+        elif matched_denies:
+            entries.append({
+                "destination": declared,
+                "bytes": 0,
+                "allowed": False,
+                "enforced": True,
+                "enforcer": "unix-proxy-allowlist",
+                "denied_reason": matched_denies[0][1]["reason"],
+            })
+        else:
+            entries.append({
+                "destination": declared,
+                "bytes": 0,
+                "allowed": True,
+                "enforced": True,
+                "enforcer": "unix-proxy-allowlist",
+            })
+    for key, deny in denies.items():
+        if key not in declared_keys and (key[0], None) not in declared_keys:
+            entries.append({
+                "destination": format_destination(key[0], key[1]),
+                "bytes": 0,
+                "allowed": False,
+                "enforced": True,
+                "enforcer": "unix-proxy-allowlist",
+                "denied_reason": deny["reason"],
+            })
+    return entries
+
+
+class StubRunner:
+    """Deterministic runner for tests and dogfood dry-runs."""
+
+    sandbox_class = "none"
+
+    def run(self, slot: dict, payload_ref: str, on_spawn=None) -> ExecResult:
+        return ExecResult(
+            exit_code=0,
+            stdout_hash=sha256_prefixed(("stub:" + payload_ref).encode()),
+            resources={"cpu_ms": 900, "mem_peak_mb": 32, "disk_peak_mb": 4},
+            egress=[{"destination": "none", "bytes": 0, "allowed": True,
+                     "enforcer": "demo-stub", "enforced": False}],
+        )
+
+
+class SandboxRunner:
+    """Identity-check a host wrapper pending a qualified receipt profile.
+
+    The configured binary is resolved and hashed, but real runs remain blocked
+    until evidence for the exact executable and its mechanisms is reviewed
+    against the pinned receipt vocabulary. An adapter hint selects how the
+    wrapper is invoked; it does not qualify the mechanism. A digest identifies
+    bytes; it proves no containment behavior.
+    """
+
+    sandbox_class = "unknown"
+
+    def __init__(self, runner_path: str, sandbox_class: str | None = None):
+        try:
+            self.runner_path = str(Path(runner_path).expanduser().resolve(strict=True))
+            if not Path(self.runner_path).is_file() or not os.access(self.runner_path, os.X_OK):
+                raise RunnerProfileError("runner identity unavailable: executable is not runnable")
+            self.runner_digest = self._digest(self.runner_path)
+        except RunnerProfileError:
+            raise
+        except OSError as exc:
+            raise RunnerProfileError(f"runner identity unavailable: {exc}") from exc
+        adapter_hint = sandbox_class
+        if adapter_hint is None:
+            adapter_hint = os.environ.get("WM_MANDALA_SANDBOX_CLASS")
+        if adapter_hint is None:
+            adapter_hint = os.environ.get("WM_SANDBOX_CLASS")
+        if adapter_hint is None and (
+            "landrun" in Path(self.runner_path).name
+            or "landlock" in Path(self.runner_path).name
+        ):
+            adapter_hint = "landlock"
+
+        # Selection is useful for choosing a wrapper adapter, but neither a
+        # class string nor the wrapper's filename is qualification evidence.
+        self.adapter_id = adapter_hint
+        self.sandbox_class = "unknown"
+        self.profile_id = None
+        self.profile_status = "unqualified"
+
+        reviewed_profiles = {
+            PROFILE_WRAPPER_SHA256: PROFILE_ID,
+            PROFILE_WRAPPER_EGRESS_SHA256: PROFILE_ID_EGRESS,
+        }
+        if self.runner_digest in reviewed_profiles and self._dependencies_match():
+            # Only the exact reviewed bytes qualify. A contradictory hint on
+            # those bytes (for example a Landlock hint on Bubblewrap-only
+            # bytes) is a typed refusal, never a silently misreported class.
+            if adapter_hint not in (None, "bwrap"):
+                raise RunnerProfileError(
+                    "runner class hint contradicts the reviewed bwrap wrapper; refusing",
+                    code="runner_class_hint_conflict",
+                    expected="bwrap-compatible selection or no hint",
+                    found=adapter_hint,
+                    action="remove the conflicting class hint or select the reviewed bwrap wrapper",
+                )
+            self.profile_id = reviewed_profiles[self.runner_digest]
+            self.profile_status = "locally_qualified"
+            self.sandbox_class = "bwrap"
+
+        self._observed_adapter_id = self.adapter_id
+        self._observed_class = self.sandbox_class
+        self._observed_profile_id = self.profile_id
+        self._observed_profile_status = self.profile_status
+
+    @staticmethod
+    def _digest(path: str) -> str:
+        digest = hashlib.sha256()
+        with open(path, "rb") as runner_file:
+            for chunk in iter(lambda: runner_file.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return "sha256:" + digest.hexdigest()
+
+    def _dependencies_match(self) -> bool:
+        for name, expected in (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)):
+            path = shutil.which(name)
+            if not path:
+                return False
+            try:
+                if self._digest(path) != expected:
+                    return False
+            except OSError:
+                return False
+        if self.runner_digest == PROFILE_WRAPPER_EGRESS_SHA256:
+            if not self._egress_sidecars_match():
+                return False
+        return True
+
+    def _egress_sidecar_digests(self) -> dict[str, str] | None:
+        sidecars = {}
+        root = Path(self.runner_path).parent
+        for name in PROFILE_EGRESS_SIDECAR_SHA256:
+            path = root / name
+            try:
+                sidecars[name] = self._digest(str(path.resolve(strict=True)))
+            except OSError:
+                return None
+        return sidecars
+
+    def _egress_sidecars_match(self) -> bool:
+        observed = self._egress_sidecar_digests()
+        return observed == PROFILE_EGRESS_SIDECAR_SHA256
+
+    def _require_profile(self) -> None:
+        if self.sandbox_class != self._observed_class:
+            raise RunnerProfileError("runner profile class mismatch", expected=self._observed_class, found=self.sandbox_class)
+        if self.adapter_id != self._observed_adapter_id:
+            raise RunnerProfileError("runner adapter selection mismatch", expected=self._observed_adapter_id, found=self.adapter_id)
+        if self.profile_id != self._observed_profile_id:
+            raise RunnerProfileError("runner profile identity mismatch", expected=self._observed_profile_id, found=self.profile_id)
+        if self.profile_status != self._observed_profile_status:
+            raise RunnerProfileError("runner profile status mismatch", expected=self._observed_profile_status, found=self.profile_status)
+        try:
+            current_path = str(Path(self.runner_path).resolve(strict=True))
+            current_digest = self._digest(current_path)
+        except OSError as exc:
+            raise RunnerProfileError(f"runner identity unavailable: {exc}", expected=self.runner_path, found="unavailable") from exc
+        if current_path != self.runner_path or current_digest != self.runner_digest:
+            raise RunnerProfileError("runner identity changed after inspection", expected=self.runner_digest, found=current_digest)
+        if self.profile_id == PROFILE_ID_EGRESS and not self._egress_sidecars_match():
+            raise RunnerProfileError("runner sidecar identity mismatch", expected=PROFILE_EGRESS_SIDECAR_SHA256, found=self._egress_sidecar_digests())
+        if self.profile_id not in (PROFILE_ID, PROFILE_ID_EGRESS):
+            raise RunnerProfileError("no reviewed runner profile matches executable; real payload execution is disabled", expected=[PROFILE_ID, PROFILE_ID_EGRESS], found=self.profile_id)
+        for name, expected in (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)):
+            path = shutil.which(name)
+            if not path:
+                raise RunnerProfileError(
+                    f"runner dependency identity mismatch: {name}", code="runner_dependency_mismatch",
+                    expected=expected, found="missing",
+                    action=f"install the reviewed {name} executable and retry",
+                )
+            try:
+                dependency_digest = self._digest(path)
+            except OSError as exc:
+                raise RunnerProfileError(
+                    f"runner dependency identity unavailable: {name}: {exc}",
+                    code="runner_dependency_unavailable", expected=expected, found="unavailable",
+                    action=f"restore the reviewed {name} executable and retry",
+                ) from exc
+            if dependency_digest != expected:
+                raise RunnerProfileError(
+                    f"runner dependency identity mismatch: {name}", code="runner_dependency_mismatch",
+                    expected=expected, found=dependency_digest,
+                    action=f"install the reviewed {name} executable and retry",
+                )
+
+    def _argv(self, plan: dict) -> list[str]:
+        return [self.runner_path, "--exec", _plan_envelope(plan)]
+
+    def profile_for(self, slot: dict, payload_ref: str) -> dict:
+        plan = parse_payload(payload_ref)
+        if slot.get("workspace"):
+            plan["workspace"] = slot["workspace"]
+        invocation = self._argv(plan)[1:]
+        if self.profile_id == PROFILE_ID_EGRESS:
+            # Keep the Continuity Receipt runner_profile wire shape stable:
+            # sidecar identity is committed by the invocation digest rather
+            # than added as an unrecognized profile field.
+            invocation = {
+                "argv": invocation,
+                "sidecar_digests": self._egress_sidecar_digests(),
+            }
+        return {
+            "profile_id": self.profile_id,
+            "executable_digest": self.runner_digest,
+            "invocation_digest": sha256_prefixed(canonical_bytes(invocation)),
+        }
+
+    def _wall_seconds(self, slot: dict) -> int:
+        return max(int(slot.get("quotas", {}).get("wall_ms", 60000) / 1000), 1)
+
+    def _popen(self, slot: dict, plan: dict, env: dict | None = None):
+        return subprocess.Popen(
+            self._argv(plan),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=False,
+            start_new_session=True,
+            env=env,
+        )
+
+    def _terminate(self, proc) -> None:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal_mod.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+    def _inspect_kill(self, slot: dict, proc) -> str | None:
+        return None
+
+    def _result(self, plan: dict, exit_code: int, stdout: bytes, stderr: bytes,
+                killed_by: str | None = None, resources: dict | None = None,
+                egress: list | None = None) -> ExecResult:
+        return ExecResult(
+            exit_code=exit_code,
+            stdout_hash=sha256_prefixed(stdout),
+            resources=resources or {"cpu_ms": 0, "mem_peak_mb": 0, "disk_peak_mb": 0},
+            egress=egress if egress is not None else [dict(entry) for entry in plan["egress"]],
+            stderr_hash=sha256_prefixed(stderr),
+            killed_by=killed_by,
+        )
+
+    def _egress_log_env(self, plan: dict) -> tuple[dict | None, Path | None]:
+        """Prepare the proxy-log environment for enforced-egress runs.
+
+        Only the L2 profile produces proxy evidence. Baseline whole-network
+        grants keep their declared-intent entries and never require a log.
+        """
+        if (self.profile_id != PROFILE_ID_EGRESS
+                or not plan.get("net") or not plan.get("declared")):
+            return None, None
+        log_dir = Path(tempfile.mkdtemp(prefix="mandala-egress-log-"))
+        env = {**os.environ, "MANDALA_EGRESS_LOG": str(log_dir / "egress.jsonl")}
+        return env, log_dir
+
+    @staticmethod
+    def _egress_log_result(plan: dict, log_dir: Path | None) -> list | None:
+        if log_dir is None:
+            return None
+        try:
+            return _egress_outcomes_from_log(plan, log_dir / "egress.jsonl")
+        finally:
+            shutil.rmtree(log_dir, ignore_errors=True)
+
+    def run(self, slot: dict, payload_ref: str, on_spawn=None) -> ExecResult:
+        self._require_profile()
+        plan = parse_payload(payload_ref)
+        if slot.get("workspace"):
+            plan["workspace"] = slot["workspace"]
+        env, log_dir = self._egress_log_env(plan)
+        proc = self._popen(slot, plan, env=env)
+        if on_spawn:
+            on_spawn(proc.pid, os.getpgid(proc.pid), getattr(proc, "unit", None))
+        timed_out = False
+        try:
+            stdout, stderr = proc.communicate(timeout=self._wall_seconds(slot) + 10)
+        except subprocess.TimeoutExpired:
+            self._terminate(proc)
+            stdout, stderr = proc.communicate()
+            timed_out = True
+        killed_by = self._inspect_kill(slot, proc)
+        if timed_out and killed_by is None:
+            killed_by = "wall"
+        exit_code = 137 if killed_by else proc.returncode
+        egress = self._egress_log_result(plan, log_dir)
+        if any(entry.get("evidence_error") for entry in (egress or [])):
+            exit_code = 125
+        return self._result(plan, exit_code, stdout or b"", stderr or b"",
+                            killed_by=killed_by, egress=egress)
+
+
+class LandlockRunner(SandboxRunner):
+    """Adapter for invoking a runner intended to provide Landlock confinement.
+
+    The adapter name describes the selected runner contract; it does not
+    establish that the executable enforces Landlock or qualifies a receipt
+    sandbox class.
+    """
+
+    def __init__(self, runner_path: str, sandbox_class: str = "landlock"):
+        super().__init__(runner_path, sandbox_class=sandbox_class)
+
+
+class SliceRunner(SandboxRunner):
+    """SandboxRunner under a systemd user service with cgroup quotas (G2).
+
+    `MemoryMax` overruns become `Result=oom-kill`, `RuntimeMaxSec` overruns
+    `Result=timeout`; both map to a quota kill. CPUQuota is a rate throttle,
+    not a kill (documented behavior).
+    """
+
+    sandbox_class = "unknown"
+
+    def __init__(self, runner_path: str, cpu_percent: int | None = None, sandbox_class: str | None = None):
+        super().__init__(runner_path, sandbox_class=sandbox_class)
+        self.cpu_percent = cpu_percent
+
+    def _popen(self, slot: dict, plan: dict, env: dict | None = None):
+        unit = f"mandala-{slot['slot_id']}-{uuid.uuid4().hex[:6]}"
+        quotas = slot["quotas"]
+        cpu = self.cpu_percent or CPU_QUOTA_PERCENT.get(slot.get("slot_class", "small"), 100)
+        proxy_log_env = []
+        if self.profile_id == PROFILE_ID_EGRESS and env and "MANDALA_EGRESS_LOG" in env:
+            # A transient service gets the manager's environment, not that of
+            # its systemd-run client. Forward only this per-run evidence path.
+            proxy_log_env = [f"--setenv=MANDALA_EGRESS_LOG={env['MANDALA_EGRESS_LOG']}"]
+        argv = [
+            "systemd-run",
+            "--user",
+            "--unit",
+            unit,
+            "--wait",
+            "--pipe",
+            "--quiet",
+            "-p",
+            f"MemoryMax={max(int(quotas.get('mem_mb', 1024)), 16)}M",
+            "-p",
+            "MemorySwapMax=0",
+            "-p",
+            f"CPUQuota={cpu}%",
+            "-p",
+            f"RuntimeMaxSec={self._wall_seconds(slot)}s",
+            "-p",
+            "TimeoutStopSec=5s",
+            *proxy_log_env,
+            *self._argv(plan),
+        ]
+        proc = subprocess.Popen(
+            argv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=False,
+            start_new_session=True,
+            env=env,
+        )
+        proc.unit = unit
+        return proc
+
+    def _terminate(self, proc) -> None:
+        subprocess.run(
+            ["systemctl", "--user", "kill", "--kill-whom=all", "-s", "SIGKILL", proc.unit],
+            capture_output=True,
+        )
+
+    def _inspect_kill(self, slot: dict, proc) -> str | None:
+        show = subprocess.run(
+            ["systemctl", "--user", "show", proc.unit, "-p", "Result", "-p", "MemoryPeak", "--value"],
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(["systemctl", "--user", "reset-failed", proc.unit], capture_output=True)
+        lines = [line.strip() for line in show.stdout.splitlines() if line.strip()]
+        result = lines[0] if lines else ""
+        if len(lines) > 1 and lines[1].isdigit():
+            bytes_peak = int(lines[1])
+            proc.mem_peak_mb = bytes_peak // (1024 * 1024)
+        if result == "oom-kill":
+            return "memory_max"
+        if result == "timeout":
+            return "wall"
+        return None
+
+    def run(self, slot: dict, payload_ref: str, on_spawn=None) -> ExecResult:
+        self._require_profile()
+        plan = parse_payload(payload_ref)
+        if slot.get("workspace"):
+            plan["workspace"] = slot["workspace"]
+        env, log_dir = self._egress_log_env(plan)
+        proc = self._popen(slot, plan, env=env)
+        if on_spawn:
+            on_spawn(proc.pid, os.getpgid(proc.pid), getattr(proc, "unit", None))
+        try:
+            stdout, stderr = proc.communicate(timeout=self._wall_seconds(slot) + 15)
+        except subprocess.TimeoutExpired:
+            self._terminate(proc)
+            stdout, stderr = proc.communicate()
+        killed_by = self._inspect_kill(slot, proc)
+        exit_code = 137 if killed_by else proc.returncode
+        resources = {
+            "cpu_ms": 0,
+            "mem_peak_mb": getattr(proc, "mem_peak_mb", 0),
+            "disk_peak_mb": 0,
+        }
+        egress = self._egress_log_result(plan, log_dir)
+        if any(entry.get("evidence_error") for entry in (egress or [])):
+            exit_code = 125
+        return self._result(plan, exit_code, stdout or b"", stderr or b"",
+                            killed_by=killed_by, resources=resources, egress=egress)
+
+
+def build_runner(runner_path: str | None, slice_mode: bool = False, sandbox_class: str | None = None):
+    if not runner_path:
+        return None
+    cls = sandbox_class or os.environ.get("WM_MANDALA_SANDBOX_CLASS") or os.environ.get("WM_SANDBOX_CLASS")
+    if cls is None and ("landrun" in Path(runner_path).name or "landlock" in Path(runner_path).name):
+        cls = "landlock"
+    if slice_mode:
+        return SliceRunner(runner_path, sandbox_class=cls)
+    if cls in ("landlock", "landlock-v5"):
+        return LandlockRunner(runner_path, sandbox_class=cls)
+    return SandboxRunner(runner_path, sandbox_class=cls)
+
+
+class Orchestrator:
+    def __init__(
+        self,
+        state_dir,
+        gate_id: str = "gate-lite-1",
+        gate_key=None,
+        gate_did: str | None = None,
+        runner=None,
+    ):
+        if RECEIPT_IMPORT_ERROR is not None:
+            raise PreflightError(
+                "dependency_missing", "continuity-receipt runtime is unavailable",
+                expected=f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}", found="missing",
+                action="install gate-lite with its pinned dependencies",
+            ) from RECEIPT_IMPORT_ERROR
+        try:
+            receipt_version = importlib.metadata.version("continuity-receipt")
+        except importlib.metadata.PackageNotFoundError as exc:
+            raise PreflightError(
+                "dependency_missing", "continuity-receipt is not installed",
+                expected=f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}", found="missing",
+                action="install gate-lite with its pinned dependencies",
+            ) from exc
+        if receipt_version != RECEIPT_PACKAGE_VERSION:
+            raise PreflightError(
+                "dependency_version_mismatch",
+                f"gate-lite emits Continuity Receipt {RECEIPT_SPEC}; expected "
+                f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}, found {receipt_version}",
+                expected=f"continuity-receipt=={RECEIPT_PACKAGE_VERSION}", found=receipt_version,
+                action="install continuity-receipt==0.5.0",
+            )
+        if RECEIPT_RUNTIME_VERSION != receipt_version:
+            raise PreflightError(
+                "dependency_runtime_mismatch",
+                f"imported continuity-receipt version {RECEIPT_RUNTIME_VERSION} "
+                f"does not match installed distribution {receipt_version}",
+                expected=receipt_version, found=RECEIPT_RUNTIME_VERSION,
+                action="remove shadowed receipt modules and install continuity-receipt==0.5.0",
+            )
+        if RECEIPT_SPEC not in records.SUPPORTED_SPECS:
+            raise PreflightError(
+                "dependency_spec_unsupported",
+                f"imported continuity-receipt {RECEIPT_RUNTIME_VERSION} does not support "
+                f"gate-lite's pinned spec {RECEIPT_SPEC}",
+                expected=RECEIPT_SPEC, found=list(records.SUPPORTED_SPECS),
+                action="install the published receipt runtime that supports continuity-receipt/0.5",
+            )
+        self.state_dir = Path(state_dir)
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+        self.receipts_dir = self.state_dir / "receipts"
+        self.receipts_dir.mkdir(exist_ok=True)
+        self.runs_dir = self.state_dir / "runs"
+        self.runs_dir.mkdir(exist_ok=True)
+        self.kills_dir = self.state_dir / "kills"
+        self.kills_dir.mkdir(exist_ok=True)
+        self.workspaces_dir = self.state_dir / "workspaces"
+        self.workspaces_dir.mkdir(exist_ok=True)
+        self.snapshots_dir = self.state_dir / "snapshots"
+        self.snapshots_dir.mkdir(exist_ok=True)
+        self.registry = Registry(self.state_dir / "registry.db")
+
+        key_path = self.state_dir / "gate.key"
+        if gate_key is None and key_path.exists():
+            gate_key = keys.private_from_raw(key_path.read_bytes())
+            os.chmod(key_path, 0o600)
+        if gate_key is None:
+            gate_did, gate_key = keys.generate()
+            key_path.write_bytes(keys.private_raw(gate_key))
+            os.chmod(key_path, 0o600)
+        if gate_did is None:
+            gate_did = keys.pubkey_to_did_key(gate_key.public_key())
+
+        self.gate_id = gate_id
+        self.gate_did = gate_did
+        self.gate_key = gate_key
+        self.runner = runner or StubRunner()
+        self.policy_version = POLICY_VERSION
+        self._chains: dict[str, TaskChain] = {}
+        self._last_exec: dict[str, ExecResult] = {}
+
+    # -- registry helpers -------------------------------------------------
+    def add_tenant(self, tenant_id: str, agents: list[str], **kwargs) -> dict:
+        tenant = Tenant(tenant_id=tenant_id, agents=agents, **kwargs)
+        record = dict(tenant.__dict__)
+        self.registry.put_tenant(record)
+        return record
+
+    # -- run journal (operator kill seam) ---------------------------------
+    def _run_path(self, slot_id: str) -> Path:
+        return self.runs_dir / f"{slot_id}.json"
+
+    def _kill_path(self, slot_id: str) -> Path:
+        return self.kills_dir / f"{slot_id}.json"
+
+    def _journal_run(
+        self, slot_id: str, pid: int, pgid: int, unit: str | None, run_generation: int
+    ) -> None:
+        self.runs_dir.mkdir(parents=True, exist_ok=True)
+        self._run_path(slot_id).write_text(
+            json.dumps(
+                {
+                    "slot_id": slot_id,
+                    "pid": pid,
+                    "pgid": pgid,
+                    "unit": unit,
+                    "run_generation": run_generation,
+                    "started_at_ms": int(time.time() * 1000),
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def active_run(self, slot_id: str) -> dict | None:
+        path = self._run_path(slot_id)
+        if not path.exists():
+            return None
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+
+    def _consume_kill_request(self, slot_id: str) -> dict | None:
+        path = self._kill_path(slot_id)
+        if not path.exists():
+            return None
+        try:
+            request = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            request = {}
+        path.unlink(missing_ok=True)
+        return request
+
+    def _write_kill_request(
+        self, slot_id: str, signal_name: str, run_generation: int | None
+    ) -> dict:
+        """Bind an operator kill request to a specific run generation.
+
+        The generation binding is what stops a late start from consuming an
+        old request (gate-lite issue #1): `exec_` only honors a request whose
+        generation matches the run it just started.
+        """
+        request = {
+            "slot_id": slot_id,
+            "signal": signal_name,
+            "run_generation": run_generation,
+            "requested_at_ms": int(time.time() * 1000),
+            "requested_by": "operator",
+        }
+        self.kills_dir.mkdir(parents=True, exist_ok=True)
+        self._kill_path(slot_id).write_text(json.dumps(request), encoding="utf-8")
+        return request
+
+    def _terminal_kill_result(self, slot: dict) -> dict:
+        receipt = self._last_receipt(slot, "task.termination")
+        return {
+            "slot_id": slot["slot_id"],
+            "state": slot["state"],
+            "kill_signal": "operator"
+            if receipt and receipt.get("body", {}).get("kill_signal")
+            else None,
+            "receipt_id": receipt.get("receipt_id") if receipt else None,
+            "exec_active": False,
+        }
+
+    def _kill_live_run(
+        self, slot_id: str, run: dict, signal_name: str, wait_s: float
+    ) -> dict:
+        """Signal a live run and wait for its terminal receipt.
+
+        The request stays on disk if the run does not finish within `wait_s`
+        (bound to the run generation) so `exec_` consumes it when the run
+        ends — a kill never seals a run that is still in flight.
+        """
+        generation = run.get("run_generation")
+        self._write_kill_request(slot_id, signal_name, generation)
+        self._signal_run(run, signal_name)
+
+        def finished():
+            fresh = self.registry.get_slot(slot_id)
+            if fresh and fresh["state"] == "terminated":
+                receipt = self._last_receipt(fresh, "task.termination")
+                return {
+                    "slot_id": slot_id,
+                    "state": "terminated",
+                    "kill_signal": "operator",
+                    "receipt_id": receipt.get("receipt_id") if receipt else None,
+                    "exec_active": True,
+                }
+            return None
+
+        total_deadline = time.time() + wait_s
+        grace_deadline = time.time() + min(1.0, max(wait_s, 0.0))
+        result = None
+        while time.time() < grace_deadline and result is None:
+            result = finished()
+            if result is None:
+                time.sleep(0.05)
+        if result is None:
+            self._signal_run(run, "SIGKILL")
+            while time.time() < total_deadline and result is None:
+                result = finished()
+                if result is None:
+                    time.sleep(0.05)
+        if result is not None:
+            return result
+        return {
+            "slot_id": slot_id,
+            "state": (self.registry.get_slot(slot_id) or {}).get("state", "unknown"),
+            "outcome": "deferred",
+            "kill_signal": "operator",
+            "receipt_id": None,
+            "exec_active": True,
+            "hint": "run did not reach a terminal receipt within wait_s; the kill request is bound to the run generation and will be consumed when the run ends",
+        }
+
+    @staticmethod
+    def _pid_alive(pid: int | None) -> bool:
+        if not pid:
+            return False
+        try:
+            os.kill(int(pid), 0)
+            return True
+        except (ProcessLookupError, PermissionError, ValueError, TypeError):
+            return False
+
+    def _signal_run(self, run: dict, signal_name: str) -> None:
+        """Use systemd when available; fall back to the journaled POSIX group.
+
+        macOS has no `systemctl`, and containers can have a systemctl client
+        that cannot reach a user session (or raises on the call). In either
+        case the run's recorded process group remains the termination target.
+        """
+        unit = run.get("unit")
+        if unit and shutil.which("systemctl"):
+            try:
+                completed = subprocess.run(
+                    ["systemctl", "--user", "kill", "--kill-whom=all", "-s", signal_name, unit],
+                    capture_output=True,
+                )
+                if completed.returncode == 0:
+                    return
+            except OSError:
+                pass
+        sig = getattr(signal_mod, signal_name)
+        pgid, pid = run.get("pgid"), run.get("pid")
+        try:
+            if pgid:
+                os.killpg(int(pgid), sig)
+            elif pid:
+                os.kill(int(pid), sig)
+        except (ProcessLookupError, PermissionError, ValueError, TypeError):
+            pass
+
+    # -- receipt emission -------------------------------------------------
+    def _chain(self, slot: dict) -> TaskChain:
+        chain = self._chains.get(slot["slot_id"])
+        if chain is not None:
+            return chain
+        task_id = slot.get("task_id")
+        if task_id:
+            path = self.receipts_dir / f"{task_id}.json"
+            if path.exists():
+                bundle = json.loads(path.read_text(encoding="utf-8"))
+                # Preserve the stored bundle's spec so resumed chains stay
+                # homogeneous (0.1-era bundles keep appending 0.1 receipts).
+                chain = TaskChain(task_id=task_id, spec=bundle.get("spec"))
+                chain.receipts = bundle.get("receipts", [])
+                self._chains[slot["slot_id"]] = chain
+                return chain
+        chain = TaskChain(task_id=task_id, spec=RECEIPT_SPEC)
+        self._chains[slot["slot_id"]] = chain
+        return chain
+
+    def _emit(self, slot: dict, record_type: str, body: dict) -> dict:
+        chain = self._chain(slot)
+        receipt = chain.add(record_type, "gate", self.gate_did, self.gate_key, body)
+        path = self.receipts_dir / f"{chain.task_id}.json"
+        tmp = path.with_suffix(".tmp")
+        try:
+            tmp.write_text(
+                json.dumps(chain.bundle(), indent=2, sort_keys=False) + "\n",
+                encoding="utf-8",
+            )
+            os.replace(tmp, path)
+        except OSError as exc:
+            chain.receipts.pop()
+            raise EmitterError(f"receipt emitter unavailable: {exc}") from exc
+        return receipt
+
+    def _state_commitment(self) -> dict:
+        """Commitment over the orchestrator registry state (0.5 §state.commitment).
+
+        The count and head digest are taken from the same `Registry.reload()`
+        snapshot a verifier can recompute from the state directory; the digest
+        is never taken over raw SQLite file bytes.
+        """
+        state = self.registry.reload()
+        return {
+            "state_kind": "gate-lite.registry-head",
+            "scope": "gate-lite.registry",
+            "count": sum(len(section) for section in state.values()),
+            "head_digest": sha256_prefixed(canonical_bytes(state)),
+        }
+
+    def task_id_for(self, slot_id: str) -> str | None:
+        chain = self._chains.get(slot_id)
+        return chain.task_id if chain else None
+
+    def receipt(self, task_id: str) -> dict:
+        return json.loads((self.receipts_dir / f"{task_id}.json").read_text(encoding="utf-8"))
+
+    def _last_receipt(self, slot: dict, record_type: str) -> dict | None:
+        task_id = slot.get("task_id") or self.task_id_for(slot["slot_id"])
+        if not task_id:
+            return None
+        path = self.receipts_dir / f"{task_id}.json"
+        if not path.exists():
+            return None
+        bundle = json.loads(path.read_text(encoding="utf-8"))
+        for receipt in reversed(bundle.get("receipts", [])):
+            if receipt.get("type") == record_type:
+                return receipt
+        return None
+
+    def _termination_body(
+        self,
+        slot: dict,
+        reason: str,
+        kill_signal: str | None = None,
+        killed_by: str | None = None,
+        latency_ms: int | None = None,
+    ) -> dict:
+        quotas = slot.get("quotas", {})
+        body = {
+            "reason": reason,
+            "limits_at_stop": {
+                "cpu_ms": quotas.get("cpu_ms", 0),
+                "wall_ms": quotas.get("wall_ms", 0),
+                "spend_minor": 0,
+                "currency": "USD",
+            },
+            "remaining": {
+                "cpu_ms": 0,
+                "wall_ms": max(slot.get("expires_at", now_epoch()) - now_epoch(), 0) * 1000,
+                "spend_minor": 0,
+                "currency": "USD",
+            },
+        }
+        if kill_signal:
+            body["kill_signal"] = kill_signal
+        if killed_by:
+            body["killed_by"] = killed_by
+        if latency_ms is not None:
+            body["operator_kill_latency_ms"] = latency_ms
+        last = self._last_exec.get(slot["slot_id"])
+        if last is not None:
+            body["observed"] = {"exit": last.exit_code, "stdout_hash": last.stdout_hash}
+        return body
+
+    # -- lifecycle --------------------------------------------------------
+    def pass_(
+        self,
+        tenant_id: str,
+        agent_did: str,
+        minutes: int = 90,
+        slot_class: str = "small",
+        spend_cap: dict | None = None,
+        principal_id: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> dict:
+        # Authorization precedes the idempotency cache: membership is checked
+        # before a cached pass (and its token) can be returned. Cache keys are
+        # tenant+agent scoped, and a key cannot be reused with different
+        # request parameters.
+        tenant = self.registry.get_tenant(tenant_id)
+        if tenant is None:
+            raise KeyError(f"unknown tenant {tenant_id}")
+        if agent_did not in (tenant.get("agents") or []):
+            raise PassError(
+                "agent_not_registered",
+                f"agent {agent_did} is not registered to tenant {tenant_id}",
+            )
+        if slot_class not in SLOT_CLASSES:
+            raise ValueError(f"unknown slot class {slot_class}")
+        request = {
+            "minutes": minutes,
+            "slot_class": slot_class,
+            "spend_cap": spend_cap,
+            "principal_id": principal_id,
+        }
+        cache_key = (
+            f"pass:{tenant_id}:{agent_did}:{idempotency_key}" if idempotency_key else None
+        )
+        if cache_key:
+            cached = self.registry.recall(cache_key)
+            if cached is not None:
+                if cached.get("request") != request:
+                    raise ValueError("idempotency key reused with a different request")
+                return cached["result"]
+
+        quotas = dict(SLOT_CLASSES[slot_class])
+        quotas["wall_ms"] = minutes * 60000
+        now = now_epoch()
+        expires_at = now + minutes * 60
+        slot_id = "slot-" + uuid.uuid4().hex[:12]
+        pass_id = "pass-" + uuid.uuid4().hex[:12]
+        jti = str(records.uuid7())
+        mandate_ref = sha256_prefixed(f"mandate:{pass_id}".encode())
+
+        claims = {
+            "iss": f"gate:{self.gate_id}",
+            "sub": agent_did,
+            "aud": GATE_CLASS,
+            "mandala": {"class": GATE_CLASS, "slot_class": slot_class, "quotas": quotas},
+            "budget": spend_cap or {"minor": 0, "currency": "USD"},
+            "policy_version": self.policy_version,
+            "exp": expires_at,
+            "jti": jti,
+            # S2b binding claims (2026-09-22): pass/slot identity and the
+            # mandate reference, so a relying party can bind its own receipts
+            # to this pass without asking the gate (offline join key).
+            "pass_id": pass_id,
+            "slot_id": slot_id,
+            "mandate_ref": mandate_ref,
+        }
+        if principal_id:
+            claims["principal_id"] = principal_id
+        token = issue_pass(self.gate_did, self.gate_key, claims)
+
+        body = {
+            "gate_id": self.gate_id,
+            "mandala_class": GATE_CLASS,
+            "quotas": quotas,
+            "expires_at": rfc3339(expires_at),
+            "policy_version": self.policy_version,
+            "mandate_ref": mandate_ref,
+            "agent_id": agent_did,
+            # S2b: token commitment — the join key a relying party records in
+            # its own receipts (spec §4.1 `pass_token_id`).
+            "pass_token_id": sha256_prefixed(token.encode("ascii")),
+        }
+        if spend_cap:
+            body["spend_cap"] = spend_cap
+
+        slot = dict(
+            Slot(
+                slot_id=slot_id,
+                tenant_id=tenant_id,
+                state="placed",
+                slot_class=slot_class,
+                quotas=quotas,
+                created_at=now,
+                expires_at=expires_at,
+                pass_id=pass_id,
+            ).__dict__
+        )
+        receipt = self._emit(slot, "session.pass.created", body)
+        slot["task_id"] = self.task_id_for(slot_id)
+        self.registry.put_slot(slot)
+        self.registry.put_pass(
+            {
+                "pass_id": pass_id,
+                "slot_id": slot_id,
+                "agent_id": agent_did,
+                "principal_id": principal_id,
+                "expires_at": expires_at,
+                "spend_cap": spend_cap,
+                "jti": jti,
+            }
+        )
+        (self.workspaces_dir / slot_id).mkdir(parents=True, exist_ok=True)
+        result = {
+            "pass_id": pass_id,
+            "slot_id": slot_id,
+            "endpoint": f"gate://{self.gate_id}/{slot_id}",
+            "token": token,
+            "quotas": quotas,
+            "expires_at": rfc3339(expires_at),
+            "receipt_id": receipt["receipt_id"],
+        }
+        if cache_key:
+            self.registry.remember(cache_key, {"request": request, "result": result})
+        return result
+
+    def _authorized_slot(self, tenant_id: str, slot_id: str) -> dict:
+        slot = self.registry.get_slot(slot_id)
+        if slot is None:
+            raise KeyError(f"unknown slot {slot_id}")
+        if slot["tenant_id"] != tenant_id:
+            raise PermissionError("cross-tenant access denied")
+        return slot
+
+    def _verify_exec_token(self, slot: dict, token: str | None, agent_id: str | None) -> dict:
+        """Verify the exec token and its bindings; returns the claims.
+
+        No side effects: consumption is a separate, explicit step
+        (`_consume_exec_jti`), so idempotent-replay hits can verify without
+        re-consuming and rejected attempts never burn a token.
+        """
+        if not token:
+            raise PassError(
+                "token_required",
+                "exec requires a pass token bound to this agent and slot",
+            )
+        try:
+            claims = verify_pass(token, self.gate_did)
+        except ValueError as exc:
+            raise PassError("token_invalid", str(exc)) from exc
+        if int(claims.get("exp", 0)) < now_epoch():
+            raise PassError("pass_expired", "pass token expired")
+        if agent_id and claims.get("sub") != agent_id:
+            raise PassError("token_subject_mismatch", "token is bound to another agent")
+        if claims.get("slot_id") != slot["slot_id"] or claims.get("pass_id") != slot.get("pass_id"):
+            raise PassError("token_slot_mismatch", "pass token is bound to another slot")
+        pass_record = self.registry.get_pass(slot.get("pass_id") or "")
+        if pass_record is None:
+            raise PassError("token_invalid", "pass record not found")
+        if pass_record.get("agent_id") != claims.get("sub"):
+            raise PassError("token_subject_mismatch", "token subject is not the pass agent")
+        if not claims.get("jti"):
+            raise PassError("token_invalid", "pass token has no jti")
+        return claims
+
+    def _consume_exec_jti(self, claims: dict, slot_id: str) -> str:
+        """Atomically consume the jti; durable replay rejection. Returns the jti."""
+        jti = claims["jti"]
+        if not self.registry.consume_jti(jti, slot_id):
+            raise PassError("pass_replayed", "pass token was already used")
+        return jti
+
+    def exec_(
+        self,
+        tenant_id: str,
+        slot_id: str,
+        payload_ref: str,
+        idempotency_key: str | None = None,
+        token: str | None = None,
+        agent_id: str | None = None,
+    ) -> dict:
+        # Authorization precedes the idempotency cache on every path: a cached
+        # result is only returned to a caller that passes the tenant check and
+        # presents a valid token bound to this slot/pass/agent, and only for
+        # the original payload. Cache keys are tenant+slot scoped.
+        slot = self._authorized_slot(tenant_id, slot_id)
+        claims = self._verify_exec_token(slot, token, agent_id)
+        if isinstance(self.runner, SandboxRunner):
+            # An old idempotency result must not make an unqualified runner
+            # appear ready. This also precedes reservation, token burn, and
+            # all paths that could spawn a new process.
+            self.runner._require_profile()
+        cache_key = (
+            f"exec:{tenant_id}:{slot_id}:{idempotency_key}" if idempotency_key else None
+        )
+        if cache_key:
+            cached = self.registry.recall(cache_key)
+            if cached is not None:
+                if cached.get("request", {}).get("payload_ref") != payload_ref:
+                    raise ValueError("idempotency key reused with a different request")
+                return cached["result"]
+        if self._expire_if_needed(slot):
+            raise ValueError("slot is expired")
+        if slot["state"] in BLOCKED_STATES:
+            raise ValueError(f"slot is {slot['state']}")
+        previous_state = slot["state"]
+        jti = self._consume_exec_jti(claims, slot_id)
+
+        # Atomic start (issue #1): reserve the slot with a run generation
+        # before any receipt or side effect, so a concurrent kill/expiry can
+        # never seal a terminal state and then watch a process start. The
+        # expiry predicate is part of the same transaction, so a slot that
+        # expires between the read above and this CAS cannot start either.
+        generation = int(slot.get("run_generation") or 0) + 1
+        started = self.registry.cas_slot(
+            slot_id,
+            PRE_START_STATES,
+            {
+                "state": STARTING_STATE,
+                "run_generation": generation,
+                "starting_at_ms": int(time.time() * 1000),
+            },
+            require=lambda s: s.get("expires_at", 0) > now_epoch(),
+        )
+        if started is None:
+            # No work ran; the token is not burned.
+            self.registry.release_jti(jti)
+            fresh = self.registry.get_slot(slot_id) or slot
+            raise ValueError(
+                f"start rejected: slot is {fresh['state']} — no process started"
+            )
+        slot = started
+
+        try:
+            decision = self._emit(
+                slot,
+                "task.decision",
+                {
+                    "action": "mandala.exec",
+                    "action_args_hash": sha256_prefixed(payload_ref.encode()),
+                    "model": {"provider": "gate", "id": "sandbox"},
+                    "input_provenance": {
+                        "policy_id": "gate.egress.default",
+                        "allowed_sources": ["gate"],
+                        "observed_sources_hash": sha256_prefixed(b"gate"),
+                    },
+                    "decision": "allow",
+                    "policy_version": self.policy_version,
+                },
+            )
+        except EmitterError:
+            # No receipt, no start: release the reservation so the slot is not
+            # wedged in `starting`, and release the token (no work ran).
+            self.registry.cas_slot(
+                slot_id, (STARTING_STATE,), {"state": previous_state}
+            )
+            self.registry.release_jti(jti)
+            raise
+
+        def on_spawn(pid: int, pgid: int, unit: str | None):
+            self._journal_run(slot_id, pid, pgid, unit, generation)
+
+        run_slot = dict(slot)
+        run_slot["workspace"] = str(self.workspaces_dir / slot_id)
+        try:
+            # Planning can reject malformed payloads before a process exists;
+            # use the same reservation/token cleanup as runner pre-start errors.
+            runner_profile = self.runner.profile_for(run_slot, payload_ref) if isinstance(self.runner, SandboxRunner) else None
+            result = self.runner.run(run_slot, payload_ref, on_spawn=on_spawn)
+        except Exception:
+            # The runner failed before any process of record exists; release
+            # the reservation so the slot can be retried, and the token with it.
+            if self.active_run(slot_id) is None:
+                self.registry.cas_slot(
+                    slot_id, (STARTING_STATE,), {"state": previous_state}
+                )
+                self.registry.release_jti(jti)
+            raise
+        self._last_exec[slot_id] = result
+        self._run_path(slot_id).unlink(missing_ok=True)
+
+        egress_evidence_incomplete = any(
+            entry.get("evidence_error") for entry in (result.egress or [])
+        )
+        execution_body = {
+            "tool_calls": [
+                {
+                    "name": "mandala.exec",
+                    "args_hash": sha256_prefixed(payload_ref.encode()),
+                    "result_hash": result.stdout_hash,
+                }
+            ],
+            "egress": result.egress or [
+                {
+                    "destination": "none",
+                    "bytes": 0,
+                    "allowed": True,
+                    "enforcer": "bwrap --unshare-all",
+                    "enforced": True,
+                }
+            ],
+            "resources": result.resources,
+            "sandbox_class": getattr(self.runner, "sandbox_class", "unknown"),
+            "exit_code": result.exit_code,
+            "egress_evidence_complete": not egress_evidence_incomplete,
+        }
+        if runner_profile is not None:
+            execution_body["runner_profile"] = runner_profile
+        execution = self._emit(
+            slot,
+            "task.execution",
+            execution_body,
+        )
+        try:
+            commitment = self._emit(slot, "state.commitment", self._state_commitment())
+        except Exception:
+            # The payload and task.execution are already durable. Do not leave
+            # the slot retryable or report a successful exec without its
+            # required state commitment. This terminal hold is intentionally
+            # visible in status; recovery requires operator review of the
+            # incomplete bundle rather than rerunning the payload.
+            self.registry.cas_slot(
+                slot_id, (STARTING_STATE,), {"state": "receipt_incomplete"}
+            )
+            raise
+
+        kill_request = self._consume_kill_request(slot_id)
+        if kill_request is not None and kill_request.get("run_generation") not in (
+            None,
+            generation,
+        ):
+            # A request bound to an older run must never terminate this one —
+            # a late start cannot consume an old request (issue #1).
+            kill_request = None
+        response = {
+            "slot_id": slot_id,
+            "exit": result.exit_code,
+            "stdout_hash": result.stdout_hash,
+            "receipt_ids": [
+                decision["receipt_id"],
+                execution["receipt_id"],
+                commitment["receipt_id"],
+            ],
+        }
+        if result.stderr_hash:
+            response["stderr_hash"] = result.stderr_hash
+
+        termination = None
+        final_state = "terminated"
+        fresh_slot = self.registry.get_slot(slot_id) or slot
+        if egress_evidence_incomplete:
+            response["egress_evidence_incomplete"] = True
+            response["reason"] = "egress_evidence_incomplete"
+            final_state = "receipt_incomplete"
+        elif kill_request is not None:
+            latency_ms = max(int(time.time() * 1000) - int(kill_request.get("requested_at_ms", 0)), 0)
+            termination = self._emit(
+                slot,
+                "task.termination",
+                self._termination_body(
+                    slot, "killed", kill_signal="operator", latency_ms=latency_ms
+                ),
+            )
+            response["kill_signal"] = "operator"
+            response["operator_kill_latency_ms"] = latency_ms
+        elif result.killed_by:
+            termination = self._emit(
+                slot,
+                "task.termination",
+                self._termination_body(slot, "quota", kill_signal="quota", killed_by=result.killed_by),
+            )
+            response["kill_signal"] = "quota"
+            response["reason"] = "quota"
+        elif int(fresh_slot.get("expires_at", 0)) <= now_epoch():
+            # Expiry landed while the run was live; the seal is deferred to
+            # here so receipts stay monotonic (decision → execution →
+            # termination) instead of sealing mid-run.
+            termination = self._emit(
+                slot,
+                "task.termination",
+                self._termination_body(slot, "time_expired"),
+            )
+            response["reason"] = "time_expired"
+            final_state = "expired"
+
+        if termination is not None:
+            response["receipt_ids"].append(termination["receipt_id"])
+            self.registry.cas_slot(
+                slot_id, (STARTING_STATE,), {"state": final_state}
+            )
+        else:
+            self.registry.cas_slot(slot_id, (STARTING_STATE,), {"state": (
+                "receipt_incomplete" if egress_evidence_incomplete else "active"
+            )})
+
+        if cache_key:
+            self.registry.remember(
+                cache_key, {"request": {"payload_ref": payload_ref}, "result": response}
+            )
+        return response
+
+    def settle(
+        self,
+        tenant_id: str,
+        slot_id: str,
+        rail: str,
+        rail_ref: str,
+        minor: int,
+        currency: str = "USD",
+        gated_on_delivery: bool = True,
+    ) -> dict:
+        slot = self._authorized_slot(tenant_id, slot_id)
+        pass_record = self.registry.get_pass(slot["pass_id"]) or {}
+        cap = pass_record.get("spend_cap")
+        if cap and (currency != cap.get("currency") or minor > int(cap.get("minor", 0))):
+            raise ValueError(f"spend cap exceeded: {minor} {currency} > {cap}")
+
+        if gated_on_delivery:
+            # Settlement may run in a fresh CLI process. Recover the latest
+            # execution result from its durable signed receipt instead of the
+            # process-local cache. When no execution exists, retain the
+            # established explicit `none` sentinel for pre-execution settles.
+            execution = self._last_receipt(slot, "task.execution")
+            result_hash = None
+            if execution:
+                calls = execution.get("body", {}).get("tool_calls", [])
+                for call in reversed(calls):
+                    if call.get("name") == "mandala.exec" and call.get("result_hash"):
+                        result_hash = call["result_hash"]
+                        break
+            self._emit(
+                slot,
+                "delivery.attestation",
+                {
+                    "request_hash": sha256_prefixed(f"request:{slot_id}".encode()),
+                    "response_hash": result_hash or sha256_prefixed(b"none"),
+                    "counterparty": {"id": self.gate_did},
+                    "spec_ref": RECEIPT_SPEC,
+                },
+            )
+        return self._emit(
+            slot,
+            "settlement",
+            {
+                "rail": rail,
+                "rail_ref": rail_ref,
+                "amount": {"minor": minor, "currency": currency},
+                "gated_on_delivery": gated_on_delivery,
+                "settled_at": rfc3339(now_epoch()),
+            },
+        )
+
+    def terminate(
+        self,
+        tenant_id: str,
+        slot_id: str,
+        reason: str = "completed",
+        kill_signal: str | None = None,
+    ) -> dict:
+        slot = self._authorized_slot(tenant_id, slot_id)
+        # Reserve the terminal transition atomically (issue #1): an in-flight
+        # start must never be sealed, and an idle slot must not be sealed
+        # between the read and the write.
+        reserved = self.registry.cas_slot(
+            slot_id, IDLE_SEALABLE_STATES, {"state": TERMINATING_STATE}
+        )
+        if reserved is None:
+            fresh = self.registry.get_slot(slot_id) or slot
+            if fresh["state"] in TERMINAL_STATES:
+                receipt = self._last_receipt(fresh, "task.termination")
+                return {
+                    "slot_id": slot_id,
+                    "task_id": fresh.get("task_id") or self.task_id_for(slot_id),
+                    "receipt_id": receipt.get("receipt_id") if receipt else None,
+                }
+            raise ValueError(
+                f"terminate rejected: slot is {fresh['state']} — a start is in flight"
+            )
+        receipt = self._emit(
+            reserved,
+            "task.termination",
+            self._termination_body(reserved, reason, kill_signal=kill_signal),
+        )
+        self.registry.cas_slot(slot_id, (TERMINATING_STATE,), {"state": "terminated"})
+        return {"slot_id": slot_id, "task_id": self.task_id_for(slot_id), "receipt_id": receipt["receipt_id"]}
+
+    def kill(self, tenant_id: str, slot_id: str, signal_name: str = "SIGTERM", wait_s: float = 5.0) -> dict:
+        """Operator kill: terminates a live run within `wait_s` seconds (escalates to SIGKILL)."""
+        slot = self._authorized_slot(tenant_id, slot_id)
+        if self._expire_if_needed(slot):
+            raise ValueError("slot is expired")
+        if slot["state"] in TERMINAL_STATES:
+            raise ValueError(f"slot is {slot['state']}")
+
+        for _ in range(2):
+            run = self.active_run(slot_id)
+            if run and self._pid_alive(run.get("pid")):
+                return self._kill_live_run(slot_id, run, signal_name, wait_s)
+
+            if slot["state"] == STARTING_STATE:
+                # Start in flight, no pid journaled yet (issue #1): bind the
+                # request to this generation and wait for the journal or the
+                # run to finish. Never seal mid-start.
+                generation = int(slot.get("run_generation") or 0)
+                self._write_kill_request(slot_id, signal_name, generation)
+                deadline = time.time() + wait_s
+                while time.time() < deadline:
+                    run = self.active_run(slot_id)
+                    if run and self._pid_alive(run.get("pid")):
+                        return self._kill_live_run(
+                            slot_id, run, signal_name, max(deadline - time.time(), 0.1)
+                        )
+                    fresh = self.registry.get_slot(slot_id) or slot
+                    if fresh["state"] in TERMINAL_STATES:
+                        return self._terminal_kill_result(fresh)
+                    if fresh["state"] != STARTING_STATE:
+                        slot = fresh
+                        break
+                    time.sleep(0.05)
+                else:
+                    fresh = self.registry.get_slot(slot_id) or slot
+                    if fresh["state"] in TERMINAL_STATES:
+                        return self._terminal_kill_result(fresh)
+                    return {
+                        "slot_id": slot_id,
+                        "state": fresh["state"],
+                        "outcome": "deferred",
+                        "kill_signal": "operator",
+                        "receipt_id": None,
+                        "exec_active": False,
+                        "hint": f"start in flight (generation {generation}); the kill request is bound to that generation and will be consumed when the run starts",
+                    }
+                continue
+
+            # Idle slot: reserve the terminal transition atomically so a
+            # concurrent start cannot slip between the read and the seal.
+            reserved = self.registry.cas_slot(
+                slot_id, IDLE_SEALABLE_STATES, {"state": TERMINATING_STATE}
+            )
+            if reserved is None:
+                slot = self.registry.get_slot(slot_id) or slot
+                if slot["state"] in TERMINAL_STATES:
+                    return self._terminal_kill_result(slot)
+                continue  # a start raced in; the next iteration handles it
+            receipt = self._emit(
+                reserved,
+                "task.termination",
+                self._termination_body(reserved, "killed", kill_signal="operator"),
+            )
+            self.registry.cas_slot(
+                slot_id, (TERMINATING_STATE,), {"state": "terminated"}
+            )
+            return {
+                "slot_id": slot_id,
+                "state": "terminated",
+                "kill_signal": "operator",
+                "receipt_id": receipt["receipt_id"],
+                "exec_active": False,
+            }
+
+        fresh = self.registry.get_slot(slot_id) or slot
+        if fresh["state"] in TERMINAL_STATES:
+            return self._terminal_kill_result(fresh)
+        return {
+            "slot_id": slot_id,
+            "state": fresh["state"],
+            "outcome": "unknown",
+            "kill_signal": "operator",
+            "receipt_id": None,
+            "exec_active": False,
+            "hint": "kill could not be bound to a run or an idle slot; retry",
+        }
+
+    def snapshot(self, tenant_id: str, slot_id: str) -> dict:
+        """Filesystem snapshot of the slot workspace (gate-lite: no store image)."""
+        slot = self._authorized_slot(tenant_id, slot_id)
+        if self._expire_if_needed(slot):
+            raise ValueError("slot is expired")
+        if slot["state"] in TERMINAL_STATES:
+            raise ValueError(f"slot is {slot['state']}")
+        workspace = self.workspaces_dir / slot_id
+        workspace.mkdir(parents=True, exist_ok=True)
+        snapshot_id = "snap-" + uuid.uuid4().hex[:12]
+        archive_dir = self.snapshots_dir / slot_id
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        archive_path = archive_dir / f"{snapshot_id}.tar.gz"
+        with tarfile.open(archive_path, "w:gz") as tar:
+            for child in sorted(workspace.iterdir()):
+                tar.add(child, arcname=child.name, recursive=True)
+        payload = archive_path.read_bytes()
+        digest = sha256_prefixed(payload)
+        workspace_hash = tree_hash(workspace)
+        receipt = self._emit(
+            slot,
+            "delivery.attestation",
+            {
+                "request_hash": sha256_prefixed(f"snapshot:{slot_id}:{snapshot_id}".encode()),
+                "response_hash": digest,
+                "counterparty": {"id": self.gate_did},
+                "spec_ref": RECEIPT_SPEC,
+                "artifact": {
+                    "snapshot_id": snapshot_id,
+                    "kind": "filesystem-tar.gz",
+                    "bytes": len(payload),
+                    "sha256": digest,
+                },
+            },
+        )
+        self.registry.put_snapshot(
+            {
+                "snapshot_id": snapshot_id,
+                "slot_id": slot_id,
+                "tenant_id": tenant_id,
+                "artifact": str(archive_path),
+                "sha256": digest,
+                "bytes": len(payload),
+                "tree_hash": workspace_hash,
+                "created_at": now_epoch(),
+            }
+        )
+        fresh = self.registry.get_slot(slot_id) or slot
+        if fresh["state"] not in TERMINAL_STATES:
+            fresh["state"] = "frozen"
+            self.registry.put_slot(fresh)
+        return {
+            "slot_id": slot_id,
+            "snapshot_id": snapshot_id,
+            "receipt_id": receipt["receipt_id"],
+            "state": fresh["state"],
+            "tree_hash": workspace_hash,
+            "artifact": {"path": str(archive_path), "sha256": digest, "bytes": len(payload)},
+        }
+
+    def restore(self, tenant_id: str, slot_id: str, snapshot_id: str) -> dict:
+        """Materialize a snapshot into a placed slot (G7 lane; filesystem only)."""
+        slot = self._authorized_slot(tenant_id, slot_id)
+        if self._expire_if_needed(slot):
+            raise ValueError("slot is expired")
+        if slot["state"] != "placed":
+            raise ValueError(f"slot is {slot['state']}; restore needs a placed slot")
+        record = self.registry.get_snapshot(snapshot_id)
+        if record is None:
+            raise KeyError(f"unknown snapshot {snapshot_id}")
+        if record["tenant_id"] != tenant_id:
+            raise PermissionError("cross-tenant snapshot access denied")
+        archive = Path(record["artifact"])
+        if not archive.exists():
+            raise KeyError(f"snapshot artifact missing: {archive}")
+        payload = archive.read_bytes()
+        digest = sha256_prefixed(payload)
+        if digest != record["sha256"]:
+            raise ValueError("snapshot integrity check failed")
+
+        workspace = self.workspaces_dir / slot_id
+        if workspace.exists() and any(workspace.iterdir()):
+            raise ValueError("workspace is not empty")
+        workspace.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(archive) as tar:
+            _safe_extract(tar, workspace)
+
+        restored = tree_hash(workspace)
+        receipt = self._emit(
+            slot,
+            "delivery.attestation",
+            {
+                "request_hash": record["sha256"],
+                "response_hash": restored,
+                "counterparty": {"id": self.gate_did},
+                "spec_ref": RECEIPT_SPEC,
+                "artifact": {
+                    "snapshot_id": snapshot_id,
+                    "kind": "filesystem-restore",
+                    "sha256": record["sha256"],
+                    "restored_into": slot_id,
+                },
+            },
+        )
+        return {
+            "slot_id": slot_id,
+            "snapshot_id": snapshot_id,
+            "workspace": str(workspace),
+            "restored_hash": restored,
+            "receipt_id": receipt["receipt_id"],
+        }
+
+    def _expire_if_needed(self, slot: dict) -> bool:
+        if slot["state"] in TERMINAL_STATES or slot.get("expires_at", 0) > now_epoch():
+            return False
+        if slot["state"] in (STARTING_STATE, TERMINATING_STATE):
+            # A start/terminate is in flight; sealing here would break receipt
+            # monotonicity and could seal before a process starts (issue #1).
+            # exec_ applies the expiry after the run, as a termination receipt
+            # that follows task.execution.
+            return False
+        if self.active_run(slot["slot_id"]):
+            # Live run: expiry is applied by exec_ after execution.
+            return False
+        reserved = self.registry.cas_slot(
+            slot["slot_id"], IDLE_SEALABLE_STATES, {"state": TERMINATING_STATE}
+        )
+        if reserved is None:
+            return False
+        self._emit(
+            reserved,
+            "task.termination",
+            self._termination_body(reserved, "time_expired"),
+        )
+        self.registry.cas_slot(
+            slot["slot_id"], (TERMINATING_STATE,), {"state": "expired"}
+        )
+        return True
+
+    def sweep_expired(self, tenant_id: str | None = None) -> dict:
+        """Seal every past-expiry slot with a time_expired termination receipt."""
+        sealed = []
+        for slot in self.registry.all_slots(tenant_id):
+            if slot["state"] in TERMINAL_STATES:
+                continue
+            if slot["state"] in (STARTING_STATE, TERMINATING_STATE):
+                # In-flight transitions seal themselves; never mid-start.
+                continue
+            if self.active_run(slot["slot_id"]):
+                # Live run: exec_ applies the expiry after execution.
+                continue
+            if self._expire_if_needed(slot):
+                sealed.append(
+                    {
+                        "slot_id": slot["slot_id"],
+                        "tenant_id": slot["tenant_id"],
+                        "receipt_id": self._last_receipt(slot, "task.termination").get("receipt_id"),
+                    }
+                )
+        return {"expired": sealed, "count": len(sealed)}
+
+    def runner_info(self) -> dict:
+        runner = self.runner
+        info = {
+            "class": getattr(runner, "sandbox_class", "unknown"),
+            "simulated": isinstance(runner, StubRunner),
+        }
+        path = getattr(runner, "runner_path", None)
+        if path:
+            info["path"] = path
+        digest = getattr(runner, "runner_digest", None)
+        if digest:
+            info["executable_sha256"] = digest
+        adapter_id = getattr(runner, "adapter_id", None)
+        if adapter_id:
+            info["adapter_id"] = adapter_id
+        profile_id = getattr(runner, "profile_id", None)
+        if profile_id:
+            info["profile_id"] = profile_id
+        info["profile_status"] = getattr(
+            runner, "profile_status", "simulated" if isinstance(runner, StubRunner) else "unqualified"
+        )
+        info["receipt_spec"] = RECEIPT_SPEC
+        info["receipt_dependency"] = RECEIPT_PACKAGE_VERSION
+        info["receipt_runtime_version"] = RECEIPT_RUNTIME_VERSION
+        return info
+
+    def status(self, tenant_id: str, slot_id: str) -> dict:
+        slot = self._authorized_slot(tenant_id, slot_id)
+        return {"slot": slot, "runner": self.runner_info()}
+
+    def list_(self, tenant_id: str) -> list[dict]:
+        return self.registry.slots_for(tenant_id)

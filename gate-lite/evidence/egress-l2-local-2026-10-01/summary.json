@@ -1,0 +1,32 @@
+{
+  "standalone": {
+    "allowed_body_ok": true,
+    "allowed_rc": 0,
+    "denied_rc": 1,
+    "raw": "blocked"
+  },
+  "gate": {
+    "verdict": "TRUSTED",
+    "profile_id": "urn:mandala:runner-profile:bwrap-egress-v1",
+    "egress": [
+      {
+        "destination": "127.0.0.1:42933",
+        "bytes": 212,
+        "bytes_out": 87,
+        "bytes_in": 125,
+        "allowed": true,
+        "enforced": true,
+        "enforcer": "unix-proxy-allowlist"
+      },
+      {
+        "destination": "example.org:80",
+        "bytes": 0,
+        "allowed": false,
+        "enforced": true,
+        "enforcer": "unix-proxy-allowlist",
+        "denied_reason": "not-in-allowlist"
+      }
+    ]
+  },
+  "failures": []
+}

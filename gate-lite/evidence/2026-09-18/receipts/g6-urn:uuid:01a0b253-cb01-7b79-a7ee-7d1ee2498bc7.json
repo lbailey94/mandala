@@ -1,0 +1,152 @@
+{
+  "spec": "continuity-receipt/0.1",
+  "task_id": "urn:uuid:01a0b253-cb01-7b79-a7ee-7d1ee2498bc7",
+  "receipts": [
+    {
+      "spec": "continuity-receipt/0.1",
+      "receipt_id": "urn:uuid:01a0b253-cb01-71b7-894b-e59b7e8119fa",
+      "task_id": "urn:uuid:01a0b253-cb01-7b79-a7ee-7d1ee2498bc7",
+      "issued_at": "2026-09-18T02:23:51Z",
+      "issuer": {
+        "kind": "gate",
+        "id": "did:key:z6Mkn81Cz6i4uWj5SaHZk6gxY8FLR2Xamtsq7g4sLkiij2Ug"
+      },
+      "type": "session.pass.created",
+      "seq": 0,
+      "prev": null,
+      "body": {
+        "gate_id": "gate-lite-1",
+        "mandala_class": "gate-lite",
+        "quotas": {
+          "cpu_ms": 300000,
+          "mem_mb": 1024,
+          "disk_mb": 512,
+          "wall_ms": 300000
+        },
+        "expires_at": "2026-09-18T02:28:51Z",
+        "policy_version": "2026-09-17.1",
+        "mandate_ref": "sha256:100ff974fd40fb60d9334b0616040d8f7c28c31707e6e7543993104cb82925b5",
+        "agent_id": "did:key:z6MkkA1ajLV8gVyKXjk4oabimsVuz4RM9ewhKV18jpRzrwcC"
+      },
+      "sig": {
+        "alg": "ed25519",
+        "key": "did:key:z6Mkn81Cz6i4uWj5SaHZk6gxY8FLR2Xamtsq7g4sLkiij2Ug",
+        "value": "nDgpWf6NwZcyCY-8r3DATuk6EjUdi2H1ydS0mxoyua9iQqyK1uU6LLgnUWg_sKPz-7BU9_cEpbX15gBwGFRVCQ"
+      }
+    },
+    {
+      "spec": "continuity-receipt/0.1",
+      "receipt_id": "urn:uuid:01a0b253-cbbb-7bbc-9692-253245607fd4",
+      "task_id": "urn:uuid:01a0b253-cb01-7b79-a7ee-7d1ee2498bc7",
+      "issued_at": "2026-09-18T02:23:51Z",
+      "issuer": {
+        "kind": "gate",
+        "id": "did:key:z6Mkn81Cz6i4uWj5SaHZk6gxY8FLR2Xamtsq7g4sLkiij2Ug"
+      },
+      "type": "task.decision",
+      "seq": 1,
+      "prev": "sha256:e71804743c522819d8cbe7485c01b173b2046d1e5afda431b55e532ad68366b8",
+      "body": {
+        "action": "mandala.exec",
+        "action_args_hash": "sha256:637cbdb3daf0341b069901e72cca1a318646a4bf08b67ab1823db46fca9c1aef",
+        "model": {
+          "provider": "gate",
+          "id": "sandbox"
+        },
+        "input_provenance": {
+          "policy_id": "gate.egress.default",
+          "allowed_sources": [
+            "gate"
+          ],
+          "observed_sources_hash": "sha256:c974e17b8e7321ce8c12983de3d0ed4a289821f579bbe0925b0181a4bc8e8d80"
+        },
+        "decision": "allow",
+        "policy_version": "2026-09-17.1"
+      },
+      "sig": {
+        "alg": "ed25519",
+        "key": "did:key:z6Mkn81Cz6i4uWj5SaHZk6gxY8FLR2Xamtsq7g4sLkiij2Ug",
+        "value": "bkZLnHyX6XjHuq3zO5fBBK1TiIJndEDW5EoJxxt4ooOEzu83LAMoSuF2VuDfIiPrXUeVJb38O4GWzJcihnDsDQ"
+      }
+    },
+    {
+      "spec": "continuity-receipt/0.1",
+      "receipt_id": "urn:uuid:01a0b253-cc7b-74e2-b70f-528d068d3dc8",
+      "task_id": "urn:uuid:01a0b253-cb01-7b79-a7ee-7d1ee2498bc7",
+      "issued_at": "2026-09-18T02:23:51Z",
+      "issuer": {
+        "kind": "gate",
+        "id": "did:key:z6Mkn81Cz6i4uWj5SaHZk6gxY8FLR2Xamtsq7g4sLkiij2Ug"
+      },
+      "type": "task.execution",
+      "seq": 2,
+      "prev": "sha256:7306bd6a08049256cca0d4cc4c8ed4c60c4edcbb76e12aea0d3bbd9d015faa6c",
+      "body": {
+        "tool_calls": [
+          {
+            "name": "mandala.exec",
+            "args_hash": "sha256:637cbdb3daf0341b069901e72cca1a318646a4bf08b67ab1823db46fca9c1aef",
+            "result_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "egress": [
+          {
+            "destination": "none",
+            "bytes": 0,
+            "allowed": true
+          }
+        ],
+        "resources": {
+          "cpu_ms": 0,
+          "mem_peak_mb": 0,
+          "disk_peak_mb": 0
+        },
+        "sandbox_class": "bwrap-landlock+systemd-slice"
+      },
+      "sig": {
+        "alg": "ed25519",
+        "key": "did:key:z6Mkn81Cz6i4uWj5SaHZk6gxY8FLR2Xamtsq7g4sLkiij2Ug",
+        "value": "esaN_udT5gxV_3I43i1YjtT1-flkgafblTY8nGL0-tHw_W3IuSDj5DKG9oJzYMBrBrfdT2lDnC-CYUOxp6tHAQ"
+      }
+    },
+    {
+      "spec": "continuity-receipt/0.1",
+      "receipt_id": "urn:uuid:01a0b253-cc7c-7655-af5d-0b35ee34a17a",
+      "task_id": "urn:uuid:01a0b253-cb01-7b79-a7ee-7d1ee2498bc7",
+      "issued_at": "2026-09-18T02:23:51Z",
+      "issuer": {
+        "kind": "gate",
+        "id": "did:key:z6Mkn81Cz6i4uWj5SaHZk6gxY8FLR2Xamtsq7g4sLkiij2Ug"
+      },
+      "type": "task.termination",
+      "seq": 3,
+      "prev": "sha256:b85df74f859c9be975c2faa9f4a2b36fe6fe8c531135a1bd629353490afa88a9",
+      "body": {
+        "reason": "killed",
+        "limits_at_stop": {
+          "cpu_ms": 300000,
+          "wall_ms": 300000,
+          "spend_minor": 0,
+          "currency": "USD"
+        },
+        "remaining": {
+          "cpu_ms": 0,
+          "wall_ms": 300000,
+          "spend_minor": 0,
+          "currency": "USD"
+        },
+        "kill_signal": "operator",
+        "operator_kill_latency_ms": 42,
+        "observed": {
+          "exit": 0,
+          "stdout_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "sig": {
+        "alg": "ed25519",
+        "key": "did:key:z6Mkn81Cz6i4uWj5SaHZk6gxY8FLR2Xamtsq7g4sLkiij2Ug",
+        "value": "CNQX9ddKjq8jWBv3KAmz_qFlgiyg76aqlNuyvL_SfMldVZEYKWFZJQIz6s55hfQkzpjoW8MSCgP8BhEBi7FXAA"
+      }
+    }
+  ]
+}

@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lakshmi — MandalaOS Harmony Vector</title>
+<style>
+  :root { --bg:#12141a; --panel:#1a1d26; --ink:#e8eaf0; --dim:#8b91a5; --line:#2a2f3d;
+          --good:#5fd38a; --warn:#e8c15a; --bad:#e06060; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:14px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  header { display:flex; align-items:baseline; gap:14px; padding:14px 18px;
+           border-bottom:1px solid var(--line); }
+  header h1 { font-size:15px; margin:0; letter-spacing:.06em; }
+  header .spacer { flex:1; }
+  .pill { border:1px solid var(--line); border-radius:999px; padding:2px 10px;
+          color:var(--dim); font-size:12px; }
+  .pill .dot { display:inline-block; width:8px; height:8px; border-radius:50%;
+               background:var(--dim); margin-right:6px; vertical-align:middle; }
+  .pill.ok .dot { background:var(--good); } .pill.down .dot { background:var(--bad); }
+  main { display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; padding:14px 18px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+           padding:14px 16px; }
+  .panel h2 { margin:0 0 10px; font-size:12px; letter-spacing:.08em; color:var(--dim);
+              text-transform:uppercase; }
+  .hero { display:flex; align-items:center; gap:18px; }
+  .hero .score { font-size:42px; font-weight:600; line-height:1; }
+  .hero .meta { color:var(--dim); font-size:12px; }
+  .dim { display:grid; grid-template-columns: 120px 1fr 52px; gap:10px;
+         align-items:center; margin:7px 0; }
+  .dim .name { color:var(--dim); }
+  .dim .score { text-align:right; }
+  .bar { height:9px; border-radius:5px; background:var(--line); overflow:hidden; }
+  .bar i { display:block; height:100%; border-radius:5px; background:var(--good); }
+  .bar i.warn { background:var(--warn); } .bar i.bad { background:var(--bad); }
+  .note { color:var(--dim); font-size:11px; grid-column:2 / 4; margin-top:-4px;
+          overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  ul { list-style:none; margin:0; padding:0; }
+  li { padding:5px 0; border-bottom:1px dashed var(--line); font-size:12.5px; }
+  li:last-child { border-bottom:none; }
+  li .t { color:var(--dim); margin-right:8px; }
+  .spark { display:block; width:100%; height:40px; margin-top:8px; }
+  .trend { display:grid; grid-template-columns: 84px 1fr 46px; gap:8px; align-items:center;
+           margin:6px 0; }
+  .trend .name { color:var(--dim); font-size:12px; }
+  .trend .val { text-align:right; font-size:12px; }
+  .wave-row { display:grid; grid-template-columns: 108px 1fr 1fr 46px; gap:8px;
+              align-items:center; margin:5px 0; }
+  .wave-row .name { color:var(--dim); font-size:12px; }
+  .wave { display:block; width:100%; height:22px; }
+  .wave-row .val { text-align:right; font-size:12px; }
+  table.pol { width:100%; border-collapse:collapse; font-size:12px; }
+  table.pol td { padding:3px 4px; border-bottom:1px dashed var(--line); vertical-align:top; }
+  table.pol td.num { text-align:right; color:var(--dim); }
+  .pill2 { border-radius:999px; padding:1px 8px; font-size:11px; border:1px solid var(--line);
+           color:var(--dim); }
+  .pill2.observing { color:#e8c15a; border-color:#e8c15a; }
+  .pill2.confirmed { color:#e06060; border-color:#e06060; }
+  .pill2.clear { color:#5fd38a; border-color:#5fd38a; }
+  .obs { font-size:12px; }
+  .mixer { display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin:6px 0 2px;
+           color:var(--dim); font-size:12px; }
+  .mixer select, .mixer input[type=range] { background:var(--panel); color:var(--ink);
+           border:1px solid var(--line); border-radius:6px; padding:2px 6px; }
+  .mixer input[type=range] { width:110px; padding:0; }
+  .mixer label { display:inline-flex; gap:6px; align-items:center; }
+  details { margin-top:8px; }
+  details summary { cursor:pointer; color:var(--dim); font-size:12px; }
+  pre { background:#0e1015; border:1px solid var(--line); border-radius:8px; padding:10px;
+        overflow:auto; max-height:340px; font-size:11.5px; white-space:pre-wrap;
+        word-break:break-word; }
+  footer { display:flex; gap:14px; flex-wrap:wrap; padding:10px 18px 20px;
+           color:var(--dim); font-size:12px; }
+  .err { color:var(--bad); }
+  .band-track { position:relative; display:inline-block; height:10px; border-radius:5px;
+                overflow:hidden; background:var(--line); width:150px; vertical-align:middle; }
+  .band-track .zone { position:absolute; top:0; bottom:0; opacity:.45; }
+  .band-track .zone.enter { background:var(--bad); }
+  .band-track .zone.band { background:var(--warn); }
+  .band-track .zone.clear { background:var(--good); }
+  .band-track .dot { position:absolute; top:-3px; width:4px; height:16px; border-radius:2px;
+                     background:var(--ink); transform:translateX(-2px); }
+  .band-track .dot.bad { background:var(--bad); }
+  .band-track .dot.warn { background:var(--warn); }
+  .band-track .dot.good { background:var(--good); }
+  .pol-sub td { padding:0 4px 7px; }
+  .explain { color:var(--dim); font-size:11px; margin-top:3px; }
+  .bridge-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:8px; }
+  .bridge-cell { border:1px solid var(--line); border-radius:8px; padding:6px 8px; }
+  .bridge-cell.hot { border-color:var(--warn); }
+  .bridge-cell .n { font-size:18px; }
+  .lamps { display:flex; gap:14px; flex-wrap:wrap; color:var(--dim); font-size:11.5px;
+           margin-bottom:6px; }
+  .lamp .dot { display:inline-block; width:8px; height:8px; border-radius:50%;
+               background:var(--dim); margin-right:5px; vertical-align:middle; }
+  .lamp.up .dot { background:var(--good); } .lamp.down .dot { background:var(--bad); }
+</style>
+</head>
+<body>
+<header>
+  <h1>LAKSHMI · HARMONY VECTOR</h1>
+  <span class="pill" id="wm-pill"><span class="dot"></span>wm ?</span>
+  <span class="pill" id="sampler-pill">sampler ?</span>
+  <span class="spacer"></span>
+  <span class="pill"><a href="/mandala" style="color:inherit;text-decoration:none">mandala</a></span>
+  <span class="pill" id="galaxy-pill">galaxy ?</span>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Composite</h2>
+    <div class="hero">
+      <div class="score" id="harmony">–</div>
+      <div>
+        <div class="meta" id="hero-meta">waiting for the sampler…</div>
+        <svg class="spark" id="spark" viewBox="0 0 260 40" preserveAspectRatio="none"></svg>
+      </div>
+    </div>
+    <h2 style="margin-top:16px">Dimensions</h2>
+    <div id="dims"></div>
+    <h2 style="margin-top:16px">Wavelengths <span class="meta">(fast 5 m live · slow windows)</span></h2>
+    <div class="mixer">
+      <label>band
+        <select id="band">
+          <option value="1">60 m</option>
+          <option value="6" selected>6 h</option>
+          <option value="24">24 h</option>
+          <option value="7r">7 d rollups</option>
+        </select>
+      </label>
+      <label>fast smooth <input type="range" id="ema" min="0" max="90" step="10" value="0"><span id="ema-v">0%</span></label>
+      <label><input type="checkbox" id="pause"> pause</label>
+      <span class="meta" id="mix-note"></span>
+    </div>
+    <div id="waves"></div>
+  </section>
+
+  <section style="display:flex; flex-direction:column; gap:14px">
+    <div class="panel">
+      <h2>Trends (window history)</h2>
+      <div class="trend"><span class="name">harmony</span><svg class="spark" id="sp-harmony" viewBox="0 0 220 30" preserveAspectRatio="none"></svg><span class="val" id="sp-harmony-v">–</span></div>
+      <div class="trend"><span class="name">karma_debt</span><svg class="spark" id="sp-karma" viewBox="0 0 220 30" preserveAspectRatio="none"></svg><span class="val" id="sp-karma-v">–</span></div>
+      <div class="trend"><span class="name">karma Δ/window</span><svg class="spark" id="sp-karma-d" viewBox="0 0 220 30" preserveAspectRatio="none"></svg><span class="val" id="sp-karma-d-v">–</span></div>
+      <div class="trend"><span class="name">dharma</span><svg class="spark" id="sp-dharma" viewBox="0 0 220 30" preserveAspectRatio="none"></svg><span class="val" id="sp-dharma-v">–</span></div>
+    </div>
+    <div class="panel">
+      <h2>Yama bridge <span class="meta" id="bridge-window"></span></h2>
+      <div class="bridge-grid" id="bridge-counts"></div>
+      <div class="lamps" id="bridge-feeds"></div>
+      <ul id="bridge-recent"><li class="t">waiting…</li></ul>
+    </div>
+    <div class="panel">
+      <h2>Policies (step 0 · observe)</h2>
+      <table class="pol" id="policy-table">
+        <tr><td class="t">waiting for the sampler…</td></tr>
+      </table>
+      <details><summary>recent observations (decision records)</summary>
+        <ul id="obs-list"><li class="t">none yet</li></ul>
+      </details>
+      <p class="t" id="retention-line" hidden></p>
+    </div>
+    <div class="panel">
+      <h2>Threshold events (bus)</h2>
+      <ul id="events"><li class="t">waiting…</li></ul>
+    </div>
+    <div class="panel">
+      <h2>Guna · top processes</h2>
+      <div id="guna" class="meta">–</div>
+      <ul id="top"></ul>
+    </div>
+    <div class="panel">
+      <h2>Full readout</h2>
+      <div class="meta" id="ro-summary">–</div>
+      <details><summary>raw latest window record + sampler meta</summary><pre id="ro-raw">–</pre></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span id="f-endpoint">endpoint –</span>
+  <span id="f-spool">spool –</span>
+  <span id="f-source">history –</span>
+  <span id="f-updated">updated –</span>
+</footer>
+
+<script>
+const DIMS = ["fairness","responsiveness","throughput","stability","energy","dharma","karma_debt"];
+const el = (id) => document.getElementById(id);
+const cls = (v) => v >= 0.6 ? "" : (v >= 0.3 ? "warn" : "bad");
+const pct = (v) => Math.max(0, Math.min(1, v)) * 100;
+
+async function getJSON(path) {
+  const r = await fetch(path, {cache:"no-store"});
+  return r.json();
+}
+function ago(seconds) {
+  if (seconds < 90) return Math.round(seconds) + "s ago";
+  if (seconds < 5400) return Math.round(seconds/60) + "m ago";
+  return Math.round(seconds/3600) + "h ago";
+}
+function sparkPoints(values, W, H, pad) {
+  return values.map((v,i) => {
+    const x = pad + (i/(values.length-1))*(W-2*pad);
+    const frac = Math.max(0, Math.min(1, v));
+    const y = H - pad - frac*(H-2*pad);
+    return x.toFixed(1) + "," + y.toFixed(1);
+  }).join(" ");
+}
+function drawSparkInto(svg, points, color, width) {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  if (!points) return;
+  const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  poly.setAttribute("points", points);
+  poly.setAttribute("fill", "none");
+  poly.setAttribute("stroke", color);
+  poly.setAttribute("stroke-width", width);
+  svg.appendChild(poly);
+}
+function sparkline(values) {
+  if (values.length < 2) return;
+  drawSparkInto(el("spark"), sparkPoints(values, 260, 40, 3), "#5fd38a", "1.6");
+}
+
+function drawSpark(svgId, values, color) {
+  const svg = el(svgId);
+  if (values.length < 2) { while (svg.firstChild) svg.removeChild(svg.firstChild); return; }
+  drawSparkInto(svg, sparkPoints(values, 220, 30, 2), color, "1.5");
+}
+
+let history = [];
+let latestData = null;
+let fastBuf = [];
+const THRESHOLDS = { responsiveness: 0.3, stability: 0.8, energy: 0.9 };
+const SVG_NS = "http://www.w3.org/2000/svg";
+const MIX_KEY = "lakshmi-mix";
+const BANDS = ["1", "6", "24", "7r"];
+const mix = Object.assign({ band: "6", ema: 0, paused: false },
+  JSON.parse(localStorage.getItem(MIX_KEY) || "{}"));
+if (!BANDS.includes(mix.band)) mix.band = "6";
+function hoursOf(band) { return band === "7r" ? 168 : Number(band); }
+function saveMix() { localStorage.setItem(MIX_KEY, JSON.stringify(mix)); }
+function ema(values, percent) {
+  if (!percent) return values;
+  const a = percent / 100;
+  const out = [];
+  let prev = null;
+  for (const v of values) {
+    prev = prev === null ? v : (a * prev + (1 - a) * v);
+    out.push(prev);
+  }
+  return out;
+}
+function windowMarkers(windows) {
+  const now = Date.now();
+  const span = hoursOf(mix.band) * 3600e3;
+  const start = now - span;
+  const out = [];
+  for (const w of windows) {
+    const t = Date.parse(w.ts || "");
+    if (!Number.isFinite(t)) continue;
+    const frac = (t - start) / span;
+    if (frac < 0 || frac > 1) continue;
+    if (!Array.isArray(w.events)) continue;
+    for (const ev of w.events) {
+      out.push({ frac, topic: ev.topic || "event" });
+    }
+  }
+  return out;
+}
+
+function pushFast(data) {
+  const s = data.snapshot || {};
+  fastBuf.push({ t: Date.now() / 1000, dims: s.dims || {}, harmony: Number(s.harmony_score ?? 0) });
+  if (fastBuf.length > 160) fastBuf = fastBuf.slice(-160);
+}
+
+function drawWave(svgId, values, color, threshold, markers) {
+  const W = 180, H = 22, pad = 2;
+  const svg = el(svgId);
+  if (!svg) return;
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  if (!values || values.length < 2) return;
+  const pts = values.map((v,i) => {
+    const x = pad + (i/(values.length-1))*(W-2*pad);
+    const f = Math.max(0, Math.min(1, v));
+    const y = H - pad - f*(H-2*pad);
+    return x.toFixed(1) + "," + y.toFixed(1);
+  }).join(" ");
+  drawSparkInto(svg, pts, color, "1.3");
+  if (threshold !== undefined) {
+    const y = H - pad - Math.max(0, Math.min(1, threshold))*(H-2*pad);
+    const line = document.createElementNS(SVG_NS, "line");
+    line.setAttribute("x1", "0"); line.setAttribute("x2", String(W));
+    line.setAttribute("y1", y.toFixed(1)); line.setAttribute("y2", y.toFixed(1));
+    line.setAttribute("stroke", "#e8c15a"); line.setAttribute("stroke-width", "0.7");
+    line.setAttribute("stroke-dasharray", "3,3"); line.setAttribute("opacity", "0.7");
+    svg.appendChild(line);
+  }
+  for (const m of (markers || [])) {
+    const tick = document.createElementNS(SVG_NS, "line");
+    const x = (m.frac * W).toFixed(1);
+    tick.setAttribute("x1", x); tick.setAttribute("x2", x);
+    tick.setAttribute("y1", "0"); tick.setAttribute("y2", String(H));
+    tick.setAttribute("stroke", "#ff9f43"); tick.setAttribute("stroke-width", "0.8");
+    tick.setAttribute("opacity", "0.85");
+    const title = document.createElementNS(SVG_NS, "title");
+    title.textContent = m.topic;
+    tick.appendChild(title);
+    svg.appendChild(tick);
+  }
+}
+
+function renderWaves() {
+  const hours = hoursOf(mix.band);
+  const isRollups = mix.band === "7r";
+  const lastBand = history.filter(w => {
+    const t = Date.parse(w.ts || "");
+    return Number.isFinite(t) && (Date.now() - t) < hours * 3600e3;
+  });
+  const markers = isRollups ? [] : windowMarkers(lastBand);
+  el("mix-note").textContent =
+    `band ${isRollups ? "7d rollups" : hours + "h"} · ${lastBand.length} ` +
+    `${isRollups ? "rollups" : "windows"}` +
+    (markers.length ? ` · ${markers.length} cues` : "") +
+    (mix.ema ? ` · smoothing ${mix.ema}%` : "") +
+    (mix.paused ? " · PAUSED" : "");
+  el("waves").innerHTML = DIMS.map(name => `
+    <div class="wave-row">
+      <span class="name">${name}</span>
+      <svg class="wave" id="w-fast-${name}" viewBox="0 0 180 22" preserveAspectRatio="none"></svg>
+      <svg class="wave" id="w-slow-${name}" viewBox="0 0 180 22" preserveAspectRatio="none"></svg>
+      <span class="val" id="w-val-${name}">–</span>
+    </div>`).join("");
+  DIMS.forEach(name => {
+    const fast = ema(fastBuf.map(p => Number(p.dims?.[name]?.score ?? 0)), mix.ema);
+    const slow = lastBand.map(w => Number(w.dims?.[name] ?? 0));
+    drawWave(`w-fast-${name}`, fast, "#8fb7ff", undefined);
+    drawWave(`w-slow-${name}`, slow, "#5fd38a", THRESHOLDS[name], markers);
+    const cur = fast.length ? fast[fast.length-1]
+                            : (slow.length ? slow[slow.length-1] : null);
+    el(`w-val-${name}`).textContent = cur === null ? "–" : cur.toFixed(2);
+  });
+}
+
+const ZONE_LABEL = { enter: "observe zone", band: "in band", clear: "clear", unknown: "no reading" };
+
+function meterHTML(p) {
+  if (p.value === null || p.value === undefined || !Number.isFinite(Number(p.value))) {
+    return `<span class="t">Samma-Meter: no reading` +
+           `${p.source_available === false ? " (source unavailable)" : ""}</span>`;
+  }
+  const v = Number(p.value);
+  const pos = (x) => Math.max(0, Math.min(1, Number(x))) * 100;
+  const enter = Number(p.enter), exit = Number(p.exit);
+  const gap = Math.abs(enter - exit);
+  let enterZone, bandZone, clearZone;
+  if (p.direction === "above") {
+    enterZone = `left:${pos(enter)}%;right:0`;
+    bandZone = `left:${pos(exit)}%;width:${pos(gap)}%`;
+    clearZone = `left:0;width:${pos(exit)}%`;
+  } else {
+    enterZone = `left:0;width:${pos(enter)}%`;
+    bandZone = `left:${pos(enter)}%;width:${pos(gap)}%`;
+    clearZone = `left:${pos(exit)}%;right:0`;
+  }
+  const dot = p.samma_zone === "enter" ? "bad" : (p.samma_zone === "band" ? "warn" : "good");
+  return `<span class="band-track" title="enter ${p.enter} · exit ${p.exit}">` +
+         `<span class="zone enter" style="${enterZone}"></span>` +
+         `<span class="zone band" style="${bandZone}"></span>` +
+         `<span class="zone clear" style="${clearZone}"></span>` +
+         `<span class="dot ${dot}" style="left:${pos(v)}%"></span></span>` +
+         ` <span class="t">${v.toFixed(2)} · ${ZONE_LABEL[p.samma_zone] || "?"}</span>`;
+}
+
+function renderPolicies(data) {
+  const policies = (data.meta && data.meta.policies) || [];
+  const table = el("policy-table");
+  if (!policies.length) {
+    table.innerHTML = `<tr><td class="t">no policy snapshot (restart the sampler?)</td></tr>`;
+    return;
+  }
+  table.innerHTML =
+    `<tr><td class="t">policy</td><td class="t">state</td><td class="t">value</td><td class="t">enter/exit</td></tr>` +
+    policies.map((p) => {
+      const v = p.value === null ? "–" : Number(p.value).toFixed(2);
+      const cls = p.state === "observing" ? "observing"
+                : (p.state === "confirmed" ? "confirmed" : "clear");
+      const avail = p.source_available ? "" : ` <span class="t">(no source)</span>`;
+      const cd = p.cooldown_left ? ` <span class="t">cd ${p.cooldown_left}</span>` : "";
+      return `<tr><td>${p.policy_id.replace(/\.v\d+$/, "")}${avail}</td>` +
+             `<td><span class="pill2 ${cls}">${p.state}</span>${cd}</td>` +
+             `<td class="num">${v}</td>` +
+             `<td class="num">${p.enter} / ${p.exit}</td></tr>` +
+             `<tr class="pol-sub"><td colspan="4">${meterHTML(p)}` +
+             `<div class="explain">${p.explain || ""}</div></td></tr>`;
+    }).join("");
+}
+
+async function refreshObservations() {
+  if (mix.paused) return;
+  try {
+    const data = await getJSON("/api/observations?limit=100");
+    const obs = data.observations || [];
+    el("obs-list").innerHTML = obs.length
+      ? obs.slice(-8).reverse().map((o) => {
+          const ts = (o.ts || "").replace("T", " ").slice(11, 19);
+          const cls = o.state === "observing" ? "observing" : "clear";
+          return `<li class="obs"><span class="t">${ts}</span> ` +
+                 `<span class="pill2 ${cls}">${o.state}</span> ` +
+                 `${o.policy_id.replace(/\.v\d+$/, "")} ` +
+                 (o.subject ? `<span class="t">· ${o.subject}</span> ` : "") +
+                 `<span class="t">${o.value} (dwell ${o.dwell_windows})</span></li>`;
+        }).join("")
+      : `<li class="t">none yet — no policy transitions recorded</li>`;
+  } catch (e) { el("obs-list").innerHTML = `<li class="err">${e}</li>`; }
+}
+
+async function refreshRetention() {
+  // telemetry.retention is v9.1.5+; on older fleets the line stays hidden.
+  const line = el("retention-line");
+  try {
+    const data = await getJSON("/api/retention");
+    if (!data.available) { line.hidden = true; return; }
+    const next = data.next_eligible_since
+      ? data.next_eligible_since.slice(0, 16).replace("T", " ")
+      : "—";
+    line.hidden = false;
+    line.textContent = data.prune_due
+      ? `retention: prune due — ${data.eligible} record(s) eligible ` +
+        `(windows ${data.windows.count} · rollups ${data.rollups.count} · observations ${data.observations.count} kept)`
+      : `retention: clean — next window eligible ${next}`;
+  } catch (e) { line.hidden = true; }
+}
+
+function renderLive(data) {
+  latestData = data;
+  pushFast(data);
+  renderPolicies(data);
+  const s = data.snapshot || {};
+  const record = data.record || {};
+  const meta = data.meta || {};
+  const dims = s.dims || {};
+  const stale = Boolean(data.stale);
+  const age = Number.isFinite(Number(data.age_seconds)) ? Number(data.age_seconds) : null;
+  const ageText = age === null ? "age unknown" : ago(age);
+  const guna = record.guna || s.guna || {};
+
+  el("harmony").textContent = (s.harmony_score ?? 0).toFixed(2);
+  el("hero-meta").textContent =
+    `window ${Math.round(s.window_seconds || 0)}s · mirror ${ageText}` +
+    `${stale ? " — STALLED" : ""} · guna ` +
+    `s=${guna.sattvic ?? "?"} r=${guna.rajasic ?? "?"} t=${guna.tamasic ?? "?"}`;
+  el("sampler-pill").className = "pill " + (stale ? "down" : "ok");
+  el("sampler-pill").textContent = stale
+    ? "sampler stalled (" + ageText + ")"
+    : "sampler " + ageText;
+
+  el("dims").innerHTML = DIMS.map((name) => {
+    const d = dims[name] || {score:0, source:"?", note:"missing"};
+    const v = Number(d.score ?? 0);
+    return `<div class="dim"><span class="name">${name}</span>` +
+           `<span class="bar"><i class="${cls(v)}" style="width:${pct(v)}%"></i></span>` +
+           `<span class="score">${v.toFixed(2)}</span>` +
+           `<div class="note" title="${(d.note||"").replace(/"/g,"&quot;")}">${d.source}: ${d.note||""}</div></div>`;
+  }).join("");
+
+  const top = (record.top || s.top_processes || []).slice(0, 6);
+  el("top").innerHTML = top.length
+    ? top.map(r => `<li><span class="t">${(r.guna||"----").slice(0,4)}</span>${r.comm} <span class="t">${Math.round((r.share ?? r.cpu_share ?? 0)*100)}%</span></li>`).join("")
+    : `<li class="t">no process data</li>`;
+
+  el("f-endpoint").textContent = "endpoint " + (meta.endpoint || "–");
+  el("f-spool").textContent = "spool " + (meta.spool_pending ?? 0) +
+    (meta.last_error ? " · last error: " + meta.last_error : "");
+  el("f-spool").className = meta.last_error ? "err" : "";
+  el("galaxy-pill").textContent = "galaxy " + (meta.galaxy || "–");
+}
+
+async function refreshLive() {
+  if (mix.paused) return;
+  try { renderLive(await getJSON("/api/live")); renderWaves(); }
+  catch (e) { el("hero-meta").textContent = "mirror unavailable: " + e; }
+}
+
+function renderTrends(windows) {
+  const series = {
+    harmony: windows.map(w => Number(w.harmony_score ?? 0)),
+    karma: windows.map(w => Number(w.dims?.karma_debt ?? 0)),
+    // Flow lane: debt delta per window, drawn centered at 0.5 (no change).
+    karma_d: windows.map(w => 0.5 + Math.max(-0.5, Math.min(0.5, Number(w.karma?.delta ?? 0)))),
+    dharma: windows.map(w => Number(w.dims?.dharma ?? 0)),
+  };
+  drawSpark("sp-harmony", series.harmony, "#5fd38a");
+  drawSpark("sp-karma", series.karma, "#e06060");
+  drawSpark("sp-karma-d", series.karma_d, "#e8c15a");
+  drawSpark("sp-dharma", series.dharma, "#8b91a5");
+  const last = (a) => a.length ? a[a.length-1].toFixed(2) : "–";
+  el("sp-harmony-v").textContent = last(series.harmony);
+  el("sp-karma-v").textContent = last(series.karma);
+  el("sp-karma-d-v").textContent = windows.length
+    ? Number(windows[windows.length-1].karma?.delta ?? 0).toFixed(2) : "–";
+  el("sp-dharma-v").textContent = last(series.dharma);
+}
+
+function renderReadout(windows) {
+  if (!latestData) return;
+  const { record = {}, meta = {} } = latestData;
+  const oldest = windows[0]?.ts || "–";
+  el("ro-summary").innerHTML =
+    `windows ${windows.length} · oldest ${oldest}<br>` +
+    `karma total ${record.karma?.total ?? "–"} (Δ ${record.karma?.delta ?? "–"}) · ` +
+    `dharma total ${record.dharma?.total ?? "–"} blocked ${record.dharma?.blocked ?? "–"} ` +
+    `(Δ ${record.dharma?.delta_total ?? 0}/${record.dharma?.delta_blocked ?? 0})`;
+  el("ro-raw").textContent = JSON.stringify(
+    { record, meta, written_at: latestData.written_at }, null, 2);
+}
+
+async function refreshHistory() {
+  if (mix.paused) return;
+  try {
+    const hours = hoursOf(mix.band);
+    const path = mix.band === "7r"
+      ? "/api/rollups?hours=168&limit=200"
+      : `/api/history?hours=${hours}&limit=${Math.min(1440, hours * 60)}`;
+    const data = await getJSON(path);
+    history = data.windows || [];
+    sparkline(history.map(w => Number(w.harmony_score ?? 0)));
+    el("f-source").textContent =
+      mix.band === "7r"
+        ? `rollups ${history.length} from galaxy`
+        : `history ${data.source?.mirror ?? 0} mirror / ${data.source?.galaxy ?? 0} galaxy` +
+          (data.galaxy_error ? " (galaxy: " + data.galaxy_error + ")" : "");
+    el("f-updated").textContent = "updated " + new Date().toLocaleTimeString();
+    renderTrends(history);
+    renderReadout(history);
+    renderWaves();
+  } catch (e) { el("f-source").textContent = "history error: " + e; }
+}
+
+async function refreshEvents() {
+  if (mix.paused) return;
+  try {
+    const data = await getJSON("/api/events?limit=100");
+    if (data.feed_ok === false) {
+      el("events").innerHTML =
+        `<li class="err">feed unavailable — ${data.error || "wm unreachable"}</li>`;
+      return;
+    }
+    const events = data.events || [];
+    el("events").innerHTML = events.length
+      ? events.slice(0, 8).map(ev => {
+          const p = ev.payload || {};
+          const ts = (ev.timestamp || "").replace("T", " ").slice(11, 19);
+          return `<li><span class="t">${ts}</span>${p.topic || ev.event_type}` +
+                 ` <span class="t">${p.value ?? ""} < ${p.threshold ?? ""}</span></li>`;
+        }).join("")
+      : `<li class="t">no threshold events yet (feed live, none crossed)</li>`;
+  } catch (e) { el("events").innerHTML = `<li class="err">${e}</li>`; }
+}
+
+const BRIDGE_LABELS = { sandbox_unconfined: "undeclared spawn",
+                        sandbox_degraded: "sandbox degraded",
+                        tetragon_shadow: "shadow access" };
+
+async function refreshBridge() {
+  if (mix.paused) return;
+  try {
+    const data = await getJSON("/api/bridge");
+    const counts = data.counts || {};
+    el("bridge-counts").innerHTML = Object.entries(BRIDGE_LABELS).map(([key, label]) => {
+      const n = counts[key];
+      const hot = Number(n) > 0 ? " hot" : "";
+      return `<span class="bridge-cell${hot}"><div class="t">${label}</div>` +
+             `<div class="n">${n === null || n === undefined ? "–" : n}</div></span>`;
+    }).join("");
+    el("bridge-window").textContent = data.counts_ts
+      ? `window ${String(data.counts_ts).replace("T", " ").slice(11, 19)}`
+      : "no window yet";
+    const f = data.feeds || {};
+    const lamp = (label, ok) =>
+      `<span class="lamp ${ok === undefined ? "" : (ok ? "up" : "down")}">` +
+      `<span class="dot"></span>${label} ${ok === undefined ? "?" : (ok ? "up" : "down")}</span>`;
+    const errors = data.errors || {};
+    el("bridge-feeds").innerHTML = lamp("bus feed", f.bus_ok) +
+      lamp("tetragon feed", f.tetragon_ok) +
+      ((errors.bus || errors.tetragon)
+        ? ` <span class="err">${errors.bus || errors.tetragon}</span>` : "");
+    const recent = data.recent || [];
+    el("bridge-recent").innerHTML = recent.length
+      ? recent.slice(0, 5).map(r => {
+          const ts = (r.ts || "").replace("T", " ").slice(11, 19);
+          const cls = r.kind === "clear" ? "clear" : "observing";
+          return `<li><span class="t">${ts}</span>` +
+                 `<span class="pill2 ${cls}">${r.kind}</span> ` +
+                 `${String(r.policy_id || "").replace(/\.v\d+$/, "")} ` +
+                 `<span class="t">${r.source}</span></li>`;
+        }).join("")
+      : `<li class="t">no bridge records yet</li>`;
+  } catch (e) { el("bridge-recent").innerHTML = `<li class="err">${e}</li>`; }
+}
+
+async function refreshHealth() {
+  try {
+    const h = await getJSON("/api/healthz");
+    el("wm-pill").className = "pill " + (h.wm ? "ok" : "down");
+    el("wm-pill").textContent = h.wm ? "wm up" : "wm down";
+  } catch { el("wm-pill").className = "pill down"; }
+}
+
+const bandEl = el("band"), emaEl = el("ema"), pauseEl = el("pause");
+bandEl.value = mix.band;
+emaEl.value = String(mix.ema);
+el("ema-v").textContent = mix.ema + "%";
+pauseEl.checked = mix.paused;
+bandEl.addEventListener("change", () => {
+  mix.band = bandEl.value;
+  saveMix();
+  refreshHistory();
+});
+emaEl.addEventListener("input", () => {
+  mix.ema = Number(emaEl.value);
+  el("ema-v").textContent = mix.ema + "%";
+  saveMix();
+  renderWaves();
+});
+pauseEl.addEventListener("change", () => {
+  mix.paused = pauseEl.checked;
+  saveMix();
+  if (!mix.paused) { refreshLive(); refreshHistory(); }
+});
+
+refreshLive().then(refreshHistory).then(refreshEvents).then(refreshBridge).then(refreshObservations).then(refreshRetention).then(refreshHealth);
+setInterval(refreshLive, 2000);
+setInterval(refreshHistory, 30000);
+setInterval(refreshEvents, 15000);
+setInterval(refreshBridge, 15000);
+setInterval(refreshObservations, 30000);
+setInterval(refreshRetention, 60000);
+setInterval(refreshHealth, 15000);
+</script>
+</body>
+</html>

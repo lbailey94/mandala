@@ -1,0 +1,17 @@
+[Unit]
+Description=Lakshmi sampler — 7-dim Harmony Vector with edge-galaxy emission
+Documentation=file://%h/Desktop/MANDALA_OS/LAKSHMI/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Desktop/MANDALA_OS/LAKSHMI
+# v9.1.4 fleet deploy (2026-09-13): emit + dharma both target the home
+# gateway (wmv9, 18790) — the telemetry galaxy lives in the real store now.
+ExecStart=/usr/bin/python3 %h/Desktop/MANDALA_OS/LAKSHMI/lakshmi.py --interval 5 --window 60 --emit --emit-every 60 --emit-url http://127.0.0.1:18790 --dharma-mcp http://127.0.0.1:18790
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

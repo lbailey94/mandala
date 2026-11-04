@@ -1,0 +1,35 @@
+{
+  "spec": "continuity-receipt/0.5",
+  "receipt_id": "urn:uuid:01a11c71-b1a3-7c26-a80b-75acd008691c",
+  "task_id": "urn:uuid:01a11c71-9e6e-76f0-be0b-165051018244",
+  "type": "task.execution",
+  "seq": 2,
+  "prev": "sha256:afa1e0f09ec5d5722c6cef7032599c73c53535da725636a2cbfacce0daf38f74",
+  "body": {
+    "tool_calls": [
+      {
+        "name": "mandala.exec",
+        "args_hash": "sha256:ab008cd4e9673667f3e8ec69eb6d92b52ce953e326d82ff809d92ede040b52c7",
+        "result_hash": "sha256:7007f134aaa54946668c591b5855d47426c0aac0bfbf65ed41be84adf11e1538"
+      }
+    ],
+    "egress": [
+      {
+        "destination": "none",
+        "bytes": 0,
+        "allowed": true
+      }
+    ],
+    "resources": {
+      "cpu_ms": 0,
+      "mem_peak_mb": 0,
+      "disk_peak_mb": 0
+    },
+    "sandbox_class": "bwrap",
+    "runner_profile": {
+      "profile_id": "urn:mandala:runner-profile:bwrap-v1",
+      "executable_digest": "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e",
+      "invocation_digest": "sha256:092c0d00b9c5b2ae3a417b2cd1b8d29a9bee9f06766fbffbc44eb44562543b5b"
+    }
+  }
+}

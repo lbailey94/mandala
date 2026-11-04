@@ -1,0 +1,15 @@
+[Unit]
+Description=Lakshmi dashboard — local Harmony Vector UI (127.0.0.1:3109)
+Documentation=file://%h/Desktop/MANDALA_OS/LAKSHMI/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Desktop/MANDALA_OS/LAKSHMI
+ExecStart=/usr/bin/python3 %h/Desktop/MANDALA_OS/LAKSHMI/dashboard.py --port 3109
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

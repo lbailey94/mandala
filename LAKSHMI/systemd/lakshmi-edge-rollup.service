@@ -1,0 +1,13 @@
+[Unit]
+Description=Lakshmi edge-galaxy soak rollup — aggregate the soak store's completed windows hourly
+Documentation=file://%h/Desktop/MANDALA_OS/LAKSHMI/README.md
+After=network-online.target
+Wants=edge-galaxy.service
+
+[Service]
+Type=oneshot
+# Soak companion to lakshmi-edge-sampler (2026-09-14): the fleet rollup keeps
+# posting to 18790; this one rolls up the edge-galaxy store. The soak gate's
+# rollup check reads the soak store's completed hours, so it needs its own
+# timer while the two stores coexist.
+ExecStart=/usr/bin/curl -sS -m 120 -X POST http://127.0.0.1:18798/mcp -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"telemetry.rollup\",\"arguments\":{}}}"

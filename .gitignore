@@ -1,0 +1,17 @@
+# Embedded sub-projects consolidated into root repo
+
+# Python bytecode / packaging artifacts
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Virtualenvs
+.venv/
+gate-lite/.venv/
+
+# Large regenerable benchmark artifacts (local only)
+/gate-lite/evidence/bench-2026-09-18/
+/gate-lite/evidence/bench-2026-09-18-sqlite/
+
+# Export / share staging
+/MANDALA_OS_SHARE/

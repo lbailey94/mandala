@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+# landrun-sandbox — pure-Landlock containment for external tools.
+#
+# Twin of `mandala-sandbox` with the exact same CLI contract:
+#   landrun-sandbox <command> [args...]         # no network (default)
+#   landrun-sandbox --net <command> [args...]   # egress + DNS + CA certs
+#   landrun-sandbox --exec '<json envelope>'    # WM B2 protocol
+#
+# Envelope schema `wm-sandbox-exec-v1`, built by wm-core's SpawnPolicy:
+#   {"schema":"wm-sandbox-exec-v1","program":"gh",
+#    "args":["issue","list"],"net":true}
+# `program`/`args` are executed directly (no shell interpolation); `net`
+# selects the network profile; `workspace` optionally names a safe corpus to
+# grant read-only. Unknown fields are ignored.
+#
+# Why this exists: bubblewrap cannot run inside an active Landlock domain
+# (Landlock denies all mount topology changes, and bwrap needs
+# `mount(MS_SLAVE)` — reproduced host + VM 2026-09-13, see SANDBOX_LAYERS
+# §3-7). Landlock rulesets *stack*, so a store that runs whole-process
+# Landlock (e.g. the WM daemon with WM_LANDLOCK=1) can still confine its
+# declared spawns with this runner. The trade is explicit: no namespaces —
+# path confinement only, on top of whatever domain the parent already has.
+# There is no private /tmp; the scratch dir is the only writable area.
+#
+# Filesystem model:
+#   rox  system paths (binaries + loader): /usr /bin /sbin /lib /lib64
+#        /nix/store /run/current-system            (existing paths only)
+#   ro   /etc/passwd /etc/group /etc/localtime     (identity + time)
+#   ro   the safe corpus (WM_SANDBOX_WORKSPACE or envelope.workspace)
+#   rw   the scratch dir (WM_SANDBOX_RW, default
+#        ~/.local/share/whitemagic/sandbox_rw); TMPDIR points at
+#        <scratch>/tmp when the scratch dir exists
+#   rw   /dev/null;  ro /dev/urandom /dev/random /dev/zero
+#   net  OFF by default; when granted: --unrestricted-network plus DNS and
+#        CA certificate paths
+#   env  a fixed allowlist is passed through (PATH, locale, cert vars,
+#        GH_TOKEN/GITHUB_TOKEN, proxies); add more with WM_SANDBOX_ENV=A,B.
+#        HOME is deliberately NOT passed.
+#
+# Requirements: landrun, jq, coreutils. On NixOS use the packaged wrapper
+# from modules/landlock-isolation.nix; on other hosts point
+# WM_SANDBOX_LANDRUN at the binary.
+#
+# Wire into WM's declared-subprocess spawns via the environment, e.g. a
+# systemd drop-in or the instance env file:
+#   WM_SANDBOX_RUNNER=%h/.local/bin/landrun-sandbox
+set -euo pipefail
+
+landrun_bin="${WM_SANDBOX_LANDRUN:-landrun}"
+if ! command -v "$landrun_bin" >/dev/null 2>&1; then
+  echo "landrun-sandbox: landrun not found (set WM_SANDBOX_LANDRUN to its path)" >&2
+  exit 69
+fi
+
+with_net=0
+workspace_override=""
+
+if [ "${1:-}" = "--exec" ]; then
+  envelope="${2:?landrun-sandbox: --exec requires a JSON envelope}"
+  shift 2
+  coproc parsed_stream { jq -j 'if type != "object" or (.program | type) != "string" or .program == "" or (.program | index("\u0000")) != null or (has("args") and (.args | type) != "array") or any((if has("args") then .args else [] end)[]; type != "string" or index("\u0000") != null) or (has("net") and (.net | type) != "boolean") or (has("workspace") and ((.workspace | type) != "string" or (.workspace | index("\u0000")) != null)) then error("invalid sandbox envelope") else ([.program, (if has("net") then .net else false end | tostring), (if has("workspace") then .workspace else "" end)] + (if has("args") then .args else [] end))[] | ., "\u0000" end' <<<"$envelope"; }
+  mapfile -d '' -t fields <&"${parsed_stream[0]}"
+  # shellcheck disable=SC2154 # Bash assigns this PID for the named coprocess.
+  if ! wait "${parsed_stream_PID}"; then
+    echo "landrun-sandbox: invalid JSON envelope or argument types" >&2
+    exit 64
+  fi
+  program="${fields[0]}"
+  if [ "${fields[1]}" = "true" ]; then
+    with_net=1
+  fi
+  workspace_override="${fields[2]}"
+  exec_args=("${fields[@]:3}")
+  set -- "$program" "${exec_args[@]}"
+elif [ "${1:-}" = "--net" ]; then
+  with_net=1
+  shift
+fi
+
+# HOME may be unbound under systemd (`set -u`); a missing scratch dir means
+# no writable area, which fails loudly rather than silently escaping.
+workspace="${workspace_override:-${WM_SANDBOX_WORKSPACE:-${HOME:-/nonexistent}/.local/share/whitemagic/safe_corpus}}"
+scratch="${WM_SANDBOX_RW:-${HOME:-/nonexistent}/.local/share/whitemagic/sandbox_rw}"
+
+args=()
+path_accessible() {
+  # Under a stricter parent domain a rule path may already be denied; adding
+  # it would make landrun fail outright. Skipping keeps the intersection
+  # semantics identical (the parent denies it either way).
+  local mode="$1" path="$2"
+  [ -e "$path" ] || return 1
+  case "$mode" in
+    --rox) [ -x "$path" ] ;;
+    --rw) [ -w "$path" ] ;;
+    *) [ -r "$path" ] ;;
+  esac
+}
+
+add_existing() {
+  # landrun rejects rules for paths that do not exist; filter first.
+  local mode="$1" path
+  shift
+  for path in "$@"; do
+    path_accessible "$mode" "$path" || continue
+    args+=( "$mode" "$path" )
+  done
+}
+
+add_existing --rox /usr /bin /sbin /lib /lib64 /nix/store /run/current-system
+add_existing --ro /etc/passwd /etc/group /etc/localtime
+add_existing --rw /dev/null
+add_existing --ro /dev/urandom /dev/random /dev/zero
+args+=( --add-exec )
+
+if [ -e "$workspace" ]; then
+  args+=( --ro "$workspace" )
+fi
+if [ -n "${HOME:-}" ] && [ -d "$HOME" ]; then
+  mkdir -p "$scratch/tmp" 2>/dev/null || true
+fi
+if [ -d "$scratch" ]; then
+  args+=( --rw "$scratch" )
+fi
+
+if [ "$with_net" = 1 ]; then
+  args+=( --unrestricted-network )
+  add_existing --ro /etc/resolv.conf /run/systemd/resolve /etc/hosts \
+    /etc/nsswitch.conf /etc/ssl /etc/ca-certificates /usr/share/ca-certificates
+fi
+
+# Optional operator extension points (comma-separated absolute paths).
+for spec in "ro:WM_SANDBOX_EXTRA_RO" "rox:WM_SANDBOX_EXTRA_ROX" "rw:WM_SANDBOX_EXTRA_RW"; do
+  mode="${spec%%:*}"
+  var="${spec#*:}"
+  value="${!var:-}"
+  [ -n "$value" ] || continue
+  IFS=',' read -r -a extra_paths <<<"$value"
+  add_existing "--$mode" "${extra_paths[@]}"
+done
+
+env_allow=(
+  PATH
+  LANG LC_ALL LC_CTYPE TERM
+  SSL_CERT_FILE SSL_CERT_DIR
+  GH_TOKEN GITHUB_TOKEN
+  HTTP_PROXY HTTPS_PROXY NO_PROXY
+  http_proxy https_proxy no_proxy
+)
+if [ -n "${WM_SANDBOX_ENV:-}" ]; then
+  IFS=',' read -r -a extra_env <<<"$WM_SANDBOX_ENV"
+  env_allow+=( "${extra_env[@]}" )
+fi
+for name in "${env_allow[@]}"; do
+  args+=( --env "$name" )
+done
+if [ -d "$scratch" ]; then
+  args+=( --env "TMPDIR=$scratch/tmp" )
+fi
+args+=( --env WM_SANDBOXED=1 )
+
+exec "$landrun_bin" "${args[@]}" -- "$@"

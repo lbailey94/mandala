@@ -1,0 +1,194 @@
+{
+  "spec": "continuity-receipt/0.5",
+  "task_id": "urn:uuid:01a0f5c5-d2b9-7eac-8823-b080da823b83",
+  "receipts": [
+    {
+      "spec": "continuity-receipt/0.5",
+      "receipt_id": "urn:uuid:01a0f5c5-d2b9-7de9-bc4b-faebf9c57f38",
+      "task_id": "urn:uuid:01a0f5c5-d2b9-7eac-8823-b080da823b83",
+      "issued_at": "2026-10-01T04:42:57Z",
+      "issuer": {
+        "kind": "gate",
+        "id": "did:key:z6MkoiZqmRMLjpJPFeHy96cf7gUR6251xY2pNKgRWrajwNms"
+      },
+      "type": "session.pass.created",
+      "seq": 0,
+      "prev": null,
+      "body": {
+        "gate_id": "gate-test-egress",
+        "mandala_class": "gate-lite",
+        "quotas": {
+          "cpu_ms": 300000,
+          "mem_mb": 1024,
+          "disk_mb": 512,
+          "wall_ms": 300000
+        },
+        "expires_at": "2026-10-01T04:47:57Z",
+        "policy_version": "2026-09-17.1",
+        "mandate_ref": "sha256:23b9d754fea4738440c36bb854c82a9ce93fbc4452095cd3ecc41a7335855b7c",
+        "agent_id": "did:key:z6Mko7oEoZqrLkiLYgnBL3711uTutmijQy9281rqLyJXRpvQ",
+        "pass_token_id": "sha256:f905a988e8002fe796992a0f185a9809f93272fb460dd108db4007fbdfc4afe8"
+      },
+      "sig": {
+        "alg": "ed25519",
+        "key": "did:key:z6MkoiZqmRMLjpJPFeHy96cf7gUR6251xY2pNKgRWrajwNms",
+        "value": "HS3IhTPGo148rVhFOeDg-XM0jX2HV-T7GIBRulcF8mmS_m-w6EJgm6xrVZW36jAG1Mi8iEyLGtgyt9oipLbSCw"
+      }
+    },
+    {
+      "spec": "continuity-receipt/0.5",
+      "receipt_id": "urn:uuid:01a0f5c5-d2bb-72bb-afe9-78171bc40c13",
+      "task_id": "urn:uuid:01a0f5c5-d2b9-7eac-8823-b080da823b83",
+      "issued_at": "2026-10-01T04:42:57Z",
+      "issuer": {
+        "kind": "gate",
+        "id": "did:key:z6MkoiZqmRMLjpJPFeHy96cf7gUR6251xY2pNKgRWrajwNms"
+      },
+      "type": "task.decision",
+      "seq": 1,
+      "prev": "sha256:ad3c9a829bc373a002da11b6917b777902b5744094a33adeff645638e33bdb3a",
+      "body": {
+        "action": "mandala.exec",
+        "action_args_hash": "sha256:7c8b41caddbb9ecc89483899d021d66c6edded57244a51e2758c51a59002706c",
+        "model": {
+          "provider": "gate",
+          "id": "sandbox"
+        },
+        "input_provenance": {
+          "policy_id": "gate.egress.default",
+          "allowed_sources": [
+            "gate"
+          ],
+          "observed_sources_hash": "sha256:c974e17b8e7321ce8c12983de3d0ed4a289821f579bbe0925b0181a4bc8e8d80"
+        },
+        "decision": "allow",
+        "policy_version": "2026-09-17.1"
+      },
+      "sig": {
+        "alg": "ed25519",
+        "key": "did:key:z6MkoiZqmRMLjpJPFeHy96cf7gUR6251xY2pNKgRWrajwNms",
+        "value": "APDG_PLuHktLRpwLke_it3ftvpy6YWHXat28G6tReCtP8z8YCvywnD918Wnm2gD_QYfbmJqAMaGuVnPWJC4UBQ"
+      }
+    },
+    {
+      "spec": "continuity-receipt/0.5",
+      "receipt_id": "urn:uuid:01a0f5c5-d5bc-7536-bf1c-70510e10ed1a",
+      "task_id": "urn:uuid:01a0f5c5-d2b9-7eac-8823-b080da823b83",
+      "issued_at": "2026-10-01T04:42:58Z",
+      "issuer": {
+        "kind": "gate",
+        "id": "did:key:z6MkoiZqmRMLjpJPFeHy96cf7gUR6251xY2pNKgRWrajwNms"
+      },
+      "type": "task.execution",
+      "seq": 2,
+      "prev": "sha256:ff6e823f5cec9c891cfd86d0a04e0b4023be1ef3774874474dc5bc6a1e9d1075",
+      "body": {
+        "tool_calls": [
+          {
+            "name": "mandala.exec",
+            "args_hash": "sha256:7c8b41caddbb9ecc89483899d021d66c6edded57244a51e2758c51a59002706c",
+            "result_hash": "sha256:b53c970790309b84e48644d8162a57f0c524c72a7dd04fbe761159040e2a143c"
+          }
+        ],
+        "egress": [
+          {
+            "destination": "127.0.0.1:42933",
+            "bytes": 212,
+            "bytes_out": 87,
+            "bytes_in": 125,
+            "allowed": true,
+            "enforced": true,
+            "enforcer": "unix-proxy-allowlist"
+          },
+          {
+            "destination": "example.org:80",
+            "bytes": 0,
+            "allowed": false,
+            "enforced": true,
+            "enforcer": "unix-proxy-allowlist",
+            "denied_reason": "not-in-allowlist"
+          }
+        ],
+        "resources": {
+          "cpu_ms": 0,
+          "mem_peak_mb": 0,
+          "disk_peak_mb": 0
+        },
+        "sandbox_class": "bwrap",
+        "exit_code": 0,
+        "egress_evidence_complete": true,
+        "runner_profile": {
+          "profile_id": "urn:mandala:runner-profile:bwrap-egress-v1",
+          "executable_digest": "sha256:0a0720955e135ec2a6b31a74fcdb1a9c8ecfb372177fb8f6d925d48379b17a43",
+          "invocation_digest": "sha256:b1f974c7fd85cffd7912d42a7b421ca61dbdd19ddbcbf1004675692119836f04"
+        }
+      },
+      "sig": {
+        "alg": "ed25519",
+        "key": "did:key:z6MkoiZqmRMLjpJPFeHy96cf7gUR6251xY2pNKgRWrajwNms",
+        "value": "U9EsSoQvnR4I5YDRnhOfQKBqfnCR674BvYTj_ASaoGGF89LPAEoNiK-pC6bcWNqgC3gAk0HP5KVH8HLKuRTBAA"
+      }
+    },
+    {
+      "spec": "continuity-receipt/0.5",
+      "receipt_id": "urn:uuid:01a0f5c5-d5bd-7435-99b4-ffbb7acaef1e",
+      "task_id": "urn:uuid:01a0f5c5-d2b9-7eac-8823-b080da823b83",
+      "issued_at": "2026-10-01T04:42:58Z",
+      "issuer": {
+        "kind": "gate",
+        "id": "did:key:z6MkoiZqmRMLjpJPFeHy96cf7gUR6251xY2pNKgRWrajwNms"
+      },
+      "type": "state.commitment",
+      "seq": 3,
+      "prev": "sha256:e060aa7ef983f54b584ba12da0371238c38f55dc200e5b518fb779c5ca943e2d",
+      "body": {
+        "state_kind": "gate-lite.registry-head",
+        "scope": "gate-lite.registry",
+        "count": 3,
+        "head_digest": "sha256:570ca5a6efaf31d84a6f206daf687135b0d31d6a4b301b2306c9e0ea870f95fc"
+      },
+      "sig": {
+        "alg": "ed25519",
+        "key": "did:key:z6MkoiZqmRMLjpJPFeHy96cf7gUR6251xY2pNKgRWrajwNms",
+        "value": "1UwYbOtJTGQrJmFUNJE8j6Canu_dA6A02jNP7azwZHsoqHgLyBr-77Jrl6o00CdTvTHI5e6TGOoatmw6BtV_CQ"
+      }
+    },
+    {
+      "spec": "continuity-receipt/0.5",
+      "receipt_id": "urn:uuid:01a0f5c5-d5f6-7e39-b484-6cd09d2b1d91",
+      "task_id": "urn:uuid:01a0f5c5-d2b9-7eac-8823-b080da823b83",
+      "issued_at": "2026-10-01T04:42:58Z",
+      "issuer": {
+        "kind": "gate",
+        "id": "did:key:z6MkoiZqmRMLjpJPFeHy96cf7gUR6251xY2pNKgRWrajwNms"
+      },
+      "type": "task.termination",
+      "seq": 4,
+      "prev": "sha256:a0a9819319d331c673ace126c0a94a9a25f3b0ef127d4213f06a8ba7ca2dc9a3",
+      "body": {
+        "reason": "completed",
+        "limits_at_stop": {
+          "cpu_ms": 300000,
+          "wall_ms": 300000,
+          "spend_minor": 0,
+          "currency": "USD"
+        },
+        "remaining": {
+          "cpu_ms": 0,
+          "wall_ms": 299000,
+          "spend_minor": 0,
+          "currency": "USD"
+        },
+        "observed": {
+          "exit": 0,
+          "stdout_hash": "sha256:b53c970790309b84e48644d8162a57f0c524c72a7dd04fbe761159040e2a143c"
+        }
+      },
+      "sig": {
+        "alg": "ed25519",
+        "key": "did:key:z6MkoiZqmRMLjpJPFeHy96cf7gUR6251xY2pNKgRWrajwNms",
+        "value": "in0go8WZHSsLFltplXBdM1VRNzLhUpqzGNwPaz4Z87Eb2IM9fZvyHFaEjNdu9NpVm2iwkPyka8OdpKLbp8kYCg"
+      }
+    }
+  ]
+}

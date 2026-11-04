@@ -1,0 +1,180 @@
+# gate-lite outsider exercise — transcript — 2026-10-08
+# Operator: opencode (collaborator session, same host) — not an unassisted stranger.
+# Workspace: /tmp/opencode/mandala-outsider-20261008
+# NOTE ON SECRETS: the single-use pass token is redacted everywhere in this
+# directory. It was held only in a mode-600 temp file during the run and was
+# never written to any evidence file.
+# NOTE: the flow HALTED at `exec` per protocol instruction ("if any step
+# fails, capture the exact error and stop"). settle/terminate/receipt/verifier
+# steps were therefore not run.
+
+## 1. Pin and working-tree state
+
+$ git -C "/home/lucas/Desktop/front burner/MANDALA_OS" rev-parse HEAD
+6fd651c3b86274fa3c9b740cd00b9f708d0a227b
+
+$ git -C "/home/lucas/Desktop/front burner/MANDALA_OS" status -sb
+## main...origin/main
+(clean tree, in sync with origin at pin time; dirty files: none)
+
+## 2. Clean export (tracked files only)
+
+$ mkdir -p /tmp/opencode/mandala-outsider-20261008/src
+$ git -C "/home/lucas/Desktop/front burner/MANDALA_OS" archive 6fd651c3b86274fa3c9b740cd00b9f708d0a227b | tar -x -C /tmp/opencode/mandala-outsider-20261008/src
+(exit 0; no untracked state, no evidence dirs, no state/ travelled)
+
+## 3. venv and install
+
+$ python3 -m venv /tmp/opencode/mandala-outsider-20261008/venv
+$ /tmp/opencode/mandala-outsider-20261008/venv/bin/pip install -e /tmp/opencode/mandala-outsider-20261008/src/gate-lite
+...
+Building editable for gate-lite (pyproject.toml): finished with status 'done'
+Successfully installed cffi-2.1.1 continuity-receipt-0.4.0 cryptography-50.0.2 gate-lite-0.0.1 pycparser-3.1
+(exit 0)
+
+## 4. Documented quick start
+
+$ cd /tmp/opencode/mandala-outsider-20261008/src/gate-lite
+$ venv/bin/python tools/make_vectors.py
+wrote 11 vectors to /tmp/opencode/mandala-outsider-20261008/src/gate-lite/vectors
+
+$ venv/bin/python -m unittest discover -s tests -v 2>&1 | tee tests.log
+...
+Ran 110 tests in 13.492s
+
+OK (skipped=6)
+EXIT=0
+(full output: tests.log in this directory)
+Note: the 6 skips are all acceptance tests skipped with message
+'runner profile is not qualified' — i.e. exactly the real-runner paths.
+ResourceWarning lines appear for unclosed subprocess file handles in the
+HTTP/MCP subprocess tests (cosmetic; suite passes).
+
+## 5. Outsider flow (WM_GATELITE_RUNNER set; --state ./state)
+
+$ export WM_GATELITE_RUNNER="$HOME/.local/bin/mandala-sandbox"
+$ PY=/tmp/opencode/mandala-outsider-20261008/venv/bin/python
+
+$ $PY gate_lite/ctl.py --state ./state tenant-add --tenant dogfood --agent did:key:zOutsiderAgent1
+{
+  "tenant_id": "dogfood",
+  "agents": [
+    "did:key:zOutsiderAgent1"
+  ],
+  "aup_version": "2026-09-17.1",
+  "settlement_ref": null
+}
+exit=0
+
+$ $PY gate_lite/ctl.py --state ./state pass --tenant dogfood --agent did:key:zOutsiderAgent1 --minutes 30 --spend-minor 1000
+# raw output contained the single-use token; token redacted here:
+{
+  "pass_id": "pass-1af47cf44625",
+  "slot_id": "slot-faeff89d93a1",
+  "endpoint": "gate://gate-lite-1/slot-faeff89d93a1",
+  "token": "<redacted: single-use pass token; not retained in evidence>",
+  "quotas": {
+    "cpu_ms": 300000,
+    "mem_mb": 1024,
+    "disk_mb": 512,
+    "wall_ms": 1800000
+  },
+  "expires_at": "2026-10-08T17:16:59Z",
+  "receipt_id": "urn:uuid:01a11c69-34f1-7274-be4e-ec953c49cb9a"
+}
+exit=0
+SLOT=slot-faeff89d93a1 ; TOKEN=<redacted>
+
+$ $PY gate_lite/ctl.py --state ./state exec --tenant dogfood --slot slot-faeff89d93a1 \
+      --payload-ref "echo hello from outsider 2026-10-08" --token <redacted>
+--- stdout ---
+(empty)
+--- stderr ---
+Traceback (most recent call last):
+  File "/tmp/opencode/mandala-outsider-20261008/src/gate-lite/gate_lite/ctl.py", line 182, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/tmp/opencode/mandala-outsider-20261008/src/gate-lite/gate_lite/ctl.py", line 142, in main
+    output = orch.exec_(
+             ^^^^^^^^^^^
+  File "/tmp/opencode/mandala-outsider-20261008/src/gate-lite/gate_lite/orchestrator.py", line 968, in exec_
+    self.runner._require_profile()
+  File "/tmp/opencode/mandala-outsider-20261008/src/gate-lite/gate_lite/orchestrator.py", line 274, in _require_profile
+    raise RunnerProfileError(
+gate_lite.orchestrator.RunnerProfileError: no reviewed runner profile is qualified for Continuity Receipt 0.4; real payload execution is disabled
+--- exit=1 ---
+
+>>> STEP FAILED (exec). Per protocol, the flow stops here: settle, terminate,
+>>> `receipt --task-id ... --verdict`, `continuity-receipt-verify`, and the
+>>> module verifier were NOT run. No task.execution receipt exists; no bundle
+>>> was produced; no gate verdict exists.
+
+## 6. Post-failure read-only diagnostic (captured as failure context, not a flow step)
+
+$ $PY gate_lite/ctl.py --state ./state status --tenant dogfood --slot slot-faeff89d93a1
+{
+  "slot": {
+    "slot_id": "slot-faeff89d93a1",
+    "tenant_id": "dogfood",
+    "state": "placed",
+    "slot_class": "small",
+    "quotas": {
+      "cpu_ms": 300000,
+      "mem_mb": 1024,
+      "disk_mb": 512,
+      "wall_ms": 1800000
+    },
+    "created_at": 1791478019,
+    "expires_at": 1791479819,
+    "template": "default",
+    "pass_id": "pass-1af47cf44625",
+    "task_id": "urn:uuid:01a11c69-34f1-75a1-9f88-7e92e81c874e"
+  },
+  "runner": {
+    "class": "unknown",
+    "simulated": false,
+    "path": "/home/lucas/.local/bin/mandala-sandbox",
+    "executable_sha256": "sha256:de273c62ae22147634164e84cc9b6f6ae83a7f25e05755b50bc7c1257f525641",
+    "profile_status": "unqualified",
+    "receipt_spec": "continuity-receipt/0.4",
+    "receipt_dependency": "0.4.0",
+    "receipt_runtime_version": "0.4.0"
+  }
+}
+exit=0
+(the runner exists and was hashed; the refusal is the 0.4 profile hold, not a
+missing runner. Slot stayed 'placed'; the token was not consumed: the profile
+gate at orchestrator.py:968 runs before the jti consumption at :983.)
+
+## 7. Environment record (run time)
+
+Run window: 2026-10-08T16:46:51Z -> 2026-10-08T16:49Z (UTC)
+Host: T4800-S · Zorin OS 18.1 · Linux 7.0.0-34-generic x86_64
+Python: 3.12.3 (venv)
+$ pip freeze (relevant)
+cffi==2.1.1
+continuity-receipt==0.4.0
+cryptography==50.0.2
+pycparser==3.1
+-e /tmp/opencode/mandala-outsider-20261008/src/gate-lite  (gate-lite==0.0.1)
+Runner: /home/lucas/.local/bin/mandala-sandbox (pre-existing, outside this slice)
+$ sha256sum ~/.local/bin/mandala-sandbox
+de273c62ae22147634164e84cc9b6f6ae83a7f25e05755b50bc7c1257f525641  /home/lucas/.local/bin/mandala-sandbox
+$ bwrap --version
+bubblewrap 0.9.0
+$ jq --version
+jq-1.7
+
+## 8. Why the refusal is expected at this pin (documentation read, not inference)
+
+- README.md (pin 6fd651c): "Configured real runners currently report `unknown`
+  / `unqualified`, and `mandala.exec` refuses them before token consumption or
+  payload spawn", and "The current 0.4 containment hold also refuses real
+  execution with this wrapper".
+- git log (repo): 704a863 "fix: hold unqualified gate-lite runner execution";
+  63af388 "fix: enforce runner hold before cached execution results";
+  4301245 "fix(gate-lite): refuse unreviewed runner hints".
+- A qualified bwrap profile for the 0.5 candidate exists only on branch
+  `codex/gate-lite-05-profile` (commit d7afa55 "Qualify exact local bwrap
+  profile for receipt 0.5 candidate") — NOT an ancestor of the tested pin
+  6fd651c (verified with `git merge-base --is-ancestor`).

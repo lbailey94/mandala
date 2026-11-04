@@ -1,0 +1,77 @@
+# Capture transcript — gate-lite 0.5 state commitment (2026-09-28, T4800-S)
+
+venv: /tmp/opencode/cr05-venv (continuity-receipt 0.5.0a0 editable,
+gate-lite 0.0.1 editable, pytest)
+state: /tmp/opencode/gate05-capture-20260928b
+runner: WM_GATELITE_RUNNER=/home/lucas/Desktop/MANDALAOS_SOVEREIGN_runner_argv/scripts/mandala-sandbox
+
+## Commands (abridged)
+
+  python3 -m venv /tmp/opencode/cr05-venv
+  pip install -e /home/lucas/Desktop/continuity-receipt
+  pip install -e /home/lucas/Desktop/MANDALA_OS_gate05/gate-lite
+  python -m unittest discover -s tests        # 106 tests, OK (skipped=6)
+  ctl.py --state $ST tenant-add --tenant capture --agent did:key:z6MkoNc...
+  PASS=$(ctl.py --state $ST pass --tenant capture --agent <did> --minutes 30)
+  ctl.py --state $ST exec --tenant capture --slot slot-553855e4bf3c \
+      --payload-ref '/usr/bin/python3 -c "print(42)"' --token <token>
+  cp $ST/registry.db* /tmp/opencode/reg-snapshot/
+  ctl.py --state $ST terminate --tenant capture --slot slot-553855e4bf3c
+
+## exec result
+
+  {
+    "slot_id": "slot-553855e4bf3c",
+    "exit": 0,
+    "stdout_hash": "sha256:084c799cd551dd1d8d5c5f9a5d593b2e931f5e36122ee5c793c1d08a19839cc0",
+    "receipt_ids": [
+      "urn:uuid:01a0e5f7-...",   # task.decision
+      "urn:uuid:01a0e5f7-...",   # task.execution
+      "urn:uuid:01a0e5f7-..."    # state.commitment  (new)
+    ],
+    "stderr_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+
+## Verdicts (bundle.json)
+
+Python (continuity-receipt 0.5.0a0 source):
+
+  {
+    "verdict": "TRUSTED",
+    "errors": [],
+    "summary": {
+      "receipts": 5,
+      "types": ["session.pass.created", "task.decision", "task.execution",
+                "state.commitment", "task.termination"],
+      "issuers": ["did:key:z6MksimyjJhBvzyrB3Z5CMHDte8Ubvk1jx5P12ffRa4JptD2"],
+      "terminated": true, "settled": false
+    }
+  }
+
+Rust (rust/target/debug/continuity-receipt-verify): verdict TRUSTED, same
+receipt list, rc 0.
+
+## Recompute (recompute.py)
+
+  executable_digest: MATCH
+  invocation_digest: MATCH
+  commitment count: MATCH (3)
+  commitment head (CAS reverted): MATCH
+  RESULT: ALL MATCH
+
+## state.commitment body (signed)
+
+  {
+    "state_kind": "gate-lite.registry-head",
+    "scope": "gate-lite.registry",
+    "count": 3,
+    "head_digest": "sha256:836c0c55099f900b82f493397ace42c553248f7d7bf35eb8e5624d020f10c4e1"
+  }
+
+## runner_profile (signed, task.execution)
+
+  {
+    "profile_id": "urn:mandala:runner-profile:bwrap-v1",
+    "executable_digest": "sha256:f7da8d6c3809ac5adbc4631c82fb9327abdb69638715bb0ea1493dc79996411e",
+    "invocation_digest": "sha256:37de8483153f176d903a4423d5c0aec57a7bde98f69df009cac370f46c2faf4a"
+  }
