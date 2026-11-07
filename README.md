@@ -14,9 +14,18 @@ this repository is not a production or complete-system security qualification.
 | Lakshmi | Reads local mirrors and MCP telemetry, discloses stale/feed-down states | Actuation is notify-only. It does not block, throttle or kill workloads. Metrics include disclosed proxies; a healthy HTTP endpoint does not establish MCP compatibility. |
 | Continuity receipts | Signs declared task/lifecycle bytes for offline consumer checks | Signatures bind bytes, not truth, completeness, physical execution, payment finality or SCITT registration. Independent witness custody and consumer policy are separate. |
 
-The receipt producer uses the pinned `continuity-receipt==0.5.0` dependency.
+The receipt producer uses the pinned `continuity-receipt==0.5.0` dependency
+(DEC-20: deliberately pinned as the minimum 0.5 baseline; bundles emitted under
+`0.5.0` are verified `TRUSTED` across `0.5.0`, `0.5.2`, `0.5.4`, the Rust `0.5.2`
+verifier, and the hosted verifier).
 The separate [curated public snapshot](https://github.com/lbailey94/mandalaos-gate-lite)
 has its own review/release scope; it is not a mirror of this combined tree.
+
+### Landlock vs. Bubblewrap (`MAN-06`)
+
+Mandala provides two distinct containment paths that operate as **alternatives, not stacked layers**:
+1. **Portable Bubblewrap (`bwrap-v1` / `bwrap-egress-v1`)**: Unprivileged user/PID/net namespace isolation via `/usr/bin/bwrap` with `--proc /proc` (fresh procfs mount required inside the unshared PID namespace so host `/proc` PIDs/environ are never exposed; hosts or containers that deny fresh `proc` mounts cannot substitute `--ro-bind /proc /proc` without weakening PID isolation — `DEC-19` / `MAN-02`).
+2. **NixOS Sovereign / `landrun` Landlock LSM path (`MANDALAOS_SOVEREIGN/modules/landlock-isolation.nix`)**: Uses the Linux Landlock LSM (`ABI v1–v8`) via `landrun` (installable on NixOS via the Sovereign module or built from source via `go install github.com/zouuup/landrun/cmd/landrun@latest`). Because `bwrap` cannot create new user/mount namespaces once a restrictive Landlock domain is active, `landrun` and `bwrap` are alternative profiles rather than nested wrappers; the Landlock path in this repository is targeted at NixOS / Sovereign VM deployments.
 
 ## Run local controls
 

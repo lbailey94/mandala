@@ -279,7 +279,10 @@ choice, not a scaling need. Earlier fixes from the same suite:
   tenant scoping, disk-backed chains across CLI processes, SQLite registry —
   **done**.
 - MCP control surface: **done** — stdio + loopback HTTP/SSE, 14 tools
-  (**86 tests total green**).
+  (**180 tests in current suite**: 174 run by default + 6 real-runner/quota opt-in skips on non-root; running as `root` adds 2 explicit `TestFailClosedEmitter` skips (`8` total skips) because `root` bypasses `chmod 0500` directory fault injection — historical Sept 2026 baseline was 86 tests).
+- Receipt dependency pin (`MAN-05` / `DEC-20`): `continuity-receipt==0.5.0` is intentionally pinned as the minimum `0.5` producer baseline; emitted `0.5` bundles verify `TRUSTED` across `0.5.0`, `0.5.2`, `0.5.4`, Rust `0.5.2`, and the hosted verifier.
+- Wrapper `/proc` requirement (`MAN-02` / `DEC-19`): `mandala-sandbox` passes `--proc /proc` as a deliberate hard security requirement so the sandboxed process tree sees only its own unshared PID namespace. Hosts or nested container VMs that deny fresh `procfs` mounts (`Can't mount proc on /newroot/proc: Operation not permitted`) are refused rather than falling back to `--ro-bind /proc /proc`, which would leak host PIDs and `/proc/<pid>/environ`.
+- Multi-host qualification (`MAN-01`): To qualify a new host's `/usr/bin/bwrap` binary without weakening fail-closed hash checks, follow the four-step reviewed-profile procedure in [`../design/LOCAL_QUALIFICATION_20261104.md`](../design/LOCAL_QUALIFICATION_20261104.md).
 - Acceptance: **G1–G8 pass** (G7 now includes snapshot → destroy → recreate →
   restore roundtrip with runner-written artifacts). Snapshot is
   filesystem-only by decision.
