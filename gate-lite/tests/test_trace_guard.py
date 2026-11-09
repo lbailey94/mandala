@@ -79,12 +79,20 @@ class TestTraceGuard(unittest.TestCase):
         self.assertGreater(result["compression"], 50)
 
     def test_cli_json_output(self):
+        import contextlib
+        import io
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "trace.json"
             path.write_text(json.dumps({"steps": [step("claim")]}), encoding="utf-8")
-            self.assertEqual(trace_guard.main([str(path), "--json"]), 1)
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = trace_guard.main([str(path), "--json"])
+            self.assertEqual(rc, 1)
+            parsed = json.loads(buf.getvalue())
+            self.assertFalse(parsed["ok"])
+            self.assertTrue(parsed["replay_sha256"])
 
 
 if __name__ == "__main__":

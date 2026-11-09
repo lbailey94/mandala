@@ -15,15 +15,16 @@ machine, payment qualification, or independent adoption.
 
 ```
 gate_lite/            orchestrator: pass → exec → settle → terminate
-  ctl.py              mandala-ctl CLI
+  ctl.py              mandala-ctl CLI (--trace binds PEB-23 trace guard verdicts)
   mcp_server.py       MCP control surface (stdio + loopback HTTP/SSE)
+  trace_guard.py      PEB-23 property trace guard & ddmin counterexample shrinker
 tools/make_vectors.py generates historical spec test vectors (0.4; rewrites the
                       tracked files — expect git status changes)
 tools/dogfood_run.py  full CLI dogfood on the real runner, evidence capture
 tools/install_sweep_timer.sh  systemd user timer for the expiry sweep
-tests/                unittest suites
+tests/                unittest suites (including test_trace_guard.py)
 vectors/              generated bundles + INDEX.md
-evidence/             dogfood runs (run.json, SUMMARY.md, bundles, transcript)
+evidence/             dogfood & benchmark runs (including bench-2026-11-07-live/)
 Dependency:           continuity-receipt==0.5.0 (published; new bundles pin spec 0.5)
 ```
 
@@ -227,9 +228,9 @@ real runner, MCP transports, soak) with warmup, auto-calibrated n, percentiles
 and raw samples in `results.json`. The OOM quota-seal drill is opt-in
 (`--oom`): memcg OOM kills make `gsd-housekeeping` pop "Application Stopped"
 desktop notifications. The G2 acceptance tests still exercise the same kernel
-path (one or two OOMs per `unittest` run). Latest:
-`evidence/bench-2026-09-18-sqlite/` (14/14 invariants, 44s; baseline
-`evidence/bench-2026-09-18/` kept for comparison). Headline medians on the
+path (one or two OOMs per `unittest` run). Latest sealed live run:
+[`evidence/bench-2026-11-07-live/`](evidence/bench-2026-11-07-live/report.md) (`SHA256SUMS`, 14/14 invariants, raw `bwrap` 13.9 ms, gate `SandboxRunner` 26.7 ms, `get_slot` at 10k slots 0.015 ms; earlier SQLite baseline
+`evidence/bench-2026-09-18-sqlite/` and `evidence/bench-2026-09-18/` kept for comparison). Headline medians on the
 dogfood host (i5-8350U):
 
 | Path | Median | Notes |
