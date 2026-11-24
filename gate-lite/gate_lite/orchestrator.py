@@ -752,19 +752,32 @@ class SliceRunner(SandboxRunner):
         return proc
 
     def _terminate(self, proc) -> None:
-        subprocess.run(
-            ["systemctl", "--user", "kill", "--kill-whom=all", "-s", "SIGKILL", proc.unit],
-            capture_output=True,
-        )
+        try:
+            subprocess.run(
+                ["systemctl", "--user", "kill", "--kill-whom=all", "-s", "SIGKILL", proc.unit],
+                capture_output=True,
+                timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
 
     def _inspect_kill(self, slot: dict, proc) -> str | None:
-        show = subprocess.run(
-            ["systemctl", "--user", "show", proc.unit, "-p", "Result", "-p", "MemoryPeak", "--value"],
-            capture_output=True,
-            text=True,
-        )
-        subprocess.run(["systemctl", "--user", "reset-failed", proc.unit], capture_output=True)
-        lines = [line.strip() for line in show.stdout.splitlines() if line.strip()]
+        show_stdout = ""
+        try:
+            show = subprocess.run(
+                ["systemctl", "--user", "show", proc.unit, "-p", "Result", "-p", "MemoryPeak", "--value"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            show_stdout = show.stdout
+        except (OSError, subprocess.TimeoutExpired):
+            show_stdout = ""
+        try:
+            subprocess.run(["systemctl", "--user", "reset-failed", proc.unit], capture_output=True, timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        lines = [line.strip() for line in show_stdout.splitlines() if line.strip()]
         result = lines[0] if lines else ""
         if len(lines) > 1 and lines[1].isdigit():
             bytes_peak = int(lines[1])
@@ -1054,10 +1067,11 @@ class Orchestrator:
                 completed = subprocess.run(
                     ["systemctl", "--user", "kill", "--kill-whom=all", "-s", signal_name, unit],
                     capture_output=True,
+                    timeout=10,
                 )
                 if completed.returncode == 0:
                     return
-            except OSError:
+            except (OSError, subprocess.TimeoutExpired):
                 pass
         sig = getattr(signal_mod, signal_name)
         pgid, pid = run.get("pgid"), run.get("pid")

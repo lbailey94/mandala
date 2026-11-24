@@ -54,12 +54,15 @@ def user_key(user_id: str) -> str:
     return hashlib.sha256(user_id.encode("utf-8")).hexdigest()[:16]
 
 
+_LEXICAL_TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+
 def tokenize(text: str) -> list[str]:
-    return re.findall(r"[a-z0-9]+", text.lower())
+    return _LEXICAL_TOKEN_RE.findall(text.lower())
 
 
 class LexicalBackend:
-    """Per-user JSONL store with deterministic token-overlap scoring."""
+    """Per-user JSONL store with inverted-index accelerated deterministic token-overlap scoring."""
 
     name = "lexical"
 
@@ -67,11 +70,26 @@ class LexicalBackend:
         self.state = state
         self._lock = threading.Lock()
         self._cache: dict[str, list[dict]] = {}
+        self._tok_lens: dict[str, list[int]] = {}
+        self._inv: dict[str, dict[str, list[int]]] = {}
 
     def _path(self, user: str) -> pathlib.Path:
         directory = self.state / "users" / user_key(user)
         directory.mkdir(parents=True, exist_ok=True)
         return directory / "memories.jsonl"
+
+    def _index_row(self, user: str, row_idx: int, content: str) -> None:
+        tokens = tokenize(content)
+        self._tok_lens[user].append(len(tokens))
+        inv = self._inv[user]
+        for term in set(tokens):
+            inv.setdefault(term, []).append(row_idx)
+
+    def _rebuild_index(self, user: str, rows: list[dict]) -> None:
+        self._tok_lens[user] = []
+        self._inv[user] = {}
+        for idx, row in enumerate(rows):
+            self._index_row(user, idx, row["content"])
 
     def _load(self, user: str) -> list[dict]:
         if user not in self._cache:
@@ -85,6 +103,7 @@ class LexicalBackend:
                         except ValueError:
                             pass
             self._cache[user] = rows
+            self._rebuild_index(user, rows)
         return self._cache[user]
 
     def add(self, user: str, items: list[dict]) -> list[str]:
@@ -97,24 +116,31 @@ class LexicalBackend:
                     memory_id = item.get("id") or hashlib.sha256(
                         f"{user}:{len(rows)}:{item['content']}".encode()
                     ).hexdigest()[:24]
+                    row_idx = len(rows)
                     rows.append({"id": memory_id, "content": item["content"],
                                  "metadata": item.get("metadata") or {}})
+                    self._index_row(user, row_idx, item["content"])
                     handle.write(json.dumps(rows[-1]) + "\n")
                     ids.append(memory_id)
             return ids
 
     def search(self, user: str, query: str, top_k: int) -> list[dict]:
+        terms = set(tokenize(query))
+        if not terms:
+            return []
         with self._lock:
             rows = list(self._load(user))
-        terms = set(tokenize(query))
-        scored = []
-        for row in rows:
-            tokens = tokenize(row["content"])
-            if not tokens:
-                continue
-            overlap = len(terms & set(tokens))
-            if overlap:
-                scored.append((overlap / len(tokens), row))
+            inv = self._inv.get(user, {})
+            tok_lens = self._tok_lens.get(user, [])
+            hits: dict[int, int] = {}
+            for term in terms:
+                for ridx in inv.get(term, ()):
+                    hits[ridx] = hits.get(ridx, 0) + 1
+        scored = [
+            (overlap / tok_lens[ridx], rows[ridx])
+            for ridx, overlap in sorted(hits.items())
+            if tok_lens[ridx] > 0
+        ]
         scored.sort(key=lambda pair: pair[0], reverse=True)
         return [
             {"id": row["id"], "content": row["content"], "score": round(score, 6)}
@@ -127,6 +153,8 @@ class LexicalBackend:
             if ids is None:
                 deleted = len(rows)
                 self._cache[user] = []
+                self._tok_lens[user] = []
+                self._inv[user] = {}
                 path = self._path(user)
                 if path.exists():
                     path.unlink()
@@ -134,6 +162,7 @@ class LexicalBackend:
             keep = [row for row in rows if row["id"] not in set(ids)]
             deleted = len(rows) - len(keep)
             self._cache[user] = keep
+            self._rebuild_index(user, keep)
             path = self._path(user)
             path.write_text("".join(json.dumps(row) + "\n" for row in keep), encoding="utf-8")
             return deleted

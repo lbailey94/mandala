@@ -28,6 +28,7 @@ import json
 import math
 import os
 import sys
+import threading
 import time
 import urllib.request
 from wm_mcp import call_tool
@@ -39,6 +40,10 @@ STATE_DEFAULT = os.path.expanduser("~/.local/share/lakshmi")
 PAGE_NAME = "dashboard.html"
 LIVE_STALE_SECONDS = 90.0  # mirror older than this is disclosed as stalled
 BRIDGE_METRICS = ("sandbox_unconfined", "sandbox_degraded", "tetragon_shadow")
+
+_FILE_CACHE_LOCK = threading.Lock()
+_HISTORY_CACHE: dict[str, tuple[int, int, int, list[tuple[datetime | None, dict]]]] = {}
+_OBS_CACHE: dict[str, tuple[int, int, int, list[dict]]] = {}
 
 
 def wm_tool(base: str, tool: str, arguments: dict, timeout: float) -> dict:
@@ -65,24 +70,35 @@ def parse_ts(value: str) -> datetime | None:
 def load_mirror_history(state_dir: str, hours: float, limit: int) -> list[dict]:
     path = os.path.join(state_dir, "history.jsonl")
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
-    rows: list[dict] = []
     try:
-        with open(path, encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                except ValueError:
-                    continue
-                stamp = parse_ts(record.get("ts", ""))
-                if stamp is None or stamp >= cutoff:
-                    rows.append(record)
+        st = os.stat(path)
     except OSError:
         return []
-    rows = rows[-limit:]
-    return rows
+    sig = (st.st_ino, st.st_mtime_ns, st.st_size)
+    with _FILE_CACHE_LOCK:
+        cached = _HISTORY_CACHE.get(path)
+        parsed = cached[3] if (cached is not None and cached[:3] == sig) else None
+    if parsed is None:
+        parsed = []
+        try:
+            with open(path, encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        record = json.loads(line)
+                    except ValueError:
+                        continue
+                    parsed.append((parse_ts(record.get("ts", "")), record))
+        except OSError:
+            return []
+        with _FILE_CACHE_LOCK:
+            if len(_HISTORY_CACHE) > 16:
+                _HISTORY_CACHE.clear()
+            _HISTORY_CACHE[path] = (*sig, parsed)
+    rows = [record for stamp, record in parsed if stamp is None or stamp >= cutoff]
+    return rows[-limit:]
 
 
 def galaxy_history(base: str, galaxy: str, limit: int, timeout: float) -> tuple[list[dict], str | None]:
@@ -126,25 +142,38 @@ def merge_history(local: list[dict], remote: list[dict], limit: int) -> list[dic
 def load_mirror_observations(state_dir: str, limit: int) -> list[dict]:
     """Read the sampler's bounded observation ring (oldest first)."""
     path = os.path.join(state_dir, "observations.jsonl")
-    rows: list[dict] = []
     try:
-        with open(path, encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                except ValueError:
-                    continue
-                if (
-                    isinstance(record, dict)
-                    and record.get("kind") == "telemetry.observation"
-                ):
-                    rows.append(record)
+        st = os.stat(path)
     except OSError:
         return []
-    rows.sort(key=lambda r: str(r.get("ts", "")))
+    sig = (st.st_ino, st.st_mtime_ns, st.st_size)
+    with _FILE_CACHE_LOCK:
+        cached = _OBS_CACHE.get(path)
+        rows = cached[3] if (cached is not None and cached[:3] == sig) else None
+    if rows is None:
+        rows = []
+        try:
+            with open(path, encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        record = json.loads(line)
+                    except ValueError:
+                        continue
+                    if (
+                        isinstance(record, dict)
+                        and record.get("kind") == "telemetry.observation"
+                    ):
+                        rows.append(record)
+        except OSError:
+            return []
+        rows.sort(key=lambda r: str(r.get("ts", "")))
+        with _FILE_CACHE_LOCK:
+            if len(_OBS_CACHE) > 16:
+                _OBS_CACHE.clear()
+            _OBS_CACHE[path] = (*sig, rows)
     return rows[-limit:]
 
 
