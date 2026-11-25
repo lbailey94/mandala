@@ -1,0 +1,9 @@
+{
+  "profile_id": "urn:mandala:runner-profile:podman-v1",
+  "sandbox_class": "oci-rootless-candidate",
+  "source_repository": "lbailey94/mandala",
+  "source_path": "gate-lite/runners/podman-v1/mandala-sandbox-podman",
+  "sha256": "2dd8c8ffb3f6ab2b6fd8c8966c9236b479467eb4b70e94c86d633e1dab320bf4",
+  "receipt_package": "continuity-receipt==0.5.0",
+  "note": "Staged rootless OCI candidate awaiting CPR 0.6+ sandbox_class support; never aliases bwrap or landlock in 0.5 receipts."
+}

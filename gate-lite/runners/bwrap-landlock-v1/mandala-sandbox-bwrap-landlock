@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# mandala-sandbox-bwrap-landlock — defense-in-depth Bubblewrap + Landlock ABI 8 runner
+#
+# Combines user/mount/net/PID namespace isolation (bubblewrap) with irrevocable
+# kernel Landlock ABI 8 filesystem, TCP zero-egress, and IPC/signal scoping (wm-sandbox).
+set -euo pipefail
+
+with_net=0
+workspace_override=""
+workspace_rw=0
+inner_ws=""
+inner_nows=""
+
+if [ "${1:-}" = "--exec" ]; then
+  envelope="${2:?mandala-sandbox-bwrap-landlock: --exec requires a JSON envelope}"
+  shift 2
+  coproc parsed_stream { jq -j 'if type != "object" or (.program | type) != "string" or .program == "" or (.program | index("\u0000")) != null or (has("args") and (.args | type) != "array") or any((if has("args") then .args else [] end)[]; type != "string" or index("\u0000") != null) or (has("net") and (.net | type) != "boolean") or (has("workspace") and ((.workspace | type) != "string" or (.workspace | index("\u0000")) != null)) or (has("rw") and (.rw | type) != "boolean") then error("invalid sandbox envelope") else (if has("args") then .args else [] end) as $args | (if has("net") then .net else false end) as $net | (if has("workspace") then .workspace else "" end) as $ws | (if has("rw") then .rw else false end) as $rw | [ ($net | tostring), $ws, ($rw | tostring), ({schema: "wm-sandbox-exec-v1", program: .program, args: $args, net: $net, workspace: "/workspace", rw: $rw} | tojson), ({schema: "wm-sandbox-exec-v1", program: .program, args: $args, net: $net} | tojson) ][] | ., "\u0000" end' <<<"$envelope"; }
+  mapfile -d '' -t fields <&"${parsed_stream[0]}"
+  # shellcheck disable=SC2154
+  if ! wait "${parsed_stream_PID}" || [ "${#fields[@]}" -lt 5 ]; then
+    echo "mandala-sandbox-bwrap-landlock: invalid JSON envelope or argument types" >&2
+    exit 64
+  fi
+  if [ "${fields[0]}" = "true" ]; then
+    with_net=1
+  fi
+  workspace_override="${fields[1]}"
+  if [ "${fields[2]}" = "true" ]; then
+    workspace_rw=1
+  fi
+  inner_ws="${fields[3]}"
+  inner_nows="${fields[4]}"
+else
+  if [ "${1:-}" = "--net" ]; then
+    with_net=1
+    shift
+    program="${1:?mandala-sandbox-bwrap-landlock: --net requires a command}"
+  else
+    program="${1:?mandala-sandbox-bwrap-landlock: requires a command or --exec}"
+  fi
+  shift
+  exec_args=("$@")
+  if [ "${#exec_args[@]}" -eq 0 ]; then
+    args_json="[]"
+  else
+    args_json="$(printf '%s\0' "${exec_args[@]}" | jq -Rsc 'split("\u0000")[:-1]')"
+  fi
+  net_json="false"
+  if [ "$with_net" = 1 ]; then
+    net_json="true"
+  fi
+  inner_ws="$(jq -cn --arg program "$program" --argjson args "$args_json" --argjson net "$net_json" '{schema: "wm-sandbox-exec-v1", program: $program, args: $args, net: $net, workspace: "/workspace", rw: false}')"
+  inner_nows="$(jq -cn --arg program "$program" --argjson args "$args_json" --argjson net "$net_json" '{schema: "wm-sandbox-exec-v1", program: $program, args: $args, net: $net}')"
+fi
+
+wm_bin=""
+if [ -n "${WM_SANDBOX_BIN:-}" ]; then
+  wm_bin="$WM_SANDBOX_BIN"
+elif wm_bin="$(command -v wm-sandbox 2>/dev/null)" && [ -n "$wm_bin" ]; then
+  :
+elif [ -n "${HOME:-}" ] && [ -x "${HOME}/.local/bin/wm-sandbox" ]; then
+  wm_bin="${HOME}/.local/bin/wm-sandbox"
+fi
+
+if [ -z "$wm_bin" ] || [ ! -x "$wm_bin" ]; then
+  echo "mandala-sandbox-bwrap-landlock: wm-sandbox binary not found or not executable" >&2
+  exit 127
+fi
+
+workspace="${workspace_override:-${WM_SANDBOX_WORKSPACE:-${HOME:-/nonexistent}/.local/share/whitemagic/safe_corpus}}"
+
+args=(
+  --ro-bind /usr /usr
+  --ro-bind-try /lib /lib
+  --ro-bind-try /lib64 /lib64
+  --ro-bind-try /nix /nix
+  --ro-bind-try /bin /bin
+  --ro-bind-try /run/current-system /run/current-system
+  --proc /proc
+  --dev /dev
+  --unshare-all
+  --tmpfs /tmp
+  --die-with-parent
+  --setenv WM_SANDBOXED 1
+  --ro-bind "$wm_bin" /run/wm-sandbox
+)
+
+if [ "$with_net" = 1 ]; then
+  args+=( --share-net )
+  args+=( --ro-bind-try /run/systemd/resolve /run/systemd/resolve )
+  args+=( --ro-bind-try /etc/resolv.conf /etc/resolv.conf )
+  args+=( --ro-bind-try /etc/hosts /etc/hosts )
+  args+=( --ro-bind-try /etc/nsswitch.conf /etc/nsswitch.conf )
+  args+=( --ro-bind-try /etc/ssl/certs /etc/ssl/certs )
+fi
+
+inner_envelope="$inner_nows"
+if [ -e "$workspace" ]; then
+  if [ "$workspace_rw" = 1 ]; then
+    args+=( --bind "$workspace" /workspace )
+  else
+    args+=( --ro-bind "$workspace" /workspace )
+  fi
+  if [ -d "$workspace" ]; then
+    args+=( --chdir /workspace )
+  fi
+  inner_envelope="$inner_ws"
+elif [ "$workspace_rw" = 1 ]; then
+  echo "mandala-sandbox-bwrap-landlock: writable workspace does not exist" >&2
+  exit 64
+fi
+
+exec bwrap "${args[@]}" -- /run/wm-sandbox --exec "$inner_envelope"

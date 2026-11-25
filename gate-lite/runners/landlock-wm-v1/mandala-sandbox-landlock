@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# mandala-sandbox-landlock — unprivileged Linux Landlock ABI 8 + zero-egress runner
+#
+# CLI contract (matches runners/bwrap-v1/mandala-sandbox):
+#   mandala-sandbox-landlock <command> [args...]
+#   mandala-sandbox-landlock --net <command> [args...]
+#   mandala-sandbox-landlock --exec '<json envelope>'
+set -euo pipefail
+
+with_net=0
+workspace=""
+workspace_rw="false"
+clean_envelope=""
+
+if [ "${1:-}" = "--exec" ]; then
+  envelope="${2:?mandala-sandbox-landlock: --exec requires a JSON envelope}"
+  shift 2
+  default_ws="${WM_SANDBOX_WORKSPACE:-}"
+  coproc parsed_stream { jq -j --arg default_ws "$default_ws" 'if type != "object" or (.program | type) != "string" or .program == "" or (.program | index("\u0000")) != null or (has("args") and (.args | type) != "array") or any((if has("args") then .args else [] end)[]; type != "string" or index("\u0000") != null) or (has("net") and (.net | type) != "boolean") or (has("workspace") and ((.workspace | type) != "string" or (.workspace | index("\u0000")) != null)) or (has("rw") and (.rw | type) != "boolean") then error("invalid sandbox envelope") else (if has("args") then .args else [] end) as $args | (if has("net") then .net else false end) as $net | (if has("workspace") and (.workspace != "") then .workspace else $default_ws end) as $ws | (if has("rw") then .rw else false end) as $rw | [ $ws, ($rw | tostring), ({schema: "wm-sandbox-exec-v1", program: .program, args: $args, net: $net} + (if $ws != "" then {workspace: $ws, rw: $rw} else {} end) | tojson), ({schema: "wm-sandbox-exec-v1", program: .program, args: $args, net: $net} | tojson) ][] | ., "\u0000" end' <<<"$envelope"; }
+  mapfile -d '' -t fields <&"${parsed_stream[0]}"
+  # shellcheck disable=SC2154
+  if ! wait "${parsed_stream_PID}" || [ "${#fields[@]}" -lt 4 ]; then
+    echo "mandala-sandbox-landlock: invalid JSON envelope or argument types" >&2
+    exit 64
+  fi
+  workspace="${fields[0]}"
+  workspace_rw="${fields[1]}"
+  env_with_ws="${fields[2]}"
+  env_no_ws="${fields[3]}"
+else
+  if [ "${1:-}" = "--net" ]; then
+    with_net=1
+    shift
+    program="${1:?mandala-sandbox-landlock: --net requires a command}"
+  else
+    program="${1:?mandala-sandbox-landlock: requires a command or --exec}"
+  fi
+  shift
+  exec_args=("$@")
+  workspace="${WM_SANDBOX_WORKSPACE:-}"
+  if [ "${#exec_args[@]}" -eq 0 ]; then
+    args_json="[]"
+  else
+    args_json="$(printf '%s\0' "${exec_args[@]}" | jq -Rsc 'split("\u0000")[:-1]')"
+  fi
+  net_json="false"
+  if [ "$with_net" = 1 ]; then
+    net_json="true"
+  fi
+  env_with_ws="$(jq -cn --arg program "$program" --argjson args "$args_json" --argjson net "$net_json" --arg workspace "$workspace" '{schema: "wm-sandbox-exec-v1", program: $program, args: $args, net: $net, workspace: $workspace, rw: false}')"
+  env_no_ws="$(jq -cn --arg program "$program" --argjson args "$args_json" --argjson net "$net_json" '{schema: "wm-sandbox-exec-v1", program: $program, args: $args, net: $net}')"
+fi
+
+wm_bin=""
+if [ -n "${WM_SANDBOX_BIN:-}" ]; then
+  wm_bin="$WM_SANDBOX_BIN"
+elif wm_bin="$(command -v wm-sandbox 2>/dev/null)" && [ -n "$wm_bin" ]; then
+  :
+elif [ -n "${HOME:-}" ] && [ -x "${HOME}/.local/bin/wm-sandbox" ]; then
+  wm_bin="${HOME}/.local/bin/wm-sandbox"
+fi
+
+if [ -z "$wm_bin" ] || [ ! -x "$wm_bin" ]; then
+  echo "mandala-sandbox-landlock: wm-sandbox binary not found or not executable" >&2
+  exit 127
+fi
+
+active_workspace=""
+if [ -n "$workspace" ]; then
+  if [ -e "$workspace" ]; then
+    active_workspace="$workspace"
+    clean_envelope="$env_with_ws"
+  elif [ "$workspace_rw" = "true" ]; then
+    echo "mandala-sandbox-landlock: writable workspace does not exist" >&2
+    exit 64
+  else
+    clean_envelope="$env_no_ws"
+  fi
+else
+  clean_envelope="$env_no_ws"
+fi
+
+if [ -n "$active_workspace" ] && [ -d "$active_workspace" ]; then
+  cd "$active_workspace"
+fi
+
+export WM_SANDBOXED=1
+exec "$wm_bin" --exec "$clean_envelope"

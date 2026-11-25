@@ -1,0 +1,19 @@
+{
+  "profile_id": "urn:mandala:runner-profile:bwrap-landlock-v1",
+  "sandbox_class": "bwrap-landlock",
+  "source_repository": "lbailey94/mandala",
+  "source_path": "gate-lite/runners/bwrap-landlock-v1/mandala-sandbox-bwrap-landlock",
+  "sha256": "96896e97fd2e25ac58e14ee2906338c2be2f50ed4bbab633947ba60ca1692841",
+  "receipt_package": "continuity-receipt==0.5.0",
+  "dependencies": {
+    "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+    "wm-sandbox": "298aa2467d9eb0124ee74c3122fbf19f98621cecd9c8bf8fb0a2103d943b9cf2",
+    "jq": "59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566"
+  },
+  "kernel_features": {
+    "user_mount_net_pid_namespaces": true,
+    "isolated_tmpfs_tmp": true,
+    "landlock_abi": 8
+  },
+  "publication_status": "local qualified defense-in-depth Bubblewrap + Landlock ABI 8 profile"
+}

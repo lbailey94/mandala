@@ -1,0 +1,20 @@
+{
+  "profile_id": "urn:mandala:runner-profile:landlock-wm-v1",
+  "sandbox_class": "landlock",
+  "source_repository": "lbailey94/mandala",
+  "source_path": "gate-lite/runners/landlock-wm-v1/mandala-sandbox-landlock",
+  "sha256": "5ab3e88b48b29de63ba891417800a751ae45152209d4ae6bb12696c8f926b8b8",
+  "receipt_package": "continuity-receipt==0.5.0",
+  "dependencies": {
+    "wm-sandbox": "298aa2467d9eb0124ee74c3122fbf19f98621cecd9c8bf8fb0a2103d943b9cf2",
+    "jq": "59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566"
+  },
+  "kernel_features": {
+    "landlock_abi": 8,
+    "pr_set_no_new_privs": true,
+    "zero_egress_tcp_block": true,
+    "ipc_abstract_socket_and_signal_scope": true,
+    "tmp_scratch_rw": true
+  },
+  "publication_status": "local qualified Landlock ABI 8 profile"
+}

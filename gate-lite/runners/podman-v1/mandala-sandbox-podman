@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# mandala-sandbox-podman — OpenComputer-inspired rootless OCI candidate runner
+#
+# Candidate portable container wrapper (`podman run --rm --network=none --userns=keep-id --read-only`).
+# Requires MANDALA_PODMAN_IMAGE to name a reviewed pinned OCI image reference.
+set -euo pipefail
+
+with_net=0
+workspace_override=""
+workspace_rw=0
+
+if [ "${1:-}" = "--exec" ]; then
+  envelope="${2:?mandala-sandbox-podman: --exec requires a JSON envelope}"
+  shift 2
+  coproc parsed_stream { jq -j 'if type != "object" or (.program | type) != "string" or .program == "" or (.program | index("\u0000")) != null or (has("args") and (.args | type) != "array") or any((if has("args") then .args else [] end)[]; type != "string" or index("\u0000") != null) or (has("net") and (.net | type) != "boolean") or (has("workspace") and ((.workspace | type) != "string" or (.workspace | index("\u0000")) != null)) or (has("rw") and (.rw | type) != "boolean") then error("invalid sandbox envelope") else ([.program, (if has("net") then .net else false end | tostring), (if has("workspace") then .workspace else "" end), (if has("rw") then .rw else false end | tostring)] + (if has("args") then .args else [] end))[] | ., "\u0000" end' <<<"$envelope"; }
+  mapfile -d '' -t fields <&"${parsed_stream[0]}"
+  # shellcheck disable=SC2154
+  if ! wait "${parsed_stream_PID}"; then
+    echo "mandala-sandbox-podman: invalid JSON envelope or argument types" >&2
+    exit 64
+  fi
+  program="${fields[0]}"
+  if [ "${fields[1]}" = "true" ]; then
+    with_net=1
+  fi
+  workspace_override="${fields[2]}"
+  if [ "${fields[3]}" = "true" ]; then
+    workspace_rw=1
+  fi
+  exec_args=("${fields[@]:4}")
+elif [ "${1:-}" = "--net" ]; then
+  with_net=1
+  shift
+  program="${1:?mandala-sandbox-podman: --net requires a command}"
+  shift
+  exec_args=("$@")
+else
+  program="${1:?mandala-sandbox-podman: requires a command or --exec}"
+  shift
+  exec_args=("$@")
+fi
+
+podman_bin=""
+if [ -n "${MANDALA_PODMAN_BIN:-}" ]; then
+  podman_bin="$MANDALA_PODMAN_BIN"
+elif podman_bin="$(command -v podman 2>/dev/null)" && [ -n "$podman_bin" ]; then
+  :
+fi
+if [ -z "$podman_bin" ] || [ ! -x "$podman_bin" ]; then
+  echo "mandala-sandbox-podman: podman binary not found or not executable" >&2
+  exit 127
+fi
+
+image="${MANDALA_PODMAN_IMAGE:-}"
+if [ -z "$image" ]; then
+  echo "mandala-sandbox-podman: MANDALA_PODMAN_IMAGE is required" >&2
+  exit 64
+fi
+
+workspace="${workspace_override:-${WM_SANDBOX_WORKSPACE:-}}"
+podman_args=(
+  run
+  --rm
+  --init
+  --read-only
+  --cap-drop=ALL
+  --security-opt=no-new-privileges
+  --userns=keep-id
+  --tmpfs /tmp:rw,noexec,nosuid
+  -e WM_SANDBOXED=1
+)
+
+if [ "$with_net" = 1 ]; then
+  podman_args+=( --network=slirp4netns )
+else
+  podman_args+=( --network=none )
+fi
+
+if [ -n "$workspace" ]; then
+  if [ -e "$workspace" ]; then
+    if [ "$workspace_rw" = 1 ]; then
+      podman_args+=( -v "${workspace}:/workspace:rw" )
+    else
+      podman_args+=( -v "${workspace}:/workspace:ro" )
+    fi
+    if [ -d "$workspace" ]; then
+      podman_args+=( -w /workspace )
+    fi
+  elif [ "$workspace_rw" = 1 ]; then
+    echo "mandala-sandbox-podman: writable workspace does not exist" >&2
+    exit 64
+  fi
+fi
+
+exec "$podman_bin" "${podman_args[@]}" "$image" "$program" "${exec_args[@]}"

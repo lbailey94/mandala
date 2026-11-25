@@ -29,6 +29,7 @@ from gate_lite.orchestrator import (  # noqa: E402
     EmitterError,
     Orchestrator,
     PassError,
+    PolicyError,
     build_runner,
 )
 
@@ -52,6 +53,14 @@ TOOLS = [
                 "class": {"type": "string", "enum": sorted(SLOT_CLASSES)},
                 "spend_minor": {"type": "integer"},
                 "idempotency_key": {"type": "string"},
+                "vfs": {
+                    "type": "array",
+                    "description": "optional capability-scoped VFS mounts ([{cap, virt, host_handle, mode}])",
+                },
+                "policy": {
+                    "type": "object",
+                    "description": "optional pre-command evaluation policy",
+                },
             },
             "required": ["agent"],
         },
@@ -279,6 +288,8 @@ class McpServer:
                         spend_cap=spend_cap,
                         principal_id=args.get("principal"),
                         idempotency_key=args.get("idempotency_key"),
+                        vfs=args.get("vfs"),
+                        policy=args.get("policy"),
                     )
                 )
             if name == "mandala.pass.verify":
@@ -359,6 +370,11 @@ class McpServer:
             return _preflight_tool_error(exc)
         except PassError as exc:
             return _tool_error(exc.code, str(exc))
+        except PolicyError as exc:
+            return {
+                "content": [{"type": "text", "text": json.dumps(exc.as_dict())}],
+                "isError": True,
+            }
         except KeyError as exc:
             return _tool_error("not_found", str(exc))
         except PermissionError as exc:

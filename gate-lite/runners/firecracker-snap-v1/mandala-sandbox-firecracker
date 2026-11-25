@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# mandala-sandbox-firecracker — Firecracker snapshot microVM candidate runner
+#
+# Jasmine-inspired snapshot restore profile (`sandbox_class="microvm-fc"`):
+# - Parses wm-sandbox-exec-v1 JSON envelopes strictly via jq.
+# - Expects pre-warmed snapshot artifacts under MANDALA_FC_SNAPSHOT_DIR:
+#     kernel.bin, rootfs.ext4, mem.snap, vmstate.snap
+# - Copies rootfs/mem snapshot into an ephemeral per-run directory via
+#   ext4 sparse copy / xfs reflink (`cp --reflink=auto --sparse=always`).
+set -euo pipefail
+
+with_net=0
+workspace_override=""
+workspace_rw=0
+
+if [ "${1:-}" = "--exec" ]; then
+  envelope="${2:?mandala-sandbox-firecracker: --exec requires a JSON envelope}"
+  shift 2
+  coproc parsed_stream { jq -j 'if type != "object" or (.program | type) != "string" or .program == "" or (.program | index("\u0000")) != null or (has("args") and (.args | type) != "array") or any((if has("args") then .args else [] end)[]; type != "string" or index("\u0000") != null) or (has("net") and (.net | type) != "boolean") or (has("workspace") and ((.workspace | type) != "string" or (.workspace | index("\u0000")) != null)) or (has("rw") and (.rw | type) != "boolean") then error("invalid sandbox envelope") else ([.program, (if has("net") then .net else false end | tostring), (if has("workspace") then .workspace else "" end), (if has("rw") then .rw else false end | tostring)] + (if has("args") then .args else [] end))[] | ., "\u0000" end' <<<"$envelope"; }
+  mapfile -d '' -t fields <&"${parsed_stream[0]}"
+  # shellcheck disable=SC2154
+  if ! wait "${parsed_stream_PID}"; then
+    echo "mandala-sandbox-firecracker: invalid JSON envelope or argument types" >&2
+    exit 64
+  fi
+  program="${fields[0]}"
+  if [ "${fields[1]}" = "true" ]; then
+    with_net=1
+  fi
+  workspace_override="${fields[2]}"
+  if [ "${fields[3]}" = "true" ]; then
+    workspace_rw=1
+  fi
+  exec_args=("${fields[@]:4}")
+else
+  if [ "${1:-}" = "--net" ]; then
+    with_net=1
+    shift
+  fi
+  program="${1:?mandala-sandbox-firecracker: requires a command or --exec}"
+  shift
+  exec_args=("$@")
+fi
+
+workspace="${workspace_override:-${WM_SANDBOX_WORKSPACE:-}}"
+if [ "$workspace_rw" = 1 ] && [ -n "$workspace" ] && [ ! -e "$workspace" ]; then
+  echo "mandala-sandbox-firecracker: writable workspace does not exist" >&2
+  exit 64
+fi
+
+fc_bin=""
+if [ -n "${MANDALA_FC_BIN:-}" ]; then
+  fc_bin="$MANDALA_FC_BIN"
+elif fc_bin="$(command -v firecracker 2>/dev/null)" && [ -n "$fc_bin" ]; then
+  :
+fi
+if [ -z "$fc_bin" ] || [ ! -x "$fc_bin" ]; then
+  echo "mandala-sandbox-firecracker: firecracker binary not found or not executable" >&2
+  exit 127
+fi
+
+snap_dir="${MANDALA_FC_SNAPSHOT_DIR:-}"
+if [ -z "$snap_dir" ] || [ ! -d "$snap_dir" ]; then
+  echo "mandala-sandbox-firecracker: MANDALA_FC_SNAPSHOT_DIR is missing or not a directory" >&2
+  exit 65
+fi
+for artifact in kernel.bin rootfs.ext4 mem.snap vmstate.snap; do
+  if [ ! -f "$snap_dir/$artifact" ]; then
+    echo "mandala-sandbox-firecracker: missing snapshot artifact: $artifact" >&2
+    exit 65
+  fi
+done
+
+run_dir="$(mktemp -d "${TMPDIR:-/tmp}/mandala-fc-XXXXXX")"
+cleanup() {
+  rm -rf "$run_dir"
+}
+trap cleanup EXIT
+
+cp --reflink=auto --sparse=always "$snap_dir/rootfs.ext4" "$run_dir/rootfs.ext4"
+cp --reflink=auto --sparse=always "$snap_dir/mem.snap" "$run_dir/mem.snap"
+cp "$snap_dir/vmstate.snap" "$run_dir/vmstate.snap"
+
+if [ "${#exec_args[@]}" -eq 0 ]; then
+  args_json="[]"
+else
+  args_json="$(printf '%s\0' "${exec_args[@]}" | jq -Rsc 'split("\u0000")[:-1]')"
+fi
+net_json="false"
+if [ "$with_net" = 1 ]; then
+  net_json="true"
+fi
+rw_json="false"
+if [ "$workspace_rw" = 1 ]; then
+  rw_json="true"
+fi
+
+jq -cn \
+  --arg program "$program" \
+  --argjson args "$args_json" \
+  --argjson net "$net_json" \
+  --arg workspace "$workspace" \
+  --argjson rw "$rw_json" \
+  '{schema: "wm-sandbox-exec-v1", program: $program, args: $args, net: $net, workspace: $workspace, rw: $rw}' \
+  >"$run_dir/payload.json"
+
+jq -cn \
+  --arg snap "$run_dir/vmstate.snap" \
+  --arg mem "$run_dir/mem.snap" \
+  --arg rootfs "$run_dir/rootfs.ext4" \
+  --arg kernel "$snap_dir/kernel.bin" \
+  --arg payload "$run_dir/payload.json" \
+  '{
+    "snapshot": {
+      "snapshot_path": $snap,
+      "mem_file_path": $mem,
+      "enable_diff_snapshots": false,
+      "resume_vm": true
+    },
+    "kernel_image_path": $kernel,
+    "rootfs_path": $rootfs,
+    "payload_path": $payload
+  }' >"$run_dir/vm-resume.json"
+
+"$fc_bin" --no-api --id "mandala-$$" --config-file "$run_dir/vm-resume.json"

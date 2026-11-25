@@ -1,0 +1,18 @@
+{
+  "profile_id": "urn:mandala:runner-profile:firecracker-snap-v1",
+  "sandbox_class": "microvm-fc",
+  "source_repository": "lbailey94/mandala",
+  "source_path": "gate-lite/runners/firecracker-snap-v1/mandala-sandbox-firecracker",
+  "sha256": "51e0786dd761a80bf87b782b14227ba17ef7cbf828676d4256d05fd6a3af4b4a",
+  "receipt_package": "continuity-receipt==0.5.0",
+  "dependencies": {
+    "jq": "59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566"
+  },
+  "required_vm_artifacts": [
+    "kernel.bin",
+    "rootfs.ext4",
+    "mem.snap",
+    "vmstate.snap"
+  ],
+  "publication_status": "snapshot microVM profile (fail-closed pending host firecracker binary and pinned VM snapshot images)"
+}

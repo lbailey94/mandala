@@ -1,5 +1,6 @@
 """Gate-lite orchestrator v0: pass → exec → settle → terminate with Continuity Receipts."""
 import hashlib
+import io
 import ipaddress
 import importlib.metadata
 import json
@@ -19,6 +20,13 @@ from pathlib import Path
 
 from . import trace_guard
 from .errors import PreflightError
+from .pre_command import (
+    PolicyError,
+    evaluate_pre_command,
+    policy_digest,
+    validate_policy,
+    validate_vfs,
+)
 
 try:
     from continuity_receipt import __version__ as RECEIPT_RUNTIME_VERSION, records
@@ -54,6 +62,15 @@ PROFILE_EGRESS_SIDECAR_SHA256 = {
 }
 PROFILE_BWRAP_SHA256 = "sha256:e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71"
 PROFILE_JQ_SHA256 = "sha256:59cfd58d7e470b103aede0e7589cfea929e45ee27f5471f08aa9676ac7bfc566"
+PROFILE_ID_LANDLOCK = "urn:mandala:runner-profile:landlock-wm-v1"
+PROFILE_WRAPPER_LANDLOCK_SHA256 = "sha256:5ab3e88b48b29de63ba891417800a751ae45152209d4ae6bb12696c8f926b8b8"
+PROFILE_ID_LANDLOCK_DIRECT = "urn:mandala:runner-profile:landlock-wm-direct-v1"
+PROFILE_WM_SANDBOX_SHA256 = "sha256:298aa2467d9eb0124ee74c3122fbf19f98621cecd9c8bf8fb0a2103d943b9cf2"
+PROFILE_ID_BWRAP_LANDLOCK = "urn:mandala:runner-profile:bwrap-landlock-v1"
+PROFILE_WRAPPER_BWRAP_LANDLOCK_SHA256 = "sha256:96896e97fd2e25ac58e14ee2906338c2be2f50ed4bbab633947ba60ca1692841"
+PROFILE_ID_FC = "urn:mandala:runner-profile:firecracker-snap-v1"
+PROFILE_WRAPPER_FC_SHA256 = "sha256:51e0786dd761a80bf87b782b14227ba17ef7cbf828676d4256d05fd6a3af4b4a"
+FC_REQUIRED_ARTIFACTS = ("kernel.bin", "rootfs.ext4", "mem.snap", "vmstate.snap")
 GATE_CLASS = "gate-lite"
 BLOCKED_STATES = ("terminated", "expired", "denied", "frozen", "receipt_incomplete")
 CPU_QUOTA_PERCENT = {"small": 100, "medium": 200}
@@ -460,11 +477,14 @@ class SandboxRunner:
             adapter_hint = os.environ.get("WM_MANDALA_SANDBOX_CLASS")
         if adapter_hint is None:
             adapter_hint = os.environ.get("WM_SANDBOX_CLASS")
-        if adapter_hint is None and (
-            "landrun" in Path(self.runner_path).name
-            or "landlock" in Path(self.runner_path).name
-        ):
-            adapter_hint = "landlock"
+        runner_name = Path(self.runner_path).name
+        if adapter_hint is None:
+            if "bwrap-landlock" in runner_name:
+                adapter_hint = "bwrap-landlock"
+            elif "landrun" in runner_name or "landlock" in runner_name or "wm-sandbox" in runner_name:
+                adapter_hint = "landlock"
+            elif "firecracker" in runner_name:
+                adapter_hint = "microvm-fc"
 
         # Selection is useful for choosing a wrapper adapter, but neither a
         # class string nor the wrapper's filename is qualification evidence.
@@ -473,25 +493,23 @@ class SandboxRunner:
         self.profile_id = None
         self.profile_status = "unqualified"
 
-        reviewed_profiles = {
-            PROFILE_WRAPPER_SHA256: PROFILE_ID,
-            PROFILE_WRAPPER_EGRESS_SHA256: PROFILE_ID_EGRESS,
-        }
-        if self.runner_digest in reviewed_profiles and self._dependencies_match():
+        spec = self._reviewed_profiles().get(self.runner_digest)
+        if spec is not None and self._dependencies_match():
             # Only the exact reviewed bytes qualify. A contradictory hint on
             # those bytes (for example a Landlock hint on Bubblewrap-only
             # bytes) is a typed refusal, never a silently misreported class.
-            if adapter_hint not in (None, "bwrap"):
+            if adapter_hint not in spec["allowed_hints"]:
+                expected_cls = spec["sandbox_class"]
                 raise RunnerProfileError(
-                    "runner class hint contradicts the reviewed bwrap wrapper; refusing",
+                    f"runner class hint contradicts the reviewed {expected_cls} wrapper; refusing",
                     code="runner_class_hint_conflict",
-                    expected="bwrap-compatible selection or no hint",
+                    expected=f"{expected_cls}-compatible selection or no hint",
                     found=adapter_hint,
-                    action="remove the conflicting class hint or select the reviewed bwrap wrapper",
+                    action=f"remove the conflicting class hint or select the reviewed {expected_cls} wrapper",
                 )
-            self.profile_id = reviewed_profiles[self.runner_digest]
+            self.profile_id = spec["profile_id"]
             self.profile_status = "locally_qualified"
-            self.sandbox_class = "bwrap"
+            self.sandbox_class = spec["sandbox_class"]
 
         self._observed_adapter_id = self.adapter_id
         self._observed_class = self.sandbox_class
@@ -506,8 +524,63 @@ class SandboxRunner:
                 digest.update(chunk)
         return "sha256:" + digest.hexdigest()
 
+    @staticmethod
+    def _reviewed_profiles() -> dict[str, dict]:
+        # Resolved dynamically from module globals so profile tests can patch
+        # individual constants without import-time aliasing.
+        return {
+            PROFILE_WRAPPER_SHA256: {
+                "profile_id": PROFILE_ID,
+                "sandbox_class": "bwrap",
+                "allowed_hints": (None, "bwrap"),
+                "deps": (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)),
+            },
+            PROFILE_WRAPPER_EGRESS_SHA256: {
+                "profile_id": PROFILE_ID_EGRESS,
+                "sandbox_class": "bwrap",
+                "allowed_hints": (None, "bwrap"),
+                "deps": (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)),
+            },
+            PROFILE_WRAPPER_LANDLOCK_SHA256: {
+                "profile_id": PROFILE_ID_LANDLOCK,
+                "sandbox_class": "landlock",
+                "allowed_hints": (None, "landlock"),
+                "deps": (("wm-sandbox", PROFILE_WM_SANDBOX_SHA256), ("jq", PROFILE_JQ_SHA256)),
+            },
+            PROFILE_WM_SANDBOX_SHA256: {
+                "profile_id": PROFILE_ID_LANDLOCK_DIRECT,
+                "sandbox_class": "landlock",
+                "allowed_hints": (None, "landlock"),
+                "deps": (),
+            },
+            PROFILE_WRAPPER_BWRAP_LANDLOCK_SHA256: {
+                "profile_id": PROFILE_ID_BWRAP_LANDLOCK,
+                "sandbox_class": "bwrap-landlock",
+                "allowed_hints": (None, "bwrap-landlock"),
+                "deps": (
+                    ("bwrap", PROFILE_BWRAP_SHA256),
+                    ("wm-sandbox", PROFILE_WM_SANDBOX_SHA256),
+                    ("jq", PROFILE_JQ_SHA256),
+                ),
+            },
+        }
+
+    def _deps_for_digest(self) -> tuple[tuple[str, str], ...]:
+        spec = self._reviewed_profiles().get(self.runner_digest)
+        if spec is not None:
+            return spec["deps"]
+        return (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256))
+
+    def _deps_for_profile(self, profile_id: str | None) -> tuple[tuple[str, str], ...]:
+        for spec in self._reviewed_profiles().values():
+            if spec["profile_id"] == profile_id:
+                return spec["deps"]
+        if profile_id == PROFILE_ID_FC:
+            return (("jq", PROFILE_JQ_SHA256),)
+        return (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256))
+
     def _dependencies_match(self) -> bool:
-        for name, expected in (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)):
+        for name, expected in self._deps_for_digest():
             path = shutil.which(name)
             if not path:
                 return False
@@ -536,27 +609,8 @@ class SandboxRunner:
         observed = self._egress_sidecar_digests()
         return observed == PROFILE_EGRESS_SIDECAR_SHA256
 
-    def _require_profile(self) -> None:
-        if self.sandbox_class != self._observed_class:
-            raise RunnerProfileError("runner profile class mismatch", expected=self._observed_class, found=self.sandbox_class)
-        if self.adapter_id != self._observed_adapter_id:
-            raise RunnerProfileError("runner adapter selection mismatch", expected=self._observed_adapter_id, found=self.adapter_id)
-        if self.profile_id != self._observed_profile_id:
-            raise RunnerProfileError("runner profile identity mismatch", expected=self._observed_profile_id, found=self.profile_id)
-        if self.profile_status != self._observed_profile_status:
-            raise RunnerProfileError("runner profile status mismatch", expected=self._observed_profile_status, found=self.profile_status)
-        try:
-            current_path = str(Path(self.runner_path).resolve(strict=True))
-            current_digest = self._digest(current_path)
-        except OSError as exc:
-            raise RunnerProfileError(f"runner identity unavailable: {exc}", expected=self.runner_path, found="unavailable") from exc
-        if current_path != self.runner_path or current_digest != self.runner_digest:
-            raise RunnerProfileError("runner identity changed after inspection", expected=self.runner_digest, found=current_digest)
-        if self.profile_id == PROFILE_ID_EGRESS and not self._egress_sidecars_match():
-            raise RunnerProfileError("runner sidecar identity mismatch", expected=PROFILE_EGRESS_SIDECAR_SHA256, found=self._egress_sidecar_digests())
-        if self.profile_id not in (PROFILE_ID, PROFILE_ID_EGRESS):
-            raise RunnerProfileError("no reviewed runner profile matches executable; real payload execution is disabled", expected=[PROFILE_ID, PROFILE_ID_EGRESS], found=self.profile_id)
-        for name, expected in (("bwrap", PROFILE_BWRAP_SHA256), ("jq", PROFILE_JQ_SHA256)):
+    def _check_pinned_deps(self, deps: tuple[tuple[str, str], ...]) -> None:
+        for name, expected in deps:
             path = shutil.which(name)
             if not path:
                 raise RunnerProfileError(
@@ -578,6 +632,49 @@ class SandboxRunner:
                     expected=expected, found=dependency_digest,
                     action=f"install the reviewed {name} executable and retry",
                 )
+
+    def _require_profile(self) -> None:
+        if self.sandbox_class != self._observed_class:
+            raise RunnerProfileError("runner profile class mismatch", expected=self._observed_class, found=self.sandbox_class)
+        if self.adapter_id != self._observed_adapter_id:
+            raise RunnerProfileError("runner adapter selection mismatch", expected=self._observed_adapter_id, found=self.adapter_id)
+        if self.profile_id != self._observed_profile_id:
+            raise RunnerProfileError("runner profile identity mismatch", expected=self._observed_profile_id, found=self.profile_id)
+        if self.profile_status != self._observed_profile_status:
+            raise RunnerProfileError("runner profile status mismatch", expected=self._observed_profile_status, found=self.profile_status)
+        try:
+            current_path = str(Path(self.runner_path).resolve(strict=True))
+            current_digest = self._digest(current_path)
+        except OSError as exc:
+            raise RunnerProfileError(f"runner identity unavailable: {exc}", expected=self.runner_path, found="unavailable") from exc
+        if current_path != self.runner_path or current_digest != self.runner_digest:
+            raise RunnerProfileError("runner identity changed after inspection", expected=self.runner_digest, found=current_digest)
+        if self.profile_id == PROFILE_ID_EGRESS and not self._egress_sidecars_match():
+            raise RunnerProfileError("runner sidecar identity mismatch", expected=PROFILE_EGRESS_SIDECAR_SHA256, found=self._egress_sidecar_digests())
+        known_profiles = {
+            PROFILE_ID,
+            PROFILE_ID_EGRESS,
+            PROFILE_ID_LANDLOCK,
+            PROFILE_ID_LANDLOCK_DIRECT,
+            PROFILE_ID_BWRAP_LANDLOCK,
+            PROFILE_ID_FC,
+        }
+        if self.profile_id not in known_profiles:
+            expected_by_hint = {
+                "landlock": [PROFILE_ID_LANDLOCK, PROFILE_ID_LANDLOCK_DIRECT],
+                "landlock-v5": [PROFILE_ID_LANDLOCK, PROFILE_ID_LANDLOCK_DIRECT],
+                "bwrap-landlock": [PROFILE_ID_BWRAP_LANDLOCK],
+                "microvm-fc": [PROFILE_ID_FC],
+            }
+            expected_profiles = expected_by_hint.get(
+                self.adapter_id, [PROFILE_ID, PROFILE_ID_EGRESS]
+            )
+            raise RunnerProfileError(
+                "no reviewed runner profile matches executable; real payload execution is disabled",
+                expected=expected_profiles,
+                found=self.profile_id,
+            )
+        self._check_pinned_deps(self._deps_for_profile(self.profile_id))
 
     def _argv(self, plan: dict) -> list[str]:
         return [self.runner_path, "--exec", _plan_envelope(plan)]
@@ -605,12 +702,18 @@ class SandboxRunner:
         return max(int(slot.get("quotas", {}).get("wall_ms", 60000) / 1000), 1)
 
     def _popen(self, slot: dict, plan: dict, env: dict | None = None):
+        popen_cwd = None
+        if self.profile_id == PROFILE_ID_LANDLOCK_DIRECT:
+            ws = plan.get("workspace")
+            if ws and Path(ws).is_dir():
+                popen_cwd = ws
         return subprocess.Popen(
             self._argv(plan),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=False,
             start_new_session=True,
+            cwd=popen_cwd,
             env=env,
         )
 
@@ -685,15 +788,170 @@ class SandboxRunner:
 
 
 class LandlockRunner(SandboxRunner):
-    """Adapter for invoking a runner intended to provide Landlock confinement.
-
-    The adapter name describes the selected runner contract; it does not
-    establish that the executable enforces Landlock or qualifies a receipt
-    sandbox class.
-    """
+    """Adapter for invoking a Landlock ABI 8 runner (`landlock-wm-v1`)."""
 
     def __init__(self, runner_path: str, sandbox_class: str = "landlock"):
         super().__init__(runner_path, sandbox_class=sandbox_class)
+
+
+class FirecrackerSnapRunner(SandboxRunner):
+    """Jasmine-inspired Firecracker snapshot microVM runner (`microvm-fc`).
+
+    Stays unqualified (failing closed) unless the wrapper digest matches
+    `PROFILE_WRAPPER_FC_SHA256`, `firecracker` + `jq` match reviewed binaries,
+    and all 4 VM snapshot artifacts match `expected_image_digests`.
+    """
+
+    def __init__(
+        self,
+        runner_path: str,
+        snapshot_dir: str | Path | None = None,
+        expected_image_digests: dict[str, str] | None = None,
+        expected_firecracker_sha256: str | None = None,
+        sandbox_class: str | None = "microvm-fc",
+    ):
+        super().__init__(runner_path, sandbox_class=sandbox_class)
+        self._fc_snapshot_dir = (
+            str(Path(snapshot_dir).expanduser()) if snapshot_dir else os.environ.get("MANDALA_FC_SNAPSHOT_DIR")
+        )
+        self._expected_image_digests = dict(expected_image_digests) if expected_image_digests else None
+        self._expected_firecracker_sha256 = expected_firecracker_sha256
+        self._fc_bin: str | None = None
+
+        if (
+            self.profile_status == "unqualified"
+            and self.runner_digest == PROFILE_WRAPPER_FC_SHA256
+            and self._fc_ready()
+        ):
+            if self.adapter_id not in (None, "microvm-fc"):
+                raise RunnerProfileError(
+                    "runner class hint contradicts the reviewed microvm-fc wrapper; refusing",
+                    code="runner_class_hint_conflict",
+                    expected="microvm-fc-compatible selection or no hint",
+                    found=self.adapter_id,
+                    action="remove the conflicting class hint or select the reviewed microvm-fc wrapper",
+                )
+            self.profile_id = PROFILE_ID_FC
+            self.profile_status = "locally_qualified"
+            self.sandbox_class = "microvm-fc"
+            self._observed_adapter_id = self.adapter_id
+            self._observed_class = self.sandbox_class
+            self._observed_profile_id = self.profile_id
+            self._observed_profile_status = self.profile_status
+
+    def _resolve_fc_bin(self) -> str | None:
+        candidate = os.environ.get("MANDALA_FC_BIN") or shutil.which("firecracker")
+        if not candidate:
+            return None
+        path = Path(candidate)
+        if not path.is_file() or not os.access(path, os.X_OK):
+            return None
+        return str(path.resolve())
+
+    def _vm_image_digests(self) -> dict[str, str] | None:
+        if not self._fc_snapshot_dir or not self._expected_image_digests:
+            return None
+        if set(self._expected_image_digests) != set(FC_REQUIRED_ARTIFACTS):
+            return None
+        root = Path(self._fc_snapshot_dir)
+        if not root.is_dir():
+            return None
+        observed = {}
+        for name in FC_REQUIRED_ARTIFACTS:
+            artifact = root / name
+            try:
+                if not artifact.is_file():
+                    return None
+                observed[name] = self._digest(str(artifact))
+            except OSError:
+                return None
+        return observed
+
+    def _fc_ready(self) -> bool:
+        fc_bin = self._resolve_fc_bin()
+        if not fc_bin:
+            return False
+        if self._expected_firecracker_sha256:
+            try:
+                if self._digest(fc_bin) != self._expected_firecracker_sha256:
+                    return False
+            except OSError:
+                return False
+        self._fc_bin = fc_bin
+        jq_path = shutil.which("jq")
+        if not jq_path:
+            return False
+        try:
+            if self._digest(jq_path) != PROFILE_JQ_SHA256:
+                return False
+        except OSError:
+            return False
+        observed = self._vm_image_digests()
+        return observed is not None and observed == self._expected_image_digests
+
+    def vm_image_metadata(self) -> dict | None:
+        observed = self._vm_image_digests()
+        if observed is None:
+            return None
+        return {
+            "snapshot_dir_name": Path(self._fc_snapshot_dir).name if self._fc_snapshot_dir else "unknown",
+            "artifacts": observed,
+        }
+
+    def _require_profile(self) -> None:
+        super()._require_profile()
+        if self.profile_id != PROFILE_ID_FC:
+            return
+        fc_bin = self._resolve_fc_bin()
+        if not fc_bin:
+            raise RunnerProfileError(
+                "runner dependency identity mismatch: firecracker",
+                code="runner_dependency_mismatch",
+                expected=self._expected_firecracker_sha256 or "firecracker executable",
+                found="missing",
+                action="install a reviewed firecracker binary and retry",
+            )
+        if self._expected_firecracker_sha256:
+            fc_digest = self._digest(fc_bin)
+            if fc_digest != self._expected_firecracker_sha256:
+                raise RunnerProfileError(
+                    "runner dependency identity mismatch: firecracker",
+                    code="runner_dependency_mismatch",
+                    expected=self._expected_firecracker_sha256,
+                    found=fc_digest,
+                    action="install the reviewed firecracker binary and retry",
+                )
+        observed = self._vm_image_digests()
+        if observed is None or observed != self._expected_image_digests:
+            raise RunnerProfileError(
+                "firecracker VM snapshot artifact identity mismatch",
+                code="vm_snapshot_mismatch",
+                expected=self._expected_image_digests,
+                found=observed,
+                action="restore reviewed kernel.bin/rootfs.ext4/mem.snap/vmstate.snap artifacts",
+            )
+
+    def profile_for(self, slot: dict, payload_ref: str) -> dict:
+        plan = parse_payload(payload_ref)
+        if slot.get("workspace"):
+            plan["workspace"] = slot["workspace"]
+        invocation = {
+            "argv": self._argv(plan)[1:],
+            "vm_image": self._vm_image_digests() or {},
+        }
+        return {
+            "profile_id": self.profile_id,
+            "executable_digest": self.runner_digest,
+            "invocation_digest": sha256_prefixed(canonical_bytes(invocation)),
+        }
+
+    def _popen(self, slot: dict, plan: dict, env: dict | None = None):
+        fc_env = dict(os.environ if env is None else env)
+        if self._fc_snapshot_dir:
+            fc_env["MANDALA_FC_SNAPSHOT_DIR"] = self._fc_snapshot_dir
+        if self._fc_bin:
+            fc_env["MANDALA_FC_BIN"] = self._fc_bin
+        return super()._popen(slot, plan, env=fc_env)
 
 
 class SliceRunner(SandboxRunner):
@@ -819,11 +1077,19 @@ class SliceRunner(SandboxRunner):
 def build_runner(runner_path: str | None, slice_mode: bool = False, sandbox_class: str | None = None):
     if not runner_path:
         return None
+    runner_name = Path(runner_path).name
     cls = sandbox_class or os.environ.get("WM_MANDALA_SANDBOX_CLASS") or os.environ.get("WM_SANDBOX_CLASS")
-    if cls is None and ("landrun" in Path(runner_path).name or "landlock" in Path(runner_path).name):
-        cls = "landlock"
+    if cls is None:
+        if "bwrap-landlock" in runner_name:
+            cls = "bwrap-landlock"
+        elif "firecracker" in runner_name:
+            cls = "microvm-fc"
+        elif "landrun" in runner_name or "landlock" in runner_name or "wm-sandbox" in runner_name:
+            cls = "landlock"
     if slice_mode:
         return SliceRunner(runner_path, sandbox_class=cls)
+    if cls == "microvm-fc":
+        return FirecrackerSnapRunner(runner_path, sandbox_class=cls)
     if cls in ("landlock", "landlock-v5"):
         return LandlockRunner(runner_path, sandbox_class=cls)
     return SandboxRunner(runner_path, sandbox_class=cls)
@@ -1199,6 +1465,8 @@ class Orchestrator:
         spend_cap: dict | None = None,
         principal_id: str | None = None,
         idempotency_key: str | None = None,
+        vfs: list[dict] | None = None,
+        policy: dict | None = None,
     ) -> dict:
         # Authorization precedes the idempotency cache: membership is checked
         # before a cached pass (and its token) can be returned. Cache keys are
@@ -1214,12 +1482,23 @@ class Orchestrator:
             )
         if slot_class not in SLOT_CLASSES:
             raise ValueError(f"unknown slot class {slot_class}")
+        public_vfs = private_vfs = None
+        if vfs is not None:
+            public_vfs, private_vfs = validate_vfs(vfs)
+        norm_policy = p_digest = None
+        if policy is not None:
+            norm_policy = validate_policy(policy)
+            p_digest = policy_digest(norm_policy)
         request = {
             "minutes": minutes,
             "slot_class": slot_class,
             "spend_cap": spend_cap,
             "principal_id": principal_id,
         }
+        if public_vfs is not None:
+            request["vfs"] = public_vfs
+        if p_digest is not None:
+            request["policy_digest"] = p_digest
         cache_key = (
             f"pass:{tenant_id}:{agent_did}:{idempotency_key}" if idempotency_key else None
         )
@@ -1257,6 +1536,10 @@ class Orchestrator:
         }
         if principal_id:
             claims["principal_id"] = principal_id
+        if public_vfs is not None:
+            claims["vfs"] = public_vfs
+        if p_digest is not None:
+            claims["policy_digest"] = p_digest
         token = issue_pass(self.gate_did, self.gate_key, claims)
 
         body = {
@@ -1273,6 +1556,10 @@ class Orchestrator:
         }
         if spend_cap:
             body["spend_cap"] = spend_cap
+        if public_vfs is not None:
+            body["vfs"] = public_vfs
+        if p_digest is not None:
+            body["policy_digest"] = p_digest
 
         slot = dict(
             Slot(
@@ -1289,17 +1576,20 @@ class Orchestrator:
         receipt = self._emit(slot, "session.pass.created", body)
         slot["task_id"] = self.task_id_for(slot_id)
         self.registry.put_slot(slot)
-        self.registry.put_pass(
-            {
-                "pass_id": pass_id,
-                "slot_id": slot_id,
-                "agent_id": agent_did,
-                "principal_id": principal_id,
-                "expires_at": expires_at,
-                "spend_cap": spend_cap,
-                "jti": jti,
-            }
-        )
+        pass_record = {
+            "pass_id": pass_id,
+            "slot_id": slot_id,
+            "agent_id": agent_did,
+            "principal_id": principal_id,
+            "expires_at": expires_at,
+            "spend_cap": spend_cap,
+            "jti": jti,
+        }
+        if private_vfs is not None:
+            pass_record["vfs"] = private_vfs
+        if norm_policy is not None:
+            pass_record["policy"] = norm_policy
+        self.registry.put_pass(pass_record)
         (self.workspaces_dir / slot_id).mkdir(parents=True, exist_ok=True)
         result = {
             "pass_id": pass_id,
@@ -1429,6 +1719,18 @@ class Orchestrator:
             raise ValueError("slot is expired")
         if slot["state"] in BLOCKED_STATES:
             raise ValueError(f"slot is {slot['state']}")
+        pass_record = self.registry.get_pass(slot.get("pass_id") or "") or {}
+        slot_vfs = pass_record.get("vfs")
+        slot_policy = pass_record.get("policy")
+        pre_cmd_result = None
+        if slot_vfs is not None or slot_policy is not None:
+            plan = parse_payload(payload_ref)
+            pre_cmd_result = evaluate_pre_command(
+                plan,
+                workspace=str(self.workspaces_dir / slot_id),
+                vfs=slot_vfs,
+                policy=slot_policy,
+            )
         previous_state = slot["state"]
         jti = self._consume_exec_jti(claims, slot_id)
 
@@ -1509,6 +1811,14 @@ class Orchestrator:
         egress_evidence_incomplete = any(
             entry.get("evidence_error") for entry in (result.egress or [])
         )
+        sandbox_cls = getattr(self.runner, "sandbox_class", "unknown")
+        enforcer_by_class = {
+            "bwrap": "bwrap --unshare-all",
+            "landlock": "landlock-abi8 zero-egress",
+            "bwrap-landlock": "bwrap --unshare-all + landlock-abi8",
+            "microvm-fc": "firecracker microvm (no net iface)",
+        }
+        default_enforcer = enforcer_by_class.get(sandbox_cls, "bwrap --unshare-all")
         execution_body = {
             "tool_calls": [
                 {
@@ -1522,17 +1832,22 @@ class Orchestrator:
                     "destination": "none",
                     "bytes": 0,
                     "allowed": True,
-                    "enforcer": "bwrap --unshare-all",
+                    "enforcer": default_enforcer,
                     "enforced": True,
                 }
             ],
             "resources": result.resources,
-            "sandbox_class": getattr(self.runner, "sandbox_class", "unknown"),
+            "sandbox_class": sandbox_cls,
             "exit_code": result.exit_code,
             "egress_evidence_complete": not egress_evidence_incomplete,
         }
         if runner_profile is not None:
             execution_body["runner_profile"] = runner_profile
+        vm_image = self.runner.vm_image_metadata() if isinstance(self.runner, FirecrackerSnapRunner) else None
+        if vm_image is not None:
+            execution_body["vm_image"] = vm_image
+        if pre_cmd_result is not None and pre_cmd_result.get("mode") != "legacy":
+            execution_body["pre_command"] = pre_cmd_result
         if trace_guard_result is not None:
             execution_body["trace_guard"] = trace_guard_result
         execution = self._emit(
@@ -1573,6 +1888,8 @@ class Orchestrator:
         }
         if result.stderr_hash:
             response["stderr_hash"] = result.stderr_hash
+        if pre_cmd_result is not None and pre_cmd_result.get("mode") != "legacy":
+            response["pre_command"] = pre_cmd_result
         if trace_guard_result is not None:
             response["trace_guard"] = trace_guard_result
 
@@ -1802,8 +2119,24 @@ class Orchestrator:
             "hint": "kill could not be bound to a run or an idle slot; retry",
         }
 
-    def snapshot(self, tenant_id: str, slot_id: str) -> dict:
-        """Filesystem snapshot of the slot workspace (gate-lite: no store image)."""
+    def _git_env(self, bare_repo: Path, workspace: Path, index_path: Path) -> dict[str, str]:
+        return {
+            **os.environ,
+            "GIT_DIR": str(bare_repo),
+            "GIT_WORK_TREE": str(workspace),
+            "GIT_INDEX_FILE": str(index_path),
+            "GIT_AUTHOR_NAME": "mandala",
+            "GIT_AUTHOR_EMAIL": "mandala@local",
+            "GIT_COMMITTER_NAME": "mandala",
+            "GIT_COMMITTER_EMAIL": "mandala@local",
+            "GIT_AUTHOR_DATE": "1970-01-01T00:00:00Z",
+            "GIT_COMMITTER_DATE": "1970-01-01T00:00:00Z",
+        }
+
+    def snapshot(self, tenant_id: str, slot_id: str, mode: str = "tar") -> dict:
+        """Filesystem snapshot of the slot workspace (`tar` or `git` bare-repo ref)."""
+        if mode not in ("tar", "git"):
+            raise ValueError(f"unknown snapshot mode {mode}")
         slot = self._authorized_slot(tenant_id, slot_id)
         if self._expire_if_needed(slot):
             raise ValueError("slot is expired")
@@ -1814,13 +2147,106 @@ class Orchestrator:
         snapshot_id = "snap-" + uuid.uuid4().hex[:12]
         archive_dir = self.snapshots_dir / slot_id
         archive_dir.mkdir(parents=True, exist_ok=True)
+        workspace_hash = tree_hash(workspace)
+
+        if mode == "git":
+            bare_repo = archive_dir / "workspace.git"
+            if not bare_repo.exists():
+                subprocess.run(
+                    ["git", "init", "--bare", str(bare_repo)],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            with tempfile.TemporaryDirectory(prefix="mandala-git-idx-") as idx_dir:
+                git_env = self._git_env(bare_repo, workspace, Path(idx_dir) / "index")
+                subprocess.run(
+                    ["git", "add", "-A"],
+                    env=git_env,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                tree_id = subprocess.check_output(
+                    ["git", "write-tree"], env=git_env, text=True
+                ).strip()
+                commit_sha = subprocess.check_output(
+                    ["git", "commit-tree", tree_id, "-m", f"mandala snapshot {snapshot_id}"],
+                    env=git_env,
+                    text=True,
+                ).strip()
+                subprocess.run(
+                    ["git", "update-ref", f"refs/mandala/{snapshot_id}", commit_sha],
+                    env=git_env,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                archive_bytes = subprocess.check_output(
+                    ["git", "archive", "--format=tar", commit_sha],
+                    env={"GIT_DIR": str(bare_repo)},
+                )
+            digest = sha256_prefixed(archive_bytes)
+            byte_len = len(archive_bytes)
+            receipt = self._emit(
+                slot,
+                "delivery.attestation",
+                {
+                    "request_hash": sha256_prefixed(f"snapshot:{slot_id}:{snapshot_id}".encode()),
+                    "response_hash": digest,
+                    "counterparty": {"id": self.gate_did},
+                    "spec_ref": RECEIPT_SPEC,
+                    "artifact": {
+                        "snapshot_id": snapshot_id,
+                        "kind": "filesystem-git",
+                        "commit_sha": commit_sha,
+                        "tree_hash": workspace_hash,
+                        "bytes": byte_len,
+                        "sha256": digest,
+                    },
+                },
+            )
+            self.registry.put_snapshot(
+                {
+                    "snapshot_id": snapshot_id,
+                    "slot_id": slot_id,
+                    "tenant_id": tenant_id,
+                    "mode": "git",
+                    "repo": str(bare_repo),
+                    "commit_sha": commit_sha,
+                    "ref": f"refs/mandala/{snapshot_id}",
+                    "sha256": digest,
+                    "bytes": byte_len,
+                    "tree_hash": workspace_hash,
+                    "created_at": now_epoch(),
+                }
+            )
+            fresh = self.registry.get_slot(slot_id) or slot
+            if fresh["state"] not in TERMINAL_STATES:
+                fresh["state"] = "frozen"
+                self.registry.put_slot(fresh)
+            return {
+                "slot_id": slot_id,
+                "snapshot_id": snapshot_id,
+                "mode": "git",
+                "commit_sha": commit_sha,
+                "receipt_id": receipt["receipt_id"],
+                "state": fresh["state"],
+                "tree_hash": workspace_hash,
+                "artifact": {
+                    "repo": str(bare_repo),
+                    "commit_sha": commit_sha,
+                    "sha256": digest,
+                    "bytes": byte_len,
+                },
+            }
+
         archive_path = archive_dir / f"{snapshot_id}.tar.gz"
         with tarfile.open(archive_path, "w:gz") as tar:
             for child in sorted(workspace.iterdir()):
                 tar.add(child, arcname=child.name, recursive=True)
         payload = archive_path.read_bytes()
         digest = sha256_prefixed(payload)
-        workspace_hash = tree_hash(workspace)
         receipt = self._emit(
             slot,
             "delivery.attestation",
@@ -1842,6 +2268,7 @@ class Orchestrator:
                 "snapshot_id": snapshot_id,
                 "slot_id": slot_id,
                 "tenant_id": tenant_id,
+                "mode": "tar",
                 "artifact": str(archive_path),
                 "sha256": digest,
                 "bytes": len(payload),
@@ -1874,6 +2301,73 @@ class Orchestrator:
             raise KeyError(f"unknown snapshot {snapshot_id}")
         if record["tenant_id"] != tenant_id:
             raise PermissionError("cross-tenant snapshot access denied")
+
+        mode = record.get("mode", "tar")
+        workspace = self.workspaces_dir / slot_id
+        if mode == "git":
+            bare_repo = Path(record["repo"])
+            commit_sha = record["commit_sha"]
+            if not bare_repo.is_dir():
+                raise KeyError(f"snapshot repository missing: {bare_repo}")
+            try:
+                subprocess.run(
+                    ["git", "rev-parse", "--verify", f"{commit_sha}^{{commit}}"],
+                    env={"GIT_DIR": str(bare_repo)},
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                archive_bytes = subprocess.check_output(
+                    ["git", "archive", "--format=tar", commit_sha],
+                    env={"GIT_DIR": str(bare_repo)},
+                )
+            except subprocess.CalledProcessError as exc:
+                raise ValueError(f"git snapshot commit missing or corrupt: {commit_sha}") from exc
+            digest = sha256_prefixed(archive_bytes)
+            if digest != record["sha256"]:
+                raise ValueError("snapshot integrity check failed")
+            if workspace.exists() and any(workspace.iterdir()):
+                raise ValueError("workspace is not empty")
+            workspace.mkdir(parents=True, exist_ok=True)
+            has_entries = bool(
+                subprocess.check_output(
+                    ["git", "ls-tree", commit_sha],
+                    env={"GIT_DIR": str(bare_repo)},
+                ).strip()
+            )
+            if has_entries:
+                with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:") as tar:
+                    _safe_extract(tar, workspace)
+            restored = tree_hash(workspace)
+            if restored != record["tree_hash"]:
+                raise ValueError("restored git workspace tree_hash mismatch")
+            receipt = self._emit(
+                slot,
+                "delivery.attestation",
+                {
+                    "request_hash": record["sha256"],
+                    "response_hash": restored,
+                    "counterparty": {"id": self.gate_did},
+                    "spec_ref": RECEIPT_SPEC,
+                    "artifact": {
+                        "snapshot_id": snapshot_id,
+                        "kind": "filesystem-git-restore",
+                        "commit_sha": commit_sha,
+                        "sha256": record["sha256"],
+                        "restored_into": slot_id,
+                    },
+                },
+            )
+            return {
+                "slot_id": slot_id,
+                "snapshot_id": snapshot_id,
+                "mode": "git",
+                "commit_sha": commit_sha,
+                "workspace": str(workspace),
+                "restored_hash": restored,
+                "receipt_id": receipt["receipt_id"],
+            }
+
         archive = Path(record["artifact"])
         if not archive.exists():
             raise KeyError(f"snapshot artifact missing: {archive}")
@@ -1882,7 +2376,6 @@ class Orchestrator:
         if digest != record["sha256"]:
             raise ValueError("snapshot integrity check failed")
 
-        workspace = self.workspaces_dir / slot_id
         if workspace.exists() and any(workspace.iterdir()):
             raise ValueError("workspace is not empty")
         workspace.mkdir(parents=True, exist_ok=True)

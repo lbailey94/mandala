@@ -1,0 +1,291 @@
+{
+  "schema": "mandala-bench-fair/1.0",
+  "iters": 25,
+  "environment": {
+    "recorded_at_utc": "2026-11-25T20:39:40Z",
+    "hostname": "redacted",
+    "kernel": "7.0.0-43-generic",
+    "arch": "x86_64",
+    "cpu": "Intel(R) Core(TM) i5-8350U CPU @ 1.70GHz",
+    "nproc": 8,
+    "python": "3.12.3",
+    "bwrap": "bubblewrap 0.9.0",
+    "landlock_abi": 8,
+    "lsm_modules": "lockdown,capability,landlock,yama,apparmor,bpf,ima,evm",
+    "kvm_rw": true,
+    "systemd_user": true,
+    "firecracker_installed": false,
+    "podman_installed": false
+  },
+  "latency_ms": {
+    "raw_host_echo": {
+      "iters": 25,
+      "min_ms": 0.93,
+      "p50_ms": 1.118,
+      "mean_ms": 1.247,
+      "p95_ms": 1.885,
+      "p99_ms": 2.019,
+      "max_ms": 2.051
+    },
+    "raw_landlock_wm_direct_v1": {
+      "iters": 25,
+      "min_ms": 2.078,
+      "p50_ms": 2.49,
+      "mean_ms": 2.603,
+      "p95_ms": 3.504,
+      "p99_ms": 3.771,
+      "max_ms": 3.848
+    },
+    "gated_landlock_wm_direct_v1": {
+      "iters": 25,
+      "min_ms": 14.969,
+      "p50_ms": 16.533,
+      "mean_ms": 16.717,
+      "p95_ms": 17.999,
+      "p99_ms": 18.892,
+      "max_ms": 19.173
+    },
+    "raw_landlock_wm_v1": {
+      "iters": 25,
+      "min_ms": 13.76,
+      "p50_ms": 15.709,
+      "mean_ms": 15.77,
+      "p95_ms": 17.754,
+      "p99_ms": 18.76,
+      "max_ms": 19.065
+    },
+    "gated_landlock_wm_v1": {
+      "iters": 25,
+      "min_ms": 25.432,
+      "p50_ms": 29.736,
+      "mean_ms": 29.598,
+      "p95_ms": 32.174,
+      "p99_ms": 34.163,
+      "max_ms": 34.769
+    },
+    "raw_bwrap_v1": {
+      "iters": 25,
+      "min_ms": 18.294,
+      "p50_ms": 21.295,
+      "mean_ms": 21.174,
+      "p95_ms": 23.409,
+      "p99_ms": 24.217,
+      "max_ms": 24.419
+    },
+    "gated_bwrap_v1": {
+      "iters": 25,
+      "min_ms": 25.556,
+      "p50_ms": 29.156,
+      "mean_ms": 29.15,
+      "p95_ms": 31.747,
+      "p99_ms": 32.095,
+      "max_ms": 32.204
+    },
+    "raw_bwrap_landlock_v1": {
+      "iters": 25,
+      "min_ms": 21.204,
+      "p50_ms": 23.929,
+      "mean_ms": 24.005,
+      "p95_ms": 26.526,
+      "p99_ms": 27.483,
+      "max_ms": 27.773
+    },
+    "gated_bwrap_landlock_v1": {
+      "iters": 25,
+      "min_ms": 34.626,
+      "p50_ms": 37.689,
+      "mean_ms": 38.004,
+      "p95_ms": 40.757,
+      "p99_ms": 41.017,
+      "max_ms": 41.088
+    },
+    "gated_bwrap_egress_v1": {
+      "iters": 25,
+      "min_ms": 35.547,
+      "p50_ms": 39.654,
+      "mean_ms": 40.903,
+      "p95_ms": 45.06,
+      "p99_ms": 63.145,
+      "max_ms": 68.85
+    },
+    "gated_slice_bwrap_v1": {
+      "iters": 10,
+      "min_ms": 102.845,
+      "p50_ms": 108.766,
+      "mean_ms": 110.489,
+      "p95_ms": 120.422,
+      "p99_ms": 123.255,
+      "max_ms": 123.963
+    }
+  },
+  "burst_10": {
+    "burst_10_landlock_wm_direct_v1": {
+      "iters": 5,
+      "min_ms": 9.851,
+      "p50_ms": 11.377,
+      "mean_ms": 11.214,
+      "p95_ms": 12.02,
+      "p99_ms": 12.13,
+      "max_ms": 12.157,
+      "per_exec_p50_ms": 1.138
+    },
+    "burst_10_landlock_wm_v1": {
+      "iters": 5,
+      "min_ms": 44.945,
+      "p50_ms": 51.842,
+      "mean_ms": 51.579,
+      "p95_ms": 55.88,
+      "p99_ms": 56.477,
+      "max_ms": 56.626,
+      "per_exec_p50_ms": 5.184
+    },
+    "burst_10_bwrap_v1": {
+      "iters": 5,
+      "min_ms": 94.829,
+      "p50_ms": 96.241,
+      "mean_ms": 99.204,
+      "p95_ms": 105.787,
+      "p99_ms": 106.319,
+      "max_ms": 106.452,
+      "per_exec_p50_ms": 9.624
+    },
+    "burst_10_bwrap_landlock_v1": {
+      "iters": 5,
+      "min_ms": 91.887,
+      "p50_ms": 100.674,
+      "mean_ms": 100.178,
+      "p95_ms": 108.918,
+      "p99_ms": 110.33,
+      "max_ms": 110.683,
+      "per_exec_p50_ms": 10.067
+    }
+  },
+  "micro_us": {
+    "pre_command_allow_us": {
+      "iters": 1000,
+      "min_ms": 0.151,
+      "p50_ms": 0.182,
+      "mean_ms": 0.236,
+      "p95_ms": 0.421,
+      "p99_ms": 0.484,
+      "max_ms": 0.769
+    },
+    "pre_command_deny_us": {
+      "iters": 1000,
+      "min_ms": 0.201,
+      "p50_ms": 0.227,
+      "mean_ms": 0.283,
+      "p95_ms": 0.511,
+      "p99_ms": 0.676,
+      "max_ms": 0.966
+    }
+  },
+  "cpr_and_guard": {
+    "cpr05_sign_and_verify_ms": {
+      "iters": 25,
+      "min_ms": 6.682,
+      "p50_ms": 10.449,
+      "mean_ms": 10.338,
+      "p95_ms": 13.385,
+      "p99_ms": 14.18,
+      "max_ms": 14.408
+    },
+    "trace_guard_20steps_ms": {
+      "iters": 100,
+      "min_ms": 0.17,
+      "p50_ms": 0.2,
+      "mean_ms": 0.258,
+      "p95_ms": 0.439,
+      "p99_ms": 0.491,
+      "max_ms": 0.676
+    }
+  },
+  "snapshots": {
+    "tar_roundtrip_ms": {
+      "iters": 12,
+      "min_ms": 20.613,
+      "p50_ms": 23.242,
+      "mean_ms": 23.97,
+      "p95_ms": 27.809,
+      "p99_ms": 28.555,
+      "max_ms": 28.742
+    },
+    "git_roundtrip_ms": {
+      "iters": 12,
+      "min_ms": 51.698,
+      "p50_ms": 62.859,
+      "mean_ms": 66.733,
+      "p95_ms": 86.111,
+      "p99_ms": 92.766,
+      "max_ms": 94.429
+    }
+  },
+  "security_matrix": [
+    {
+      "runner": "landlock-wm-v1",
+      "sandbox_class": "landlock",
+      "credential_read_blocked": true,
+      "out_of_workspace_write_blocked": true,
+      "ro_workspace_nontmp_blocked": true,
+      "ro_workspace_tmp_blocked": false,
+      "ro_tmp_note": "wm-sandbox grants /tmp scratch RW",
+      "net_tcp_egress_blocked": true,
+      "cpr05_verdict": "TRUSTED",
+      "details": {
+        "cred": "rc=1 (/bin/cat: /etc/shadow: Permission denied)",
+        "out_ws": "rc=2 (/bin/sh: 1: cannot create $HOME/.cache/mandala-sec-nontmp-nigp4s8z/outside/escape-landlock)",
+        "ro_nontmp": "rc=2 (/bin/sh: 1: cannot create $HOME/.cache/mandala-sec-nontmp-nigp4s8z/ws/ro-landlock-wm-v1.tx)",
+        "ro_tmp": "rc=0 (exit=0)",
+        "net": "rc=1 (PermissionError: [Errno 13] Permission denied)"
+      }
+    },
+    {
+      "runner": "bwrap-v1",
+      "sandbox_class": "bwrap",
+      "credential_read_blocked": true,
+      "out_of_workspace_write_blocked": true,
+      "ro_workspace_nontmp_blocked": true,
+      "ro_workspace_tmp_blocked": true,
+      "ro_tmp_note": "enforced",
+      "net_tcp_egress_blocked": true,
+      "cpr05_verdict": "TRUSTED",
+      "details": {
+        "cred": "rc=1 (/bin/cat: /etc/shadow: No such file or directory)",
+        "out_ws": "rc=2 (/bin/sh: 1: cannot create $HOME/.cache/mandala-sec-nontmp-nigp4s8z/outside/escape-bwrap-v1)",
+        "ro_nontmp": "rc=2 (/bin/sh: 1: cannot create /workspace/ro-bwrap-v1.txt: Read-only file system)",
+        "ro_tmp": "rc=2 (/bin/sh: 1: cannot create /workspace/ro-bwrap-v1.txt: Read-only file system)",
+        "net": "rc=1 (OSError: [Errno 101] Network is unreachable)"
+      }
+    },
+    {
+      "runner": "bwrap-landlock-v1",
+      "sandbox_class": "bwrap-landlock",
+      "credential_read_blocked": true,
+      "out_of_workspace_write_blocked": true,
+      "ro_workspace_nontmp_blocked": true,
+      "ro_workspace_tmp_blocked": true,
+      "ro_tmp_note": "enforced",
+      "net_tcp_egress_blocked": true,
+      "cpr05_verdict": "TRUSTED",
+      "details": {
+        "cred": "rc=1 (/bin/cat: /etc/shadow: No such file or directory)",
+        "out_ws": "rc=2 (/bin/sh: 1: cannot create $HOME/.cache/mandala-sec-nontmp-nigp4s8z/outside/escape-bwrap-la)",
+        "ro_nontmp": "rc=2 (/bin/sh: 1: cannot create /workspace/ro-bwrap-landlock-v1.txt: Read-only file system)",
+        "ro_tmp": "rc=2 (/bin/sh: 1: cannot create /workspace/ro-bwrap-landlock-v1.txt: Read-only file system)",
+        "net": "rc=1 (PermissionError: [Errno 13] Permission denied)"
+      }
+    },
+    {
+      "runner": "pre_command+VFS",
+      "sandbox_class": "pre-spawn gate",
+      "credential_read_blocked": true,
+      "out_of_workspace_write_blocked": true,
+      "ro_workspace_nontmp_blocked": true,
+      "ro_workspace_tmp_blocked": true,
+      "ro_tmp_note": "pre-spawn PolicyError (0 processes spawned)",
+      "net_tcp_egress_blocked": true,
+      "cpr05_verdict": "TRUSTED (ScopeConfinement trace_step)",
+      "details": {}
+    }
+  ]
+}
