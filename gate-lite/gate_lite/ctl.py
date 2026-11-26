@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -12,9 +13,53 @@ sys.path.insert(0, str(ROOT))
 from gate_lite.errors import PreflightError  # noqa: E402
 from gate_lite.orchestrator import EmitterError, Orchestrator, build_runner  # noqa: E402
 
+RUNNER_PROFILE_MAP = {
+    "bwrap-landlock-v1": "runners/bwrap-landlock-v1/mandala-sandbox-bwrap-landlock",
+    "landlock-wm-v1": "runners/landlock-wm-v1/mandala-sandbox-landlock",
+    "bwrap-v1": "runners/bwrap-v1/mandala-sandbox",
+    "firecracker-snap-v1": "runners/firecracker-snap-v1/mandala-sandbox-firecracker",
+    "podman-v1": "runners/podman-v1/mandala-sandbox-podman",
+}
+
+
+def resolve_grimoire_runner(root: Path, profile_path: Path | None = None) -> tuple[str | None, str | None]:
+    """Resolve a Mandala runner binary path from `grimoire_profile.json`."""
+    p = profile_path
+    if p is None:
+        env_p = (os.environ.get("WM_GRIMOIRE_PROFILE") or "").strip()
+        p = Path(env_p) if env_p else (Path.home() / ".local" / "share" / "whitemagic" / "grimoire_profile.json")
+    if not p.is_file():
+        return None, f"grimoire profile not found at {p}"
+    try:
+        obj = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return None, f"invalid grimoire profile JSON: {exc}"
+    conf = obj.get("confinement") or {}
+    runner_id = str(conf.get("runner_profile") or "").strip()
+    degraded_reason = conf.get("degraded_reason")
+    if runner_id == "landlock-wm-direct-v1":
+        sb = shutil.which("wm-sandbox") or str(Path.home() / ".local" / "bin" / "wm-sandbox")
+        if Path(sb).is_file():
+            return sb, None
+        return None, "landlock-wm-direct-v1 selected by Grimoire, but wm-sandbox executable was not found"
+    if runner_id == "pre-command-vfs":
+        msg = degraded_reason or "Non-Linux / degraded host: pre-command + VFS policy active only; pass --demo for stub exec"
+        return None, str(msg)
+    rel = RUNNER_PROFILE_MAP.get(runner_id)
+    if rel:
+        cand = (root / rel).resolve()
+        if cand.is_file():
+            return str(cand), None
+        return None, f"Grimoire selected runner '{runner_id}', but wrapper not found at {cand}"
+    return None, f"unsupported Grimoire runner_profile: {runner_id!r}"
+
 
 def build_orchestrator(args) -> Orchestrator:
     runner_path = args.runner or os.environ.get("WM_GATELITE_RUNNER")
+    auto_flag = getattr(args, "auto_runner", False) or (runner_path == "auto")
+    grimoire_diag = None
+    if auto_flag:
+        runner_path, grimoire_diag = resolve_grimoire_runner(ROOT)
     slice_mode = args.slice or os.environ.get("WM_GATELITE_SLICE") == "1"
     sandbox_class = getattr(args, "sandbox_class", None) or os.environ.get("WM_MANDALA_SANDBOX_CLASS")
     if slice_mode and not runner_path:
@@ -24,9 +69,11 @@ def build_orchestrator(args) -> Orchestrator:
         )
     runner = build_runner(runner_path, slice_mode, sandbox_class=sandbox_class)
     if runner is None and args.cmd == "exec" and not args.demo:
+        if grimoire_diag:
+            raise SystemExit(f"refusing to exec: {grimoire_diag}")
         raise SystemExit(
             "refusing to exec: no sandbox runner configured (pass --runner <path> "
-            "[--slice], or set WM_GATELITE_RUNNER), or pass --demo to run the simulated stub"
+            "[--slice], pass --auto-runner, or set WM_GATELITE_RUNNER), or pass --demo to run the simulated stub"
         )
     orchestrator = Orchestrator(args.state, gate_id=args.gate_id, runner=runner)
     if runner is None and args.cmd == "exec" and args.demo:
@@ -41,7 +88,12 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="mandala-ctl")
     parser.add_argument("--state", default="./gate-state")
     parser.add_argument("--gate-id", default="gate-lite-1")
-    parser.add_argument("--runner", default=None, help="path to mandala-sandbox wrapper")
+    parser.add_argument("--runner", default=None, help="path to mandala-sandbox wrapper (or 'auto' for Grimoire profile)")
+    parser.add_argument(
+        "--auto-runner",
+        action="store_true",
+        help="resolve confinement runner from ~/.local/share/whitemagic/grimoire_profile.json",
+    )
     parser.add_argument(
         "--sandbox-class",
         default=None,

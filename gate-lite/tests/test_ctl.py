@@ -97,6 +97,41 @@ class TestCtlRunnerGuard(unittest.TestCase):
             self.assertEqual(json.loads(proc.stderr)["error"], "token_required")
             self.assertNotIn("Traceback", proc.stderr)
 
+    def test_resolve_grimoire_runner_and_auto_runner_degraded(self):
+        from gate_lite.ctl import resolve_grimoire_runner
+
+        with tempfile.TemporaryDirectory() as tmp:
+            gp = Path(tmp) / "grimoire_profile.json"
+            gp.write_text(
+                json.dumps({"confinement": {"runner_profile": "bwrap-landlock-v1"}}),
+                encoding="utf-8",
+            )
+            r_path, err = resolve_grimoire_runner(ROOT, profile_path=gp)
+            self.assertIsNone(err)
+            self.assertIsNotNone(r_path)
+            self.assertTrue(r_path.endswith("mandala-sandbox-bwrap-landlock"))
+
+            gp.write_text(
+                json.dumps({
+                    "confinement": {
+                        "runner_profile": "pre-command-vfs",
+                        "degraded_reason": "macOS: no kernel Landlock",
+                    }
+                }),
+                encoding="utf-8",
+            )
+            r_deg, err_deg = resolve_grimoire_runner(ROOT, profile_path=gp)
+            self.assertIsNone(r_deg)
+            self.assertIn("macOS: no kernel Landlock", err_deg)
+
+            proc = run_ctl(
+                "--state", tmp, "--auto-runner", "exec", "--tenant", "dogfood",
+                "--slot", "slot-x", "--payload-ref", "echo hi", "--token", "dummy-token",
+                env_overrides={"WM_GRIMOIRE_PROFILE": str(gp)},
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("macOS: no kernel Landlock", proc.stderr)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
